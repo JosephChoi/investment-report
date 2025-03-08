@@ -5,10 +5,13 @@ import Link from 'next/link';
 import { FileText, AlertTriangle, RefreshCw, MessageSquare, Bell } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import { formatDate } from '@/lib/utils';
 
 export default function Dashboard() {
   const [user, setUser] = useState<any>(null);
+  const [accounts, setAccounts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
   // 인증 상태 확인
@@ -25,9 +28,13 @@ export default function Dashboard() {
         }
         
         setUser(user);
+        console.log('로그인한 사용자 정보:', user);
+        
+        // 사용자 계좌 정보 가져오기
+        await fetchUserAccounts(user);
       } catch (error) {
         console.error('인증 확인 오류:', error);
-        router.push('/login');
+        setError('사용자 정보를 불러오는 중 오류가 발생했습니다.');
       } finally {
         setLoading(false);
       }
@@ -36,6 +43,56 @@ export default function Dashboard() {
     checkAuth();
   }, [router]);
 
+  // 사용자 계좌 정보 가져오기 함수
+  const fetchUserAccounts = async (user: any) => {
+    try {
+      console.log('계좌 정보 가져오기 시작...');
+      console.log('현재 로그인한 사용자 이메일:', user.email);
+      
+      // 서비스 역할 키를 사용하는 API를 통해 계좌 정보 가져오기
+      const response = await fetch('/api/get-all-accounts');
+      const result = await response.json();
+      
+      if (result.success && result.data && result.data.length > 0) {
+        console.log('모든 계좌 정보:', result.data);
+        
+        // 현재 로그인한 사용자의 이메일과 일치하는 계좌만 필터링
+        const userAccounts = result.data.filter((account: any) => {
+          return account.user && 
+                 account.user.email && 
+                 account.user.email.toLowerCase() === user.email.toLowerCase();
+        });
+        
+        if (userAccounts.length > 0) {
+          console.log('현재 사용자의 실제 계좌 정보:', userAccounts);
+          setAccounts(userAccounts);
+          return;
+        } else {
+          console.log('일치하는 실제 계좌 정보가 없습니다. 사용자 이메일:', user.email);
+          console.log('사용자 목록:', result.data.map((account: any) => account.user?.email));
+        }
+      }
+      
+      // 백업 방법: 직접 API 호출
+      console.log('백업 방법으로 계좌 정보 가져오기 시도...');
+      const backupResponse = await fetch('/api/user/accounts?email=' + encodeURIComponent(user.email));
+      const backupResult = await backupResponse.json();
+      
+      if (backupResult.success && backupResult.data && backupResult.data.accounts && backupResult.data.accounts.length > 0) {
+        console.log('백업 방법으로 가져온 실제 계좌 정보:', backupResult.data.accounts);
+        setAccounts(backupResult.data.accounts);
+        return;
+      }
+      
+      // 계좌 정보가 없는 경우
+      console.log('계좌 정보를 찾을 수 없습니다.');
+      setError('등록된 계좌 정보가 없습니다. 관리자에게 문의하여 계좌 정보를 등록해주세요.');
+    } catch (error) {
+      console.error('계좌 정보 가져오기 오류:', error);
+      setError('계좌 정보를 불러오는 중 오류가 발생했습니다.');
+    }
+  };
+
   // 로그아웃 처리
   const handleLogout = async () => {
     try {
@@ -43,12 +100,30 @@ export default function Dashboard() {
       router.push('/login');
     } catch (error) {
       console.error('로그아웃 오류:', error);
+      setError('로그아웃 중 오류가 발생했습니다.');
+    }
+  };
+
+  // 날짜 포맷 함수
+  const formatAccountDate = (dateString: string) => {
+    if (!dateString) return '정보 없음';
+    
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('ko-KR', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+    } catch (error) {
+      console.error('날짜 포맷 오류:', error);
+      return '날짜 형식 오류';
     }
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="container mx-auto px-4 py-8 flex items-center justify-center min-h-screen">
         <p className="text-lg text-gray-600">로딩 중...</p>
       </div>
     );
@@ -56,25 +131,104 @@ export default function Dashboard() {
 
   return (
     <div className="container mx-auto px-4 py-8 bg-gray-50 min-h-screen">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold mb-2 text-gray-900">투자 관리 대시보드</h1>
-        <button
-          onClick={handleLogout}
-          className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300"
-        >
-          로그아웃
-        </button>
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-3xl font-bold text-gray-900">대시보드</h1>
+        
+        <div className="flex items-center space-x-4">
+          <div className="text-right">
+            <p className="text-sm text-gray-600">
+              {user?.user_metadata?.name || user?.email}님 환영합니다
+            </p>
+            <button
+              onClick={handleLogout}
+              className="text-sm text-blue-600 hover:text-blue-800"
+            >
+              로그아웃
+            </button>
+          </div>
+        </div>
       </div>
       
-      <p className="text-gray-600 mb-8">안녕하세요, {user?.email}님! 투자 현황을 확인하세요.</p>
+      {error && (
+        <div className="mb-6 p-4 bg-red-100 text-red-700 rounded-md">
+          {error}
+        </div>
+      )}
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+          <h2 className="text-xl font-semibold mb-4 text-gray-900">계좌 정보</h2>
+          
+          {accounts && accounts.length > 0 ? (
+            <ul className="space-y-4">
+              {accounts.map((account, index) => (
+                <li key={account.id || `account-${index}`} className="p-4 bg-gray-50 rounded-md">
+                  <div className="space-y-2">
+                    <p className="font-medium text-gray-900">{account.portfolio_type || '포트폴리오 정보 없음'}</p>
+                    <div className="flex">
+                      <span className="text-gray-600 w-24 text-sm">계좌번호:</span>
+                      <span className="text-gray-900 text-sm">{account.account_number || '정보 없음'}</span>
+                    </div>
+                    <div className="flex">
+                      <span className="text-gray-600 w-24 text-sm">최초계약일:</span>
+                      <span className="text-gray-900 text-sm">
+                        {account.contract_date ? formatAccountDate(account.contract_date) : '정보 없음'}
+                      </span>
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="p-4 bg-yellow-50 text-yellow-700 rounded-md">
+              <p>등록된 계좌 정보가 없습니다.</p>
+              <p className="text-sm mt-2">관리자에게 문의하여 계좌 정보를 등록해주세요.</p>
+            </div>
+          )}
+        </div>
+        
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+          <h2 className="text-xl font-semibold mb-4 text-gray-900">월간 리포트</h2>
+          <p className="text-gray-600 mb-4">월간 투자 현황 및 포트폴리오 리포트를 확인하세요.</p>
+          <Link
+            href="/dashboard/monthly-report"
+            className="inline-block px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+          >
+            월간 리포트 보기
+          </Link>
+        </div>
+        
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+          <h2 className="text-xl font-semibold mb-4 text-gray-900">내 정보</h2>
+          <div className="space-y-3">
+            <div className="flex">
+              <span className="font-medium w-20 text-gray-700">이메일:</span> 
+              <span className="text-gray-900">{user?.email}</span>
+            </div>
+            <div className="flex">
+              <span className="font-medium w-20 text-gray-700">이름:</span> 
+              <span className="text-gray-900">{user?.user_metadata?.name || '미설정'}</span>
+            </div>
+            <div className="flex">
+              <span className="font-medium w-20 text-gray-700">연락처:</span> 
+              <span className="text-gray-900">{user?.user_metadata?.phone || '미설정'}</span>
+            </div>
+            <div className="flex">
+              <span className="font-medium w-20 text-gray-700">가입일:</span> 
+              <span className="text-gray-900">{formatAccountDate(user?.created_at)}</span>
+            </div>
+          </div>
+        </div>
+      </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <Link href="/dashboard/monthly-report" className="block p-6 bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow border border-gray-100">
+        <Link href="#" className="block p-6 bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow border border-gray-100">
           <div className="flex items-center mb-4">
-            <FileText className="w-8 h-8 text-blue-500 mr-3" />
-            <h2 className="text-xl font-semibold text-gray-900">월간리포트</h2>
+            <h2 className="text-xl font-semibold text-gray-900">연락처</h2>
           </div>
-          <p className="text-gray-600">월별 투자 현황 및 포트폴리오 리포트를 확인하세요.</p>
+          <p className="text-gray-600">문의사항이 있으시면 연락주세요.</p>
+          <p className="text-gray-600 mt-2">이메일: support@example.com</p>
+          <p className="text-gray-600">전화: 02-1234-5678</p>
         </Link>
         
         <Link href="#" className="block p-6 bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow border border-gray-100">

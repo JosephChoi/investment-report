@@ -24,6 +24,16 @@ export async function POST(request: NextRequest) {
     // XLSX 파일 파싱
     const workbook = XLSX.read(buffer, { type: 'array' });
     const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+    
+    // 엑셀 파일의 첫 번째 행 확인 (헤더)
+    const headers = XLSX.utils.sheet_to_json(worksheet, { header: 1 })[0] as string[];
+    console.log('엑셀 파일 헤더:', headers);
+    
+    // A열 헤더 확인
+    const aColumnHeader = headers[0] || '';
+    console.log('A열 헤더:', aColumnHeader);
+    
+    // 데이터를 JSON으로 변환
     const jsonData = XLSX.utils.sheet_to_json(worksheet);
     
     // 엑셀 데이터 구조 로깅
@@ -35,22 +45,39 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '엑셀 파일에 데이터가 없습니다.' }, { status: 400 });
     }
     
-    // Supabase 테이블 구조 확인
-    try {
-      const { data: usersColumns, error: usersError } = await serviceSupabase.rpc('get_table_columns', { table_name: 'users' });
-      if (usersError) throw usersError;
-      console.log('Users 테이블 컬럼:', usersColumns);
-      
-      const { data: accountsColumns, error: accountsError } = await serviceSupabase.rpc('get_table_columns', { table_name: 'accounts' });
-      if (accountsError) throw accountsError;
-      console.log('Accounts 테이블 컬럼:', accountsColumns);
-      
-      const { data: balanceColumns, error: balanceError } = await serviceSupabase.rpc('get_table_columns', { table_name: 'balance_records' });
-      if (balanceError) throw balanceError;
-      console.log('Balance Records 테이블 컬럼:', balanceColumns);
-    } catch (error: any) {
-      console.error('테이블 구조 확인 오류:', error);
+    // 계약일 컬럼 확인
+    let contractDateColumnName = '';
+    const possibleContractDateColumns = [
+      '최초계약일', '최초 계약일', '계약일', '계약일자', '가입일', '가입일자',
+      'contract_date', 'Contract Date', aColumnHeader
+    ];
+    
+    for (const colName of possibleContractDateColumns) {
+      if (headers.includes(colName) || Object.keys(jsonData[0] as object).includes(colName)) {
+        contractDateColumnName = colName;
+        console.log('계약일 컬럼 발견:', contractDateColumnName);
+        break;
+      }
     }
+    
+    // A열이 계약일인지 확인
+    if (!contractDateColumnName && aColumnHeader) {
+      // A열의 첫 번째 값이 날짜 형식인지 확인
+      const firstRowAValue = Object.values(jsonData[0] as object)[0];
+      if (firstRowAValue && (typeof firstRowAValue === 'string' || typeof firstRowAValue === 'number')) {
+        try {
+          const testDate = new Date(firstRowAValue);
+          if (!isNaN(testDate.getTime())) {
+            contractDateColumnName = aColumnHeader;
+            console.log('A열이 날짜 형식으로 판단됨:', aColumnHeader);
+          }
+        } catch (e) {
+          console.log('A열 값이 날짜 형식이 아님');
+        }
+      }
+    }
+    
+    console.log('사용할 계약일 컬럼:', contractDateColumnName || '없음');
     
     // 데이터 처리 및 Supabase에 저장
     const results = [];
@@ -68,6 +95,50 @@ export async function POST(request: NextRequest) {
       const portfolioType = data.대표MP || data['대표MP'] || data.포트폴리오유형 || data['포트폴리오 유형'] || data.portfolio_type || data['Portfolio Type'] || data['상품명'] || data['펀드명'];
       const balance = data.전일잔고 || data['전일잔고'] || data.잔고 || data['잔고'] || data.balance || data.Balance || data['금액'] || data['평가금액'] || data['평가액'];
       const phone = data.연락처 || data['연락처'] || data.전화번호 || data['전화번호'] || data.phone || data.Phone || data['휴대폰'];
+      
+      // 계약일 데이터 추출
+      let contractDate = null;
+      if (contractDateColumnName) {
+        contractDate = data[contractDateColumnName];
+        
+        // A열 값이 계약일인 경우 (헤더가 없는 경우)
+        if (!contractDate && contractDateColumnName === aColumnHeader) {
+          contractDate = Object.values(data)[0];
+        }
+      }
+      
+      // 계약일 형식 변환
+      let formattedContractDate = null;
+      if (contractDate) {
+        try {
+          // 날짜 형식이 다양할 수 있으므로 여러 형식 시도
+          if (typeof contractDate === 'string') {
+            // 문자열 형식의 날짜 처리
+            formattedContractDate = new Date(contractDate).toISOString();
+          } else if (typeof contractDate === 'number') {
+            // 엑셀의 날짜 형식(시리얼 번호) 처리
+            const excelEpoch = new Date(1899, 11, 30);
+            const millisecondsPerDay = 24 * 60 * 60 * 1000;
+            formattedContractDate = new Date(excelEpoch.getTime() + contractDate * millisecondsPerDay).toISOString();
+          }
+          
+          // 날짜 유효성 검사
+          const testDate = new Date(formattedContractDate);
+          if (isNaN(testDate.getTime())) {
+            console.warn('유효하지 않은 날짜 형식:', contractDate);
+            formattedContractDate = null;
+          }
+        } catch (dateError) {
+          console.warn('계약일 형식 변환 오류:', dateError);
+          formattedContractDate = null;
+        }
+      }
+      
+      console.log('추출된 계약일:', { 
+        원본: contractDate, 
+        변환됨: formattedContractDate,
+        컬럼명: contractDateColumnName
+      });
       
       // 필수 데이터 확인
       if (!email && !accountNumber) {
@@ -161,16 +232,31 @@ export async function POST(request: NextRequest) {
         console.log('사용자 정보 저장 성공:', { userId, email: email || 'unknown' });
         
         // 2. 계좌 정보 저장/업데이트
-        console.log('계좌 정보 저장 시도:', { userId, accountNumber, portfolioType: portfolioType || 'Unknown' });
+        console.log('계좌 정보 저장 시도:', { 
+          userId, 
+          accountNumber, 
+          portfolioType: portfolioType || 'Unknown', 
+          contractDate: formattedContractDate 
+        });
         
-        const { data: accountData, error: accountError } = await serviceSupabase
+        // 계좌 정보 객체 생성
+        const accountData = {
+          user_id: userId,
+          account_number: accountNumber,
+          portfolio_type: portfolioType || 'Unknown',
+          updated_at: new Date().toISOString()
+        };
+        
+        // 계약일 정보가 있으면 추가
+        if (formattedContractDate) {
+          // @ts-ignore - 동적 필드 추가
+          accountData.contract_date = formattedContractDate;
+        }
+        
+        // 계좌 정보 저장
+        const { data: savedAccount, error: accountError } = await serviceSupabase
           .from('accounts')
-          .upsert({
-            user_id: userId,
-            account_number: accountNumber,
-            portfolio_type: portfolioType || 'Unknown',
-            updated_at: new Date().toISOString()
-          }, {
+          .upsert(accountData, {
             onConflict: 'account_number'
           })
           .select('id');
@@ -183,7 +269,7 @@ export async function POST(request: NextRequest) {
         
         let accountId;
         
-        if (!accountData || accountData.length === 0) {
+        if (!savedAccount || savedAccount.length === 0) {
           // 계좌 ID를 가져오지 못한 경우 직접 조회
           const { data: fetchedAccount, error: fetchError } = await serviceSupabase
             .from('accounts')
@@ -205,7 +291,21 @@ export async function POST(request: NextRequest) {
             continue;
           }
         } else {
-          accountId = accountData[0].id;
+          accountId = savedAccount[0].id;
+        }
+        
+        // 계약일 정보가 있지만 upsert에서 누락된 경우 직접 업데이트
+        if (formattedContractDate) {
+          const { error: updateError } = await serviceSupabase
+            .from('accounts')
+            .update({ contract_date: formattedContractDate })
+            .eq('id', accountId);
+            
+          if (updateError) {
+            console.error('계약일 업데이트 오류:', updateError);
+          } else {
+            console.log('계약일 업데이트 성공:', { accountId, contractDate: formattedContractDate });
+          }
         }
         
         console.log('계좌 정보 저장 성공:', { accountId, accountNumber });
@@ -239,13 +339,33 @@ export async function POST(request: NextRequest) {
         // 결과 추가
         results.push({
           user: { id: userId, name: name || 'Unknown', email: email || 'unknown' },
-          account: { id: accountId, account_number: accountNumber, portfolio_type: portfolioType || 'Unknown' },
+          account: { 
+            id: accountId, 
+            account_number: accountNumber, 
+            portfolio_type: portfolioType || 'Unknown',
+            contract_date: formattedContractDate
+          },
           balance: { balance: balanceValue }
         });
       } catch (rowError: any) {
         console.error('행 처리 중 오류:', rowError);
         errorCount++;
       }
+    }
+    
+    // 업로드 기록 저장
+    try {
+      await serviceSupabase
+        .from('customer_uploads')
+        .insert({
+          file_name: file.name,
+          year: year,
+          month: month,
+          record_count: successCount,
+          uploaded_at: new Date().toISOString()
+        });
+    } catch (uploadLogError) {
+      console.error('업로드 기록 저장 오류:', uploadLogError);
     }
     
     return NextResponse.json({

@@ -2,13 +2,15 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { FileText, AlertTriangle, RefreshCw, MessageSquare, Bell } from 'lucide-react';
+import { FileText, AlertTriangle, RefreshCw, MessageSquare, Bell, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 
 export default function AdminDashboard() {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteMessage, setDeleteMessage] = useState<string | null>(null);
   const router = useRouter();
 
   // 인증 상태 확인
@@ -54,6 +56,38 @@ export default function AdminDashboard() {
     }
   };
 
+  // 가상 계좌 삭제 처리
+  const handleDeleteVirtualAccounts = async () => {
+    if (!confirm('가상 계좌 정보(123-456-789, 987-654-321)를 삭제하시겠습니까?')) {
+      return;
+    }
+    
+    setDeleteLoading(true);
+    setDeleteMessage(null);
+    
+    try {
+      const response = await fetch('/api/admin/delete-virtual-accounts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        setDeleteMessage('가상 계좌 정보가 성공적으로 삭제되었습니다.');
+      } else {
+        setDeleteMessage(`오류: ${result.error}`);
+      }
+    } catch (error: any) {
+      console.error('가상 계좌 삭제 오류:', error);
+      setDeleteMessage(`오류: ${error.message || '가상 계좌 삭제 중 오류가 발생했습니다.'}`);
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -73,6 +107,12 @@ export default function AdminDashboard() {
           로그아웃
         </button>
       </div>
+      
+      {deleteMessage && (
+        <div className={`mb-6 p-4 rounded-md ${deleteMessage.includes('오류') ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+          {deleteMessage}
+        </div>
+      )}
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* 월간리포트 관리 카드 */}
@@ -170,6 +210,26 @@ export default function AdminDashboard() {
             </div>
           </div>
         </Link>
+        
+        {/* 가상 계좌 삭제 카드 */}
+        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 h-full">
+          <div className="flex items-start">
+            <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mr-4">
+              <Trash2 className="w-6 h-6 text-red-700" />
+            </div>
+            <div>
+              <h2 className="text-xl font-semibold mb-2 text-gray-900">가상 계좌 삭제</h2>
+              <p className="text-gray-600 text-sm mb-4">테스트용 가상 계좌 정보를 삭제합니다.</p>
+              <button
+                onClick={handleDeleteVirtualAccounts}
+                disabled={deleteLoading}
+                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:bg-red-300"
+              >
+                {deleteLoading ? '삭제 중...' : '가상 계좌 삭제'}
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
       
       <div className="mt-8 text-center">

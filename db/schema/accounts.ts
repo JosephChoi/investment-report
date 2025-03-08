@@ -7,6 +7,7 @@ export const accounts = pgTable('accounts', {
   account_number: varchar('account_number', { length: 50 }).notNull().unique(),
   user_id: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   portfolio_type: varchar('portfolio_type', { length: 100 }).notNull(),
+  contract_date: timestamp('contract_date'),
   created_at: timestamp('created_at').defaultNow().notNull(),
   updated_at: timestamp('updated_at').defaultNow().notNull(),
 }); 

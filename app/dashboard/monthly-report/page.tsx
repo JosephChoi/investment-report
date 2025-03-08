@@ -1,82 +1,231 @@
-import { Metadata } from 'next';
+'use client';
+
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ArrowLeft } from 'lucide-react';
+import { ChevronLeft } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabase';
+import { formatCurrency } from '@/lib/utils';
 import ChartWrapper from '@/components/chart-wrapper';
 import PortfolioReportWrapper from '@/components/portfolio-report-wrapper';
-
-export const metadata: Metadata = {
-  title: '월간리포트 | 투자 관리 대시보드',
-  description: '월별 투자 현황 및 포트폴리오 리포트를 확인할 수 있습니다.',
-};
+import Image from 'next/image';
+import MonthlyReportCard from '@/app/components/MonthlyReportCard';
 
 export default function MonthlyReport() {
+  const [user, setUser] = useState<any>(null);
+  const [accounts, setAccounts] = useState<any[]>([]);
+  const [selectedAccount, setSelectedAccount] = useState<any>(null);
+  const [balanceData, setBalanceData] = useState<any[]>([]);
+  const [portfolioReport, setPortfolioReport] = useState<any>(null);
+  const [monthlyComment, setMonthlyComment] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [reports, setReports] = useState<any[]>([]);
+  const router = useRouter();
+
+  // 인증 상태 확인
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        // 현재 로그인한 사용자 정보 가져오기
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (!user) {
+          // 로그인하지 않은 경우 로그인 페이지로 이동
+          router.push('/login');
+          return;
+        }
+        
+        setUser(user);
+        
+        // 사용자의 계좌 정보 가져오기
+        const { data: accountsData, error: accountsError } = await supabase
+          .from('accounts')
+          .select('*')
+          .eq('user_id', user.id);
+        
+        if (accountsError) throw accountsError;
+        
+        if (accountsData && accountsData.length > 0) {
+          setAccounts(accountsData);
+          setSelectedAccount(accountsData[0]);
+          
+          // 선택된 계좌의 잔고 데이터 가져오기
+          await fetchBalanceData(accountsData[0].id);
+          
+          // 선택된 계좌의 포트폴리오 리포트 가져오기
+          await fetchPortfolioReport(accountsData[0].portfolio_type);
+        }
+        
+        // 최신 월간 코멘트 가져오기
+        await fetchMonthlyComment();
+        
+        // 월간 리포트 데이터 가져오기
+        const { data, error } = await supabase
+          .from('monthly_reports')
+          .select('*')
+          .order('year', { ascending: false })
+          .order('month', { ascending: false });
+          
+        if (error) {
+          console.error('월간 리포트 데이터 가져오기 오류:', error);
+          return;
+        }
+        
+        setReports(data || []);
+      } catch (error) {
+        console.error('인증 확인 오류:', error);
+        router.push('/login');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    checkAuth();
+  }, [router]);
+
+  // 계좌 변경 시 데이터 다시 가져오기
+  const handleAccountChange = async (accountId: string) => {
+    const account = accounts.find(acc => acc.id === accountId);
+    if (account) {
+      setSelectedAccount(account);
+      await fetchBalanceData(account.id);
+      await fetchPortfolioReport(account.portfolio_type);
+    }
+  };
+
+  // 잔고 데이터 가져오기
+  const fetchBalanceData = async (accountId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('balance_records')
+        .select('*')
+        .eq('account_id', accountId)
+        .order('record_date', { ascending: true });
+      
+      if (error) throw error;
+      
+      setBalanceData(data || []);
+    } catch (error: any) {
+      console.error('잔고 데이터 로딩 오류:', error);
+      setError('잔고 데이터를 불러오는 중 오류가 발생했습니다.');
+    }
+  };
+
+  // 포트폴리오 리포트 가져오기
+  const fetchPortfolioReport = async (portfolioType: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('portfolio_reports')
+        .select('*')
+        .eq('portfolio_type', portfolioType)
+        .order('report_date', { ascending: false })
+        .limit(1);
+      
+      if (error) throw error;
+      
+      setPortfolioReport(data && data.length > 0 ? data[0] : null);
+    } catch (error: any) {
+      console.error('포트폴리오 리포트 로딩 오류:', error);
+      setError('포트폴리오 리포트를 불러오는 중 오류가 발생했습니다.');
+    }
+  };
+
+  // 월간 코멘트 가져오기
+  const fetchMonthlyComment = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('monthly_comments')
+        .select('*')
+        .order('comment_date', { ascending: false })
+        .limit(1);
+      
+      if (error) throw error;
+      
+      setMonthlyComment(data && data.length > 0 ? data[0] : null);
+    } catch (error: any) {
+      console.error('월간 코멘트 로딩 오류:', error);
+      setError('월간 코멘트를 불러오는 중 오류가 발생했습니다.');
+    }
+  };
+
+  // 날짜 포맷 함수
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('ko-KR', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
+  // 현재 잔고와 이전 잔고 계산
+  const getCurrentBalance = () => {
+    if (balanceData.length === 0) return 0;
+    return Number(balanceData[balanceData.length - 1].balance);
+  };
+
+  const getPreviousBalance = () => {
+    if (balanceData.length <= 1) return 0;
+    return Number(balanceData[balanceData.length - 2].balance);
+  };
+
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-8 bg-gray-50 min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-lg text-gray-600">데이터를 불러오는 중입니다...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="container mx-auto px-4 py-8 bg-gray-50 min-h-screen">
+        <div className="mb-6">
+          <Link href="/dashboard" className="inline-flex items-center text-gray-700 hover:text-gray-900">
+            <ChevronLeft className="w-4 h-4 mr-2" />
+            <span>대시보드로 돌아가기</span>
+          </Link>
+        </div>
+        
+        <div className="bg-red-100 p-6 rounded-xl shadow-sm border border-red-200 text-red-700">
+          <h2 className="text-xl font-semibold mb-2">오류 발생</h2>
+          <p>{error}</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto px-4 py-8 bg-gray-50 min-h-screen">
-      <div className="mb-6">
-        <Link href="/dashboard" className="inline-flex items-center text-gray-700 hover:text-gray-900">
-          <ArrowLeft className="w-4 h-4 mr-2" />
+      <div className="mb-8">
+        <Link href="/dashboard" className="inline-flex items-center text-blue-600 hover:text-blue-800">
+          <ChevronLeft className="w-4 h-4 mr-1" />
           <span>대시보드로 돌아가기</span>
         </Link>
       </div>
       
-      <h1 className="text-3xl font-bold mb-6 text-gray-900">월간리포트</h1>
+      <h1 className="text-3xl font-bold mb-6 text-gray-900">월간 투자 리포트</h1>
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {/* 계좌 정보 카드 */}
-        <div className="col-span-1 bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-          <h2 className="text-xl font-semibold mb-4 text-gray-900">계좌 정보</h2>
-          <div className="space-y-3">
-            <div className="flex justify-between">
-              <span className="text-gray-600">계좌번호</span>
-              <span className="font-medium text-gray-900">123-456-789012</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">대표 MP</span>
-              <span className="font-medium text-gray-900">성장형 포트폴리오</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">전월 잔고</span>
-              <span className="font-medium text-gray-900">50,000,000원</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">현재 잔고</span>
-              <span className="font-medium text-gray-900">52,500,000원</span>
-            </div>
+        {reports.length > 0 ? (
+          reports.map((report) => (
+            <MonthlyReportCard
+              key={`${report.year}-${report.month}`}
+              year={report.year}
+              month={report.month}
+              title={report.title || `${report.year}년 ${report.month}월 리포트`}
+              description={report.description || '월간 투자 현황 및 포트폴리오 리포트입니다.'}
+              imageUrl={report.image_url || '/images/report-placeholder.jpg'}
+            />
+          ))
+        ) : (
+          <div className="col-span-full text-center py-12">
+            <p className="text-gray-600 text-lg">아직 등록된 월간 리포트가 없습니다.</p>
           </div>
-        </div>
-        
-        {/* Monthly Comment 카드 */}
-        <div className="col-span-1 md:col-span-2 bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-          <h2 className="text-xl font-semibold mb-4 text-gray-900">이달의 투자 코멘트</h2>
-          <div className="prose text-gray-800">
-            <p>
-              3월 글로벌 증시는 미국의 인플레이션 우려 완화와 함께 상승세를 보였습니다. 
-              특히 기술주 중심의 나스닥이 강세를 보였으며, 한국 증시도 이에 영향을 받아 
-              상승 마감했습니다. 다만 원자재 가격 상승과 지정학적 리스크는 여전히 
-              불확실성 요인으로 작용하고 있습니다.
-            </p>
-            <p className="mt-4">
-              고객님의 포트폴리오는 이러한 시장 상황에 맞춰 기술주 비중을 적절히 
-              유지하면서 안정적인 성과를 달성했습니다. 앞으로도 시장 변동성에 대비하여 
-              분산 투자 전략을 유지할 예정입니다.
-            </p>
-          </div>
-          <div className="mt-4 text-right text-sm text-gray-500">
-            2023년 3월 15일 업데이트
-          </div>
-        </div>
-        
-        {/* 잔고 변화 그래프 카드 */}
-        <div className="col-span-1 md:col-span-3 bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-          <h2 className="text-xl font-semibold mb-4 text-gray-900">잔고 변화 추이</h2>
-          <ChartWrapper />
-        </div>
-        
-        {/* 포트폴리오 리포트 카드 */}
-        <div className="col-span-1 md:col-span-3 bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-          <h2 className="text-xl font-semibold mb-4 text-gray-900">포트폴리오 리포트</h2>
-          <PortfolioReportWrapper />
-        </div>
+        )}
       </div>
     </div>
   );

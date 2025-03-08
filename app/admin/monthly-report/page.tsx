@@ -3,12 +3,17 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Upload, Save } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 
 export default function MonthlyReportAdmin() {
   const [customerFile, setCustomerFile] = useState<File | null>(null);
   const [portfolioFiles, setPortfolioFiles] = useState<File[]>([]);
   const [monthlyComment, setMonthlyComment] = useState('');
   const [selectedMonth, setSelectedMonth] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   
   // 파일 업로드 핸들러
   const handleCustomerFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -24,10 +29,253 @@ export default function MonthlyReportAdmin() {
   };
   
   // 폼 제출 핸들러
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // 실제 구현에서는 Supabase 또는 API를 통해 데이터를 저장
-    alert('데이터가 저장되었습니다.');
+    
+    if (!selectedMonth) {
+      setError('월을 선택해주세요.');
+      return;
+    }
+    
+    setLoading(true);
+    setError(null);
+    setSuccess(null);
+    
+    try {
+      // Supabase 테이블 구조 확인
+      console.log('Supabase 테이블 구조 확인 중...');
+      
+      // 각 테이블의 구조 확인
+      try {
+        const { data: monthlyCommentsColumns, error: monthlyCommentsError } = await supabase
+          .from('monthly_comments')
+          .select('*')
+          .limit(1);
+          
+        console.log('monthly_comments 테이블 구조:', monthlyCommentsColumns);
+        
+        const { data: portfolioReportsColumns, error: portfolioReportsError } = await supabase
+          .from('portfolio_reports')
+          .select('*')
+          .limit(1);
+          
+        console.log('portfolio_reports 테이블 구조:', portfolioReportsColumns);
+        
+        const { data: monthlyReportsColumns, error: monthlyReportsError } = await supabase
+          .from('monthly_reports')
+          .select('*')
+          .limit(1);
+          
+        console.log('monthly_reports 테이블 구조:', monthlyReportsColumns);
+        
+        // 테이블 목록 가져오기
+        const { data: tables, error: tablesError } = await supabase
+          .from('information_schema.tables')
+          .select('table_name')
+          .eq('table_schema', 'public');
+          
+        if (tablesError) {
+          console.error('테이블 목록 가져오기 오류:', tablesError);
+        } else {
+          console.log('사용 가능한 테이블:', tables);
+        }
+      } catch (error) {
+        console.error('테이블 구조 확인 중 오류:', error);
+      }
+      
+      // 선택한 월에서 연도와 월 추출
+      const [year, month] = selectedMonth.split('-');
+      
+      // 1. 월간 코멘트 저장
+      if (monthlyComment) {
+        try {
+          // Supabase 테이블 구조 확인
+          console.log('월간 코멘트 저장 시도:', {
+            year_month: selectedMonth,
+            content: monthlyComment,
+            comment_date: new Date().toISOString()
+          });
+          
+          const { data: commentData, error: commentError } = await supabase
+            .from('monthly_comments')
+            .upsert({
+              year_month: selectedMonth,  // 'year'와 'month' 대신 'year_month' 사용
+              content: monthlyComment,
+              comment_date: new Date().toISOString()
+            })
+            .select();
+            
+          if (commentError) {
+            console.error('월간 코멘트 저장 오류 상세:', commentError);
+            throw new Error(`월간 코멘트 저장 오류: ${commentError.message}`);
+          }
+          
+          console.log('월간 코멘트 저장 성공:', commentData);
+        } catch (commentError: any) {
+          console.error('월간 코멘트 저장 중 오류:', commentError);
+          setError(`월간 코멘트 저장 중 오류: ${commentError.message}`);
+          // 월간 코멘트 저장 실패해도 계속 진행
+        }
+      }
+      
+      // 2. 고객 데이터 파일 업로드 (실제로는 API를 통해 처리)
+      if (customerFile) {
+        try {
+          const formData = new FormData();
+          formData.append('file', customerFile);
+          formData.append('year', year);
+          formData.append('month', month);
+          
+          console.log('고객 데이터 업로드 시도:', {
+            file: customerFile.name,
+            year,
+            month
+          });
+          
+          const response = await fetch('/api/admin/customer-data/upload', {
+            method: 'POST',
+            body: formData
+          });
+          
+          const responseText = await response.text();
+          console.log('API 응답 텍스트:', responseText);
+          
+          let result;
+          try {
+            result = JSON.parse(responseText);
+          } catch (e) {
+            console.error('JSON 파싱 오류:', e);
+            throw new Error(`API 응답을 파싱할 수 없습니다: ${responseText}`);
+          }
+          
+          if (!response.ok) {
+            console.error('고객 데이터 업로드 응답:', result);
+            throw new Error(`고객 데이터 업로드 오류: ${result.error || '알 수 없는 오류'}`);
+          }
+          
+          console.log('고객 데이터 업로드 결과:', result);
+        } catch (uploadError: any) {
+          console.error('고객 데이터 업로드 중 오류:', uploadError);
+          setError(`고객 데이터 업로드 중 오류: ${uploadError.message}`);
+          // 고객 데이터 업로드 실패해도 계속 진행
+        }
+      }
+      
+      // 3. 포트폴리오 파일 업로드
+      if (portfolioFiles.length > 0) {
+        for (const file of portfolioFiles) {
+          try {
+            // 파일 이름에서 공백과 특수 문자 제거
+            const safeFileName = file.name.replace(/\s+/g, '_').replace(/[^\w.-]/g, '');
+            
+            // 파일 경로 생성
+            const filePath = `portfolio-reports/${year}/${month}/${safeFileName}`;
+            
+            console.log('파일 업로드 경로:', filePath);
+            
+            // Storage에 파일 업로드
+            const { data: uploadData, error: uploadError } = await supabase.storage
+              .from('portfolio-reports')
+              .upload(filePath, file, {
+                upsert: true // 같은 이름의 파일이 있으면 덮어쓰기
+              });
+              
+            if (uploadError) {
+              console.error('파일 업로드 오류 상세:', uploadError);
+              throw new Error(`포트폴리오 파일 업로드 오류: ${uploadError.message}`);
+            }
+            
+            console.log('파일 업로드 성공:', uploadData);
+            
+            // 파일 URL 가져오기
+            const { data: urlData } = supabase.storage
+              .from('portfolio-reports')
+              .getPublicUrl(filePath);
+              
+            if (!urlData || !urlData.publicUrl) {
+              throw new Error('파일 URL을 가져올 수 없습니다.');
+            }
+            
+            console.log('파일 URL:', urlData.publicUrl);
+            
+            // 원본 파일 이름에서 확장자 제거 (포트폴리오 유형으로 사용)
+            const portfolioType = file.name.replace(/\.[^/.]+$/, '');
+              
+            // 포트폴리오 리포트 정보 저장
+            console.log('포트폴리오 리포트 저장 시도:', {
+              year_month: selectedMonth,
+              portfolio_type: portfolioType,
+              report_url: urlData.publicUrl,
+              report_date: new Date().toISOString()
+            });
+            
+            const { data: reportData, error: reportError } = await supabase
+              .from('portfolio_reports')
+              .insert({
+                year_month: selectedMonth,
+                portfolio_type: portfolioType,
+                report_url: urlData.publicUrl,
+                report_date: new Date().toISOString()
+              })
+              .select();
+              
+            if (reportError) {
+              console.error('포트폴리오 리포트 정보 저장 오류 상세:', reportError);
+              throw new Error(`포트폴리오 리포트 정보 저장 오류: ${reportError.message}`);
+            }
+            
+            console.log('포트폴리오 리포트 저장 성공:', reportData);
+          } catch (fileError: any) {
+            console.error('파일 처리 중 오류:', fileError);
+            setError(`파일 '${file.name}' 처리 중 오류: ${fileError.message}`);
+            // 하나의 파일에서 오류가 발생해도 다른 파일은 계속 처리
+          }
+        }
+      }
+      
+      // 4. 월간 리포트 정보 저장
+      try {
+        console.log('월간 리포트 정보 저장 시도:', {
+          year_month: selectedMonth,
+          title: `${year}년 ${month}월 투자 리포트`,
+          description: '월간 투자 현황 및 포트폴리오 리포트입니다.'
+        });
+        
+        const { data: reportData, error: monthlyReportError } = await supabase
+          .from('monthly_reports')
+          .upsert({
+            year_month: selectedMonth,
+            title: `${year}년 ${month}월 투자 리포트`,
+            description: '월간 투자 현황 및 포트폴리오 리포트입니다.'
+          })
+          .select();
+          
+        if (monthlyReportError) {
+          console.error('월간 리포트 정보 저장 오류 상세:', monthlyReportError);
+          throw new Error(`월간 리포트 정보 저장 오류: ${monthlyReportError.message}`);
+        }
+        
+        console.log('월간 리포트 정보 저장 성공:', reportData);
+      } catch (reportError: any) {
+        console.error('월간 리포트 저장 중 오류:', reportError);
+        setError(`월간 리포트 저장 중 오류: ${reportError.message}`);
+        // 월간 리포트 저장 실패해도 성공 메시지는 표시
+      }
+      
+      // 성공 메시지 설정
+      setSuccess('데이터가 성공적으로 저장되었습니다.');
+      
+      // 폼 초기화
+      setMonthlyComment('');
+      setCustomerFile(null);
+      setPortfolioFiles([]);
+      
+    } catch (error: any) {
+      console.error('데이터 저장 오류:', error);
+      setError(error.message || '데이터 저장 중 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
+    }
   };
   
   return (
@@ -42,6 +290,18 @@ export default function MonthlyReportAdmin() {
       <h1 className="text-3xl font-bold mb-2 text-gray-900">월간리포트 관리</h1>
       <p className="text-gray-600 mb-8">월별 고객 리스트, 포트폴리오 자료, 월간 코멘트를 관리합니다.</p>
       
+      {error && (
+        <div className="mb-6 p-4 bg-red-100 text-red-700 rounded-md">
+          {error}
+        </div>
+      )}
+      
+      {success && (
+        <div className="mb-6 p-4 bg-green-100 text-green-700 rounded-md">
+          {success}
+        </div>
+      )}
+      
       <form onSubmit={handleSubmit} className="space-y-8">
         {/* 월 선택 */}
         <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
@@ -55,7 +315,7 @@ export default function MonthlyReportAdmin() {
                 id="month"
                 value={selectedMonth}
                 onChange={(e) => setSelectedMonth(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-500 text-black"
                 required
               >
                 <option value="">월을 선택하세요</option>
@@ -181,7 +441,7 @@ export default function MonthlyReportAdmin() {
               rows={6}
               value={monthlyComment}
               onChange={(e) => setMonthlyComment(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-500 text-black"
               placeholder="이번 달의 투자 코멘트를 작성하세요..."
               required
             ></textarea>
@@ -192,10 +452,20 @@ export default function MonthlyReportAdmin() {
         <div className="flex justify-end">
           <button
             type="submit"
-            className="inline-flex items-center px-4 py-2 bg-gray-900 text-white rounded-md hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+            disabled={loading}
+            className="inline-flex items-center px-4 py-2 bg-gray-900 text-white rounded-md hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 disabled:opacity-50"
           >
-            <Save className="w-4 h-4 mr-2" />
-            저장하기
+            {loading ? (
+              <>
+                <span className="animate-spin mr-2">⟳</span>
+                저장 중...
+              </>
+            ) : (
+              <>
+                <Save className="w-4 h-4 mr-2" />
+                저장하기
+              </>
+            )}
           </button>
         </div>
       </form>

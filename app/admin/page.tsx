@@ -1,17 +1,78 @@
-import { Metadata } from 'next';
+'use client';
+
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { FileText, AlertTriangle, RefreshCw, MessageSquare, Bell } from 'lucide-react';
-
-export const metadata: Metadata = {
-  title: '관리자 페이지 | 투자 관리 대시보드',
-  description: '투자 관리 대시보드의 관리자 페이지입니다.',
-};
+import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabase';
 
 export default function AdminDashboard() {
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const router = useRouter();
+
+  // 인증 상태 확인
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        // 현재 로그인한 사용자 정보 가져오기
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (!user) {
+          // 로그인하지 않은 경우 로그인 페이지로 이동
+          router.push('/login');
+          return;
+        }
+        
+        // 관리자 이메일 확인
+        if (user.email !== 'kunmin.choi@gmail.com') {
+          // 관리자가 아닌 경우 대시보드로 이동
+          alert('관리자 권한이 없습니다.');
+          router.push('/dashboard');
+          return;
+        }
+        
+        setUser(user);
+      } catch (error) {
+        console.error('인증 확인 오류:', error);
+        router.push('/login');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    checkAuth();
+  }, [router]);
+
+  // 로그아웃 처리
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      router.push('/login');
+    } catch (error) {
+      console.error('로그아웃 오류:', error);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-lg text-gray-600">로딩 중...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto px-4 py-8 bg-gray-50 min-h-screen">
-      <h1 className="text-3xl font-bold mb-2 text-gray-900">관리자 페이지</h1>
-      <p className="text-gray-600 mb-8">투자 관리 대시보드의 콘텐츠를 관리할 수 있습니다.</p>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold">관리자 대시보드</h1>
+        <button
+          onClick={handleLogout}
+          className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300"
+        >
+          로그아웃
+        </button>
+      </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* 월간리포트 관리 카드 */}

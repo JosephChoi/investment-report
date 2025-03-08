@@ -2,6 +2,17 @@
 
 import dynamic from 'next/dynamic';
 
+// 차트 데이터 타입 정의
+export interface ChartData {
+  date: string;
+  balance: number;
+}
+
+// 차트 컴포넌트 props 타입 정의
+interface ChartWrapperProps {
+  data: ChartData[];
+}
+
 // 차트 컴포넌트를 동적으로 불러옵니다
 const BalanceChart = dynamic(() => import('@/components/ui/chart'), {
   ssr: false,
@@ -12,10 +23,10 @@ const BalanceChart = dynamic(() => import('@/components/ui/chart'), {
   ),
 });
 
-export default function ChartWrapper() {
+export default function ChartWrapper({ data }: ChartWrapperProps) {
   return (
     <div className="h-80 w-full">
-      <BalanceChart />
+      <BalanceChart data={data} />
     </div>
   );
 } 

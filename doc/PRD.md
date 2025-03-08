@@ -182,6 +182,7 @@ investment-report/
 │   ├── ui/                   # UI 컴포넌트
 │   │   ├── card.tsx          # 카드 컴포넌트
 │   │   ├── chart.tsx         # 차트 컴포넌트
+│   │   └── balance-chart.tsx # 잔고 변화 그래프 컴포넌트
 │   ├── chart-wrapper.tsx     # 차트 래퍼 컴포넌트
 │   ├── portfolio-report.tsx  # 포트폴리오 리포트 컴포넌트
 │   └── portfolio-report-wrapper.tsx # 포트폴리오 리포트 래퍼 컴포넌트

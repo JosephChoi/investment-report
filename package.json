@@ -9,10 +9,12 @@
     "lint": "next lint",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx db/migrate.ts",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "test:storage": "tsx test-storage.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.1",
+    "@types/react-datepicker": "^6.2.0",
     "clsx": "^2.1.1",
     "dotenv": "^16.4.7",
     "drizzle-orm": "^0.40.0",
@@ -21,6 +23,7 @@
     "pg": "^8.13.3",
     "postgres": "^3.4.5",
     "react": "^19.0.0",
+    "react-datepicker": "^8.1.0",
     "react-dom": "^19.0.0",
     "recharts": "^2.15.1",
     "tailwind-merge": "^3.0.2",

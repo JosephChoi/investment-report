@@ -32,12 +32,7 @@ export default function MonthlyReport() {
         const { data: { user } } = await supabase.auth.getUser();
         
         if (!user) {
-          // 테스트 모드 활성화 (실제 배포 시 제거 필요)
-          console.log('로그인하지 않았습니다. 테스트 모드로 전환합니다.');
-          setIsTestMode(true);
-          
-          // 테스트 모드에서는 월간 리포트 데이터만 가져옵니다.
-          await fetchMonthlyReports();
+          setError('로그인이 필요합니다.');
           setLoading(false);
           return;
         }
@@ -70,10 +65,7 @@ export default function MonthlyReport() {
         await fetchMonthlyReports();
       } catch (error) {
         console.error('인증 확인 오류:', error);
-        // 테스트 모드 활성화 (실제 배포 시 제거 필요)
-        console.log('오류 발생. 테스트 모드로 전환합니다.');
-        setIsTestMode(true);
-        await fetchMonthlyReports();
+        setError('데이터를 불러오는 중 오류가 발생했습니다.');
       } finally {
         setLoading(false);
       }
@@ -85,66 +77,38 @@ export default function MonthlyReport() {
   // 월간 리포트 데이터 가져오기
   const fetchMonthlyReports = async () => {
     try {
-      // 테스트용 더미 데이터 생성
-      const currentDate = new Date();
-      const dummyReports = [
-        {
-          year: currentDate.getFullYear(),
-          month: currentDate.getMonth() + 1,
-          title: `${currentDate.getFullYear()}년 ${currentDate.getMonth() + 1}월 리포트`,
-          description: '월간 투자 현황 및 포트폴리오 리포트입니다.',
-          image_url: '/images/report-placeholder.jpg'
-        },
-        {
-          year: currentDate.getMonth() === 0 ? currentDate.getFullYear() - 1 : currentDate.getFullYear(),
-          month: currentDate.getMonth() === 0 ? 12 : currentDate.getMonth(),
-          title: `${currentDate.getMonth() === 0 ? currentDate.getFullYear() - 1 : currentDate.getFullYear()}년 ${currentDate.getMonth() === 0 ? 12 : currentDate.getMonth()}월 리포트`,
-          description: '월간 투자 현황 및 포트폴리오 리포트입니다.',
-          image_url: '/images/report-placeholder.jpg'
-        }
-      ];
-      
-      // 실제 데이터 가져오기 시도
+      // 실제 데이터 가져오기
       const { data, error } = await supabase
-        .from('monthly_comments')
-        .select('year_month')
-        .order('comment_date', { ascending: false });
+        .from('monthly_reports')
+        .select('*')
+        .order('year_month', { ascending: false });
         
       if (error) {
         console.error('월간 리포트 데이터 가져오기 오류:', error);
-        setReports(dummyReports); // 오류 시 더미 데이터 사용
+        setError('월간 리포트 데이터를 불러오는 중 오류가 발생했습니다.');
         return;
       }
       
-      // 실제 데이터가 있으면 사용, 없으면 더미 데이터 사용
+      // 실제 데이터 사용
       if (data && data.length > 0) {
         const realReports = data.map(item => {
-          const [year, month] = item.year_month.split('-');
+          const [year, month] = (item.year_month || '').split('-');
           return {
             year: parseInt(year),
             month: parseInt(month),
-            title: `${year}년 ${month}월 리포트`,
-            description: '월간 투자 현황 및 포트폴리오 리포트입니다.',
+            title: item.title || `${year}년 ${month}월 리포트`,
+            description: item.description || '월간 투자 현황 및 포트폴리오 리포트입니다.',
+            image_url: item.image_url || `https://placehold.co/800x400/png?text=${year}년+${month}월+리포트`,
             year_month: item.year_month
           };
         });
         setReports(realReports);
       } else {
-        setReports(dummyReports);
+        setReports([]);
       }
     } catch (error) {
       console.error('월간 리포트 데이터 처리 오류:', error);
-      // 오류 발생 시 더미 데이터 사용
-      const currentDate = new Date();
-      setReports([
-        {
-          year: currentDate.getFullYear(),
-          month: currentDate.getMonth() + 1,
-          title: `${currentDate.getFullYear()}년 ${currentDate.getMonth() + 1}월 리포트`,
-          description: '월간 투자 현황 및 포트폴리오 리포트입니다.',
-          image_url: '/images/report-placeholder.jpg'
-        }
-      ]);
+      setError('월간 리포트 데이터를 처리하는 중 오류가 발생했습니다.');
     }
   };
 
@@ -273,13 +237,6 @@ export default function MonthlyReport() {
       
       <h1 className="text-3xl font-bold mb-6 text-gray-900">월간 투자 리포트</h1>
       
-      {isTestMode && (
-        <div className="mb-6 p-4 bg-yellow-100 border border-yellow-300 rounded-md text-yellow-800">
-          <p className="font-medium">테스트 모드 활성화됨</p>
-          <p className="text-sm">로그인하지 않은 상태에서 테스트 목적으로 데이터를 표시합니다. 실제 배포 시 이 모드는 비활성화됩니다.</p>
-        </div>
-      )}
-      
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {reports.length > 0 ? (
           reports.map((report) => (
@@ -289,7 +246,7 @@ export default function MonthlyReport() {
               month={report.month}
               title={report.title || `${report.year}년 ${report.month}월 리포트`}
               description={report.description || '월간 투자 현황 및 포트폴리오 리포트입니다.'}
-              imageUrl={report.image_url || '/images/report-placeholder.jpg'}
+              imageUrl={report.image_url || `https://placehold.co/800x400/png?text=${report.year}년+${report.month}월+리포트`}
             />
           ))
         ) : (

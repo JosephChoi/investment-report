@@ -1,31 +1,195 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Upload, Save } from 'lucide-react';
+import { ArrowLeft, Upload, Save, Calendar } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
+import { ko } from 'date-fns/locale';
 
 export default function MonthlyReportAdmin() {
   const [customerFile, setCustomerFile] = useState<File | null>(null);
   const [portfolioFiles, setPortfolioFiles] = useState<File[]>([]);
   const [monthlyComment, setMonthlyComment] = useState('');
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedMonth, setSelectedMonth] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [customerFileWarning, setCustomerFileWarning] = useState<string | null>(null);
+  const [portfolioFileWarnings, setPortfolioFileWarnings] = useState<{[key: string]: string}>({});
+  const [portfolioTypes, setPortfolioTypes] = useState<string[]>([]);
+  const [portfolioTypeMappings, setPortfolioTypeMappings] = useState<{[key: string]: string}>({});
+  const [loadingPortfolioTypes, setLoadingPortfolioTypes] = useState(false);
+  
+  // 현재 날짜 기준으로 초기 선택 날짜 설정
+  useEffect(() => {
+    const now = new Date();
+    setSelectedDate(now);
+    
+    // 포트폴리오 타입 목록 가져오기
+    fetchPortfolioTypes();
+  }, []);
+
+  // 포트폴리오 타입 목록 가져오기
+  const fetchPortfolioTypes = async () => {
+    try {
+      setLoadingPortfolioTypes(true);
+      const response = await fetch('/api/admin/portfolio-types');
+      const result = await response.json();
+      
+      if (result.success && result.data) {
+        setPortfolioTypes(result.data);
+      } else {
+        console.error('포트폴리오 타입 목록 가져오기 오류:', result.error);
+      }
+    } catch (error) {
+      console.error('포트폴리오 타입 목록 가져오기 중 오류:', error);
+    } finally {
+      setLoadingPortfolioTypes(false);
+    }
+  };
+
+  // 날짜 선택 시 selectedMonth 업데이트
+  useEffect(() => {
+    if (selectedDate) {
+      const year = selectedDate.getFullYear();
+      // getMonth()는 0부터 시작하므로 1을 더해줍니다.
+      const month = selectedDate.getMonth() + 1;
+      // YYYY-MM 형식으로 변환
+      setSelectedMonth(`${year}-${month.toString().padStart(2, '0')}`);
+    }
+  }, [selectedDate]);
+  
+  // 파일명에서 날짜 추출하는 함수
+  const extractDateFromFilename = (filename: string): Date | null => {
+    const dateMatch = filename.match(/(\d{4}-\d{2}-\d{2})/);
+    if (dateMatch && dateMatch[1]) {
+      return new Date(dateMatch[1]);
+    }
+    return null;
+  };
+  
+  // 날짜 선택 핸들러
+  const handleDateChange = (date: Date | null) => {
+    setSelectedDate(date);
+    // 선택 시 성공/에러 메시지 초기화
+    setSuccess(null);
+    setError(null);
+  };
   
   // 파일 업로드 핸들러
   const handleCustomerFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setCustomerFile(e.target.files[0]);
+      const file = e.target.files[0];
+      setCustomerFile(file);
+      
+      // 파일명에서 날짜 확인
+      const date = extractDateFromFilename(file.name);
+      if (!date) {
+        setCustomerFileWarning('파일명에 YYYY-MM-DD 형식의 날짜가 포함되어 있지 않습니다. 업로드 시 오류가 발생할 수 있습니다.');
+      } else {
+        setCustomerFileWarning(null);
+      }
+      
+      // 파일 선택 시 성공/에러 메시지 초기화
+      setSuccess(null);
+      setError(null);
     }
   };
   
   const handlePortfolioFilesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      setPortfolioFiles(Array.from(e.target.files));
+      const newFiles = Array.from(e.target.files);
+      
+      // 기존 파일과 새 파일을 합치기
+      const combinedFiles = [...portfolioFiles];
+      const fileNames = new Set(combinedFiles.map(file => file.name));
+      
+      // 중복 파일 확인 및 추가
+      newFiles.forEach(file => {
+        if (!fileNames.has(file.name)) {
+          combinedFiles.push(file);
+          fileNames.add(file.name);
+        }
+      });
+      
+      // 최대 20개 파일로 제한
+      const limitedFiles = combinedFiles.slice(0, 20);
+      
+      // 파일 개수 제한 경고
+      if (combinedFiles.length > 20) {
+        setError(`최대 20개의 파일만 업로드할 수 있습니다. ${combinedFiles.length - 20}개의 파일이 제외되었습니다.`);
+        setTimeout(() => setError(null), 5000); // 5초 후 에러 메시지 자동 제거
+      }
+      
+      setPortfolioFiles(limitedFiles);
+      
+      // 파일명 확인
+      const warnings: {[key: string]: string} = {...portfolioFileWarnings};
+      const newMappings = {...portfolioTypeMappings};
+      
+      limitedFiles.forEach(file => {
+        const fileName = file.name.replace(/\.[^/.]+$/, ''); // 확장자 제거
+        
+        // 파일명에 공백이나 특수문자가 있는 경우 경고
+        if (fileName.includes(' ') || /[^\w가-힣]/.test(fileName)) {
+          warnings[file.name] = '파일명에 공백이나 특수문자가 포함되어 있습니다. 포트폴리오 타입 매핑이 필요합니다.';
+        }
+        
+        // 기존 매핑이 없는 경우 기본값 설정
+        if (!newMappings[file.name] && portfolioTypes.length > 0) {
+          // 파일명과 가장 유사한 포트폴리오 타입 찾기
+          const cleanFileName = fileName.replace(/[^\w가-힣]/g, '').toLowerCase();
+          let bestMatch = portfolioTypes[0];
+          let bestMatchScore = 0;
+          
+          portfolioTypes.forEach(type => {
+            const cleanType = type.replace(/\s+/g, '').toLowerCase();
+            let score = 0;
+            
+            // 간단한 유사도 계산 (포함 관계 확인)
+            if (cleanType.includes(cleanFileName) || cleanFileName.includes(cleanType)) {
+              score = Math.min(cleanType.length, cleanFileName.length);
+            }
+            
+            if (score > bestMatchScore) {
+              bestMatchScore = score;
+              bestMatch = type;
+            }
+          });
+          
+          newMappings[file.name] = bestMatch;
+        }
+      });
+      
+      setPortfolioFileWarnings(warnings);
+      setPortfolioTypeMappings(newMappings);
+      
+      // 파일 선택 시 성공/에러 메시지 초기화
+      setSuccess(null);
+      
+      // 파일 입력 필드 초기화 (동일한 파일을 다시 선택할 수 있도록)
+      e.target.value = '';
     }
+  };
+  
+  // 포트폴리오 타입 매핑 변경 핸들러
+  const handlePortfolioTypeMappingChange = (fileName: string, portfolioType: string) => {
+    setPortfolioTypeMappings(prev => ({
+      ...prev,
+      [fileName]: portfolioType
+    }));
+  };
+  
+  // 월간 코멘트 변경 핸들러
+  const handleCommentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setMonthlyComment(e.target.value);
+    // 입력 시 성공/에러 메시지 초기화
+    setSuccess(null);
+    setError(null);
   };
   
   // 폼 제출 핸들러
@@ -35,6 +199,34 @@ export default function MonthlyReportAdmin() {
     if (!selectedMonth) {
       setError('월을 선택해주세요.');
       return;
+    }
+    
+    // 파일명 유효성 검사
+    if (customerFile) {
+      const date = extractDateFromFilename(customerFile.name);
+      if (!date) {
+        setError('고객 데이터 파일명에 YYYY-MM-DD 형식의 날짜가 포함되어 있지 않습니다. 파일명을 수정하고 다시 시도해주세요.');
+        return;
+      }
+    }
+    
+    // 포트폴리오 파일 매핑 유효성 검사
+    if (portfolioFiles.length > 0) {
+      const unmappedFiles = portfolioFiles.filter(file => !portfolioTypeMappings[file.name]);
+      
+      if (unmappedFiles.length > 0) {
+        // 자동으로 매핑 설정
+        const newMappings = {...portfolioTypeMappings};
+        
+        unmappedFiles.forEach(file => {
+          if (portfolioTypes.length > 0) {
+            // 첫 번째 포트폴리오 타입으로 기본 설정
+            newMappings[file.name] = portfolioTypes[0];
+          }
+        });
+        
+        setPortfolioTypeMappings(newMappings);
+      }
     }
     
     setLoading(true);
@@ -187,7 +379,7 @@ export default function MonthlyReportAdmin() {
             
             console.log('파일 업로드 성공:', uploadData);
             
-            // 파일 URL 가져오기
+            // 공개 URL 생성 (버킷이 퍼블릭으로 설정되었으므로 이제 작동해야 함)
             const { data: urlData } = supabase.storage
               .from('portfolio-reports')
               .getPublicUrl(filePath);
@@ -196,10 +388,10 @@ export default function MonthlyReportAdmin() {
               throw new Error('파일 URL을 가져올 수 없습니다.');
             }
             
-            console.log('파일 URL:', urlData.publicUrl);
+            console.log('공개 파일 URL:', urlData.publicUrl);
             
-            // 원본 파일 이름에서 확장자 제거 (포트폴리오 유형으로 사용)
-            const portfolioType = file.name.replace(/\.[^/.]+$/, '');
+            // 매핑된 포트폴리오 타입 사용
+            const portfolioType = portfolioTypeMappings[file.name] || (portfolioTypes.length > 0 ? portfolioTypes[0] : file.name.replace(/\.[^/.]+$/, ''));
               
             // 포트폴리오 리포트 정보 저장
             console.log('포트폴리오 리포트 저장 시도:', {
@@ -305,27 +497,43 @@ export default function MonthlyReportAdmin() {
       <form onSubmit={handleSubmit} className="space-y-8">
         {/* 월 선택 */}
         <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-          <h2 className="text-xl font-semibold mb-4 text-gray-900">월 선택</h2>
+          <h2 className="text-xl font-semibold mb-4 text-gray-900">연도 및 월 선택</h2>
+          <p className="text-gray-600 text-sm mb-4">월간리포트를 생성할 연도와 월을 선택하세요. 캘린더에서 원하는 연도와 월을 자유롭게 선택할 수 있습니다.</p>
+          
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label htmlFor="month" className="block text-sm font-medium text-gray-700 mb-1">
-                월 선택
+              <label htmlFor="date" className="block text-sm font-medium text-gray-700 mb-1">
+                연도 및 월 선택
               </label>
-              <select
-                id="month"
-                value={selectedMonth}
-                onChange={(e) => setSelectedMonth(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-500 text-black"
-                required
-              >
-                <option value="">월을 선택하세요</option>
-                <option value="2024-01">2024년 1월</option>
-                <option value="2024-02">2024년 2월</option>
-                <option value="2024-03">2024년 3월</option>
-                <option value="2024-04">2024년 4월</option>
-                <option value="2024-05">2024년 5월</option>
-                <option value="2024-06">2024년 6월</option>
-              </select>
+              <div className="relative">
+                <DatePicker
+                  id="date"
+                  selected={selectedDate}
+                  onChange={handleDateChange}
+                  dateFormat="yyyy년 MM월"
+                  showMonthYearPicker
+                  showFullMonthYearPicker
+                  locale={ko}
+                  placeholderText="연도와 월을 선택하세요"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-500 text-black pr-10"
+                  required
+                />
+                <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                  <Calendar className="h-5 w-5 text-gray-400" />
+                </div>
+              </div>
+              {selectedMonth && (
+                <div className="mt-2 text-sm text-gray-600">
+                  선택된 월: <span className="font-medium">{selectedMonth.split('-')[0]}년 {selectedMonth.split('-')[1]}월</span>
+                  <span className="ml-2 text-blue-600">
+                    (데이터 저장 형식: {selectedMonth})
+                  </span>
+                </div>
+              )}
+              <div className="mt-3 text-xs text-gray-500">
+                <p>* 캘린더에서 연도와 월만 선택할 수 있습니다.</p>
+                <p>* 선택한 연도와 월에 해당하는 월간리포트가 생성됩니다.</p>
+              </div>
             </div>
           </div>
         </div>
@@ -334,6 +542,11 @@ export default function MonthlyReportAdmin() {
         <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
           <h2 className="text-xl font-semibold mb-4 text-gray-900">월별 전체 고객 리스트 업로드</h2>
           <p className="text-gray-600 text-sm mb-4">잔고 현황이 포함된 엑셀 데이터를 업로드하세요.</p>
+          <div className="mb-4 p-3 bg-blue-50 border border-blue-100 rounded-md text-blue-800 text-sm">
+            <p className="font-medium mb-1">파일명 형식 안내</p>
+            <p>파일명에 <strong>YYYY-MM-DD 형식의 날짜</strong>가 포함되어야 합니다. (예: 고객데이터_2024-05-31.xlsx)</p>
+            <p>이 날짜는 데이터의 기록 날짜로 사용됩니다.</p>
+          </div>
           
           <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
             <input
@@ -369,6 +582,11 @@ export default function MonthlyReportAdmin() {
                   삭제
                 </button>
               </div>
+              {customerFileWarning && (
+                <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-yellow-800 text-xs">
+                  <span className="font-medium">경고:</span> {customerFileWarning}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -377,6 +595,12 @@ export default function MonthlyReportAdmin() {
         <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
           <h2 className="text-xl font-semibold mb-4 text-gray-900">포트폴리오 자료 업로드</h2>
           <p className="text-gray-600 text-sm mb-4">월간 포트폴리오 자료(JPG)를 업로드하세요.</p>
+          <div className="mb-4 p-3 bg-blue-50 border border-blue-100 rounded-md text-blue-800 text-sm">
+            <p className="font-medium mb-1">파일명과 포트폴리오 타입 매핑 안내</p>
+            <p>업로드한 각 파일은 데이터베이스에 저장된 포트폴리오 타입과 매핑되어야 합니다.</p>
+            <p>파일 업로드 후 각 파일에 대해 매핑할 포트폴리오 타입을 선택해주세요.</p>
+            <p>최대 20개의 파일을 업로드할 수 있습니다.</p>
+          </div>
           
           <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
             <input
@@ -394,7 +618,7 @@ export default function MonthlyReportAdmin() {
               <Upload className="w-12 h-12 text-gray-400 mb-2" />
               <span className="text-gray-600 mb-1">
                 {portfolioFiles.length > 0
-                  ? `${portfolioFiles.length}개의 파일이 선택됨`
+                  ? `${portfolioFiles.length}개의 파일이 선택됨 (최대 20개)`
                   : '파일을 선택하거나 여기에 드래그하세요'}
               </span>
               <span className="text-xs text-gray-500">
@@ -403,26 +627,101 @@ export default function MonthlyReportAdmin() {
             </label>
           </div>
           
+          {loadingPortfolioTypes && (
+            <div className="mt-4 p-3 bg-gray-50 rounded-md text-center">
+              <p className="text-gray-600 text-sm">포트폴리오 타입 목록을 불러오는 중...</p>
+            </div>
+          )}
+          
           {portfolioFiles.length > 0 && (
-            <div className="mt-4 space-y-2">
-              {portfolioFiles.map((file, index) => (
-                <div key={index} className="p-3 bg-gray-50 rounded-md">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-700">{file.name}</span>
-                    <button
-                      type="button"
-                      className="text-gray-500 hover:text-gray-700"
-                      onClick={() => {
-                        const newFiles = [...portfolioFiles];
-                        newFiles.splice(index, 1);
-                        setPortfolioFiles(newFiles);
-                      }}
-                    >
-                      삭제
-                    </button>
+            <div className="mt-4">
+              <div className="flex justify-between items-center mb-2">
+                <h3 className="text-sm font-medium text-gray-700">
+                  선택된 파일 ({portfolioFiles.length}/20)
+                </h3>
+                <button
+                  type="button"
+                  className="text-sm text-red-600 hover:text-red-800"
+                  onClick={() => {
+                    setPortfolioFiles([]);
+                    setPortfolioFileWarnings({});
+                    setPortfolioTypeMappings({});
+                  }}
+                >
+                  모두 삭제
+                </button>
+              </div>
+              <div className="space-y-2">
+                {portfolioFiles.map((file, index) => (
+                  <div key={index} className="p-3 bg-gray-50 rounded-md">
+                    <div className="flex flex-col md:flex-row md:items-center md:space-x-4">
+                      <div className="flex-grow mb-2 md:mb-0">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-gray-700">{file.name}</span>
+                          <button
+                            type="button"
+                            className="text-gray-500 hover:text-gray-700 md:hidden"
+                            onClick={() => {
+                              const newFiles = [...portfolioFiles];
+                              newFiles.splice(index, 1);
+                              setPortfolioFiles(newFiles);
+                              
+                              // 경고 메시지도 제거
+                              const newWarnings = {...portfolioFileWarnings};
+                              delete newWarnings[file.name];
+                              setPortfolioFileWarnings(newWarnings);
+                              
+                              // 매핑 정보도 제거
+                              const newMappings = {...portfolioTypeMappings};
+                              delete newMappings[file.name];
+                              setPortfolioTypeMappings(newMappings);
+                            }}
+                          >
+                            삭제
+                          </button>
+                        </div>
+                      </div>
+                      
+                      {/* 포트폴리오 타입 매핑 */}
+                      <div className="md:w-1/2">
+                        <div className="flex items-center space-x-2">
+                          <select
+                            value={portfolioTypeMappings[file.name] || ''}
+                            onChange={(e) => handlePortfolioTypeMappingChange(file.name, e.target.value)}
+                            className="flex-grow px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-500 text-black"
+                          >
+                            <option value="">포트폴리오 타입 선택</option>
+                            {portfolioTypes.map((type, idx) => (
+                              <option key={idx} value={type}>{type}</option>
+                            ))}
+                          </select>
+                          <button
+                            type="button"
+                            className="hidden md:block text-gray-500 hover:text-gray-700"
+                            onClick={() => {
+                              const newFiles = [...portfolioFiles];
+                              newFiles.splice(index, 1);
+                              setPortfolioFiles(newFiles);
+                              
+                              // 경고 메시지도 제거
+                              const newWarnings = {...portfolioFileWarnings};
+                              delete newWarnings[file.name];
+                              setPortfolioFileWarnings(newWarnings);
+                              
+                              // 매핑 정보도 제거
+                              const newMappings = {...portfolioTypeMappings};
+                              delete newMappings[file.name];
+                              setPortfolioTypeMappings(newMappings);
+                            }}
+                          >
+                            삭제
+                          </button>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           )}
         </div>
@@ -440,7 +739,7 @@ export default function MonthlyReportAdmin() {
               id="monthlyComment"
               rows={6}
               value={monthlyComment}
-              onChange={(e) => setMonthlyComment(e.target.value)}
+              onChange={handleCommentChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-500 text-black"
               placeholder="이번 달의 투자 코멘트를 작성하세요..."
               required

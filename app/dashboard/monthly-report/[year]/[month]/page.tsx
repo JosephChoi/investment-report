@@ -34,6 +34,14 @@ export default function MonthlyReportDetail({ params }: PageProps) {
   const [isTestMode, setIsTestMode] = useState(false);
   const router = useRouter();
 
+  // 클라이언트 측 렌더링을 위한 상태
+  const [isClient, setIsClient] = useState(false);
+  
+  // 클라이언트 측 렌더링 처리
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
   // 인증 상태 확인
   useEffect(() => {
     const checkAuth = async () => {
@@ -67,7 +75,7 @@ export default function MonthlyReportDetail({ params }: PageProps) {
         
         setReport(reportData);
         
-        // 사용자 계좌 정보 가져오기 - 대시보드와 동일한 방식으로 수정
+        // 사용자 계좌 정보 가져오기
         await fetchUserAccounts(user);
         
         // 월간 코멘트는 계좌 정보와 상관없이 가져옵니다
@@ -83,7 +91,7 @@ export default function MonthlyReportDetail({ params }: PageProps) {
     checkAuth();
   }, [router, year, month]);
 
-  // 사용자 계좌 정보 가져오기 함수 - 대시보드와 동일한 방식으로 구현
+  // 사용자 계좌 정보 가져오기 함수
   const fetchUserAccounts = async (user: any) => {
     try {
       console.log('계좌 정보 가져오기 시작...');
@@ -115,109 +123,129 @@ export default function MonthlyReportDetail({ params }: PageProps) {
           if (userAccounts.length > 0) {
             console.log('현재 사용자의 실제 계좌 정보:', userAccounts);
             setAccounts(userAccounts);
-            
-            // 첫 번째 계좌를 선택된 계좌로 설정
             setSelectedAccount(userAccounts[0]);
             
             // 선택된 계좌의 잔고 데이터 가져오기
             await fetchBalanceData(userAccounts[0].id);
             
-            // 포트폴리오 리포트 가져오기
+            // 선택된 계좌의 포트폴리오 리포트 가져오기
             await fetchPortfolioReportByType(userAccounts[0].portfolio_type);
+            
             return;
           } else {
             console.log('일치하는 실제 계좌 정보가 없습니다. 사용자 이메일:', user.email);
-            console.log('사용자 목록:', result.data.map((account: any) => account.user?.email));
           }
         }
-      } catch (apiError) {
-        console.error('API를 통한 계좌 정보 가져오기 오류:', apiError);
-      }
-      
-      try {
-        // 백업 방법: 직접 API 호출
-        console.log('백업 방법으로 계좌 정보 가져오기 시도...');
-        const backupResponse = await fetch('/api/user/accounts?email=' + encodeURIComponent(user.email));
-        const backupResult = await backupResponse.json();
         
-        if (backupResult.success && backupResult.data && backupResult.data.accounts && backupResult.data.accounts.length > 0) {
-          console.log('백업 방법으로 가져온 실제 계좌 정보:', backupResult.data.accounts);
-          setAccounts(backupResult.data.accounts);
-          
-          // 첫 번째 계좌를 선택된 계좌로 설정
-          setSelectedAccount(backupResult.data.accounts[0]);
-          
-          // 선택된 계좌의 잔고 데이터 가져오기
-          await fetchBalanceData(backupResult.data.accounts[0].id);
-          
-          // 포트폴리오 리포트 가져오기
-          await fetchPortfolioReportByType(backupResult.data.accounts[0].portfolio_type);
-          return;
-        }
-      } catch (backupError) {
-        console.error('백업 방법을 통한 계좌 정보 가져오기 오류:', backupError);
-      }
-      
-      // 마지막 방법: 직접 Supabase 쿼리
-      try {
-        console.log('Supabase 직접 쿼리로 계좌 정보 가져오기 시도...');
+        // 백업 방법: 직접 Supabase 쿼리
+        console.log('백업 방법으로 계좌 정보 가져오기 시도...');
         const { data: accountsData, error: accountsError } = await supabase
           .from('accounts')
           .select('*')
-          .eq('user_email', user.email);
-          
+          .eq('user_id', user.id);
+        
         if (accountsError) {
-          console.error('Supabase 계좌 정보 가져오기 오류:', accountsError);
-        } else if (accountsData && accountsData.length > 0) {
-          console.log('Supabase에서 가져온 계좌 정보:', accountsData);
+          console.error('계좌 정보 쿼리 오류:', accountsError);
+          throw accountsError;
+        }
+        
+        if (accountsData && accountsData.length > 0) {
+          console.log('백업 방법으로 가져온 계좌 정보:', accountsData);
           setAccounts(accountsData);
-          
-          // 첫 번째 계좌를 선택된 계좌로 설정
           setSelectedAccount(accountsData[0]);
           
           // 선택된 계좌의 잔고 데이터 가져오기
           await fetchBalanceData(accountsData[0].id);
           
-          // 포트폴리오 리포트 가져오기
+          // 선택된 계좌의 포트폴리오 리포트 가져오기
           await fetchPortfolioReportByType(accountsData[0].portfolio_type);
+          
           return;
         }
-      } catch (supabaseError) {
-        console.error('Supabase 직접 쿼리 오류:', supabaseError);
+        
+        // 계좌 정보가 없는 경우
+        console.log('계좌 정보를 찾을 수 없습니다.');
+        setError('등록된 계좌 정보가 없습니다. 관리자에게 문의하여 계좌 정보를 등록해주세요.');
+      } catch (apiError) {
+        console.error('API 호출 오류:', apiError);
+        
+        // API 호출 실패 시 직접 Supabase 쿼리
+        try {
+          console.log('API 호출 실패, 직접 Supabase 쿼리 시도...');
+          const { data: accountsData, error: accountsError } = await supabase
+            .from('accounts')
+            .select('*')
+            .eq('user_id', user.id);
+          
+          if (accountsError) throw accountsError;
+          
+          if (accountsData && accountsData.length > 0) {
+            console.log('직접 쿼리로 가져온 계좌 정보:', accountsData);
+            setAccounts(accountsData);
+            setSelectedAccount(accountsData[0]);
+            
+            // 선택된 계좌의 잔고 데이터 가져오기
+            await fetchBalanceData(accountsData[0].id);
+            
+            // 선택된 계좌의 포트폴리오 리포트 가져오기
+            await fetchPortfolioReportByType(accountsData[0].portfolio_type);
+            
+            return;
+          }
+          
+          // 계좌 정보가 없는 경우
+          console.log('계좌 정보를 찾을 수 없습니다.');
+          setError('등록된 계좌 정보가 없습니다. 관리자에게 문의하여 계좌 정보를 등록해주세요.');
+        } catch (supabaseError) {
+          console.error('Supabase 쿼리 오류:', supabaseError);
+          throw supabaseError;
+        }
       }
-      
-      // 계좌 정보가 없는 경우
-      console.log('계좌 정보를 찾을 수 없습니다.');
-      setAccounts([]);
-      setSelectedAccount(null);
-      console.log('등록된 계좌 정보가 없습니다.');
     } catch (error) {
       console.error('계좌 정보 가져오기 오류:', error);
-      console.log('계좌 정보를 불러오는 중 오류가 발생했습니다.');
+      setError('계좌 정보를 불러오는 중 오류가 발생했습니다.');
     }
   };
 
   // 계좌 변경 시 데이터 다시 가져오기
   const handleAccountChange = async (accountId: string) => {
-    console.log('계좌 변경:', accountId);
-    const account = accounts.find(acc => acc.id === accountId);
-    if (account) {
-      console.log('선택된 계좌 정보:', account);
+    try {
+      console.log('계좌 변경:', accountId);
       
-      // 중요: 먼저 포트폴리오 리포트를 가져온 후 계좌 정보 설정
-      // 이렇게 하면 계좌 정보가 변경되기 전에 포트폴리오 리포트를 가져올 수 있음
-      const portfolioType = account.portfolio_type;
+      if (!accountId) {
+        console.error('유효하지 않은 계좌 ID입니다.');
+        return;
+      }
+      
+      const account = accounts.find(acc => acc.id === accountId);
+      if (!account) {
+        console.error('선택한 계좌를 찾을 수 없습니다:', accountId);
+        return;
+      }
+      
+      setSelectedAccount(account);
+      
+      // 데이터 로딩 중 상태 설정
+      setLoading(true);
       
       try {
-        // 계좌 정보 설정 전에 포트폴리오 리포트 가져오기
-        await fetchPortfolioReportByType(portfolioType);
+        // 병렬로 데이터 가져오기
+        await Promise.all([
+          fetchBalanceData(account.id),
+          fetchPortfolioReportByType(account.portfolio_type)
+        ]);
         
-        // 계좌 정보 설정 및 잔고 데이터 가져오기
-        setSelectedAccount(account);
-        await fetchBalanceData(accountId);
-      } catch (error) {
-        console.error('계좌 변경 중 오류 발생:', error);
+        console.log('계좌 변경 완료:', account.portfolio_type);
+      } catch (dataError) {
+        console.error('계좌 데이터 가져오기 오류:', dataError);
+        setError('계좌 데이터를 불러오는 중 오류가 발생했습니다.');
+      } finally {
+        setLoading(false);
       }
+    } catch (error) {
+      console.error('계좌 변경 중 오류 발생:', error);
+      setError('계좌 정보를 변경하는 중 오류가 발생했습니다.');
+      setLoading(false);
     }
   };
 
@@ -364,304 +392,62 @@ export default function MonthlyReportDetail({ params }: PageProps) {
     try {
       console.log('잔고 데이터 가져오기 시작:', { accountId, year, month });
       
-      // 0. 직접 데이터베이스 쿼리 실행 (디버깅 목적)
-      console.log('직접 SQL 쿼리 실행 시도...');
-      const { data: sqlData, error: sqlError } = await supabase.rpc('debug_get_balance_records');
-      if (sqlError) {
-        console.error('SQL 쿼리 실행 오류:', sqlError);
-      } else {
-        console.log('SQL 쿼리 결과:', sqlData);
+      if (!accountId) {
+        console.error('계좌 ID가 유효하지 않습니다.');
+        setBalanceData([]);
+        return;
       }
       
-      // 1. 모든 balance_records 테이블 데이터 조회 (디버깅 목적)
-      let { data: allBalanceData, error: allBalanceError } = await supabase
+      // 해당 계좌의 모든 잔고 데이터 조회
+      console.log(`계좌 ID ${accountId}의 모든 잔고 데이터 조회 시도...`);
+      const { data, error } = await supabase
         .from('balance_records')
         .select('*')
-        .order('record_date', { ascending: false })
-        .limit(20);
-        
-      if (allBalanceError) {
-        console.error('모든 잔고 데이터 가져오기 오류:', allBalanceError);
-      } else {
-        console.log('모든 잔고 데이터 조회 결과 (전체):', allBalanceData);
-        if (allBalanceData && allBalanceData.length > 0) {
-          console.log('첫 번째 데이터 샘플:', allBalanceData[0]);
-          console.log('데이터 형식 확인:', {
-            id: typeof allBalanceData[0].id,
-            account_id: typeof allBalanceData[0].account_id,
-            year: typeof allBalanceData[0].year,
-            month: typeof allBalanceData[0].month,
-            balance: typeof allBalanceData[0].balance,
-            record_date: typeof allBalanceData[0].record_date
-          });
-          
-          // 실제 잔고 값 확인
-          const realBalances = allBalanceData.map(record => record.balance);
-          console.log('실제 잔고 값 목록:', realBalances);
-          
-          // 중복 제거된 계좌 ID 목록
-          const accountIds = [...new Set(allBalanceData.map(record => record.account_id))];
-          console.log('데이터베이스에 있는 계좌 ID 목록:', accountIds);
-          
-          // 현재 계좌 ID가 데이터베이스에 있는지 확인
-          console.log('현재 계좌 ID가 데이터베이스에 있는지 확인:', 
-            accountIds.includes(accountId) ? '있음' : '없음');
-        } else {
-          console.log('데이터베이스에 잔고 데이터가 없습니다.');
-        }
+        .eq('account_id', accountId);
+      
+      if (error) {
+        console.error('잔고 데이터 조회 오류:', error);
+        setBalanceData([]);
+        return;
       }
       
-      // 2. 특정 계좌의 모든 잔고 데이터 조회
-      let { data: accountBalanceData, error: accountBalanceError } = await supabase
-        .from('balance_records')
-        .select('*')
-        .eq('account_id', accountId)
-        .order('record_date', { ascending: false });
-        
-      if (accountBalanceError) {
-        console.error('계좌 잔고 데이터 가져오기 오류:', accountBalanceError);
-      } else {
-        console.log(`계좌 ID ${accountId}의 모든 잔고 데이터:`, accountBalanceData);
-        
-        // 계좌에 데이터가 있으면 가장 최신 데이터 사용
-        if (accountBalanceData && accountBalanceData.length > 0) {
-          const latestData = accountBalanceData[0];
-          console.log('계좌의 최신 잔고 데이터:', latestData);
-          
-          // 최신 데이터의 잔고 값
-          const realBalance = latestData.balance;
-          console.log('실제 최신 잔고 값:', realBalance);
-          
-          // 이전 데이터가 있으면 이전 데이터 사용, 없으면 최신 데이터의 95%로 가정
-          const prevData = accountBalanceData.length > 1 ? accountBalanceData[1] : null;
-          const prevBalance = prevData ? prevData.balance : Math.round(realBalance * 0.95);
-          console.log('이전 잔고 값:', prevBalance);
-          
-          // 3월 데이터 포인트 생성
-          const marchDataPoint = {
-            id: `march-data-${Date.now()}`,
-            account_id: accountId,
-            year: '2025',
-            month: '3',
-            record_date: '2025-03-28',
-            balance: realBalance
-          };
-          
-          // 2월 데이터 포인트 생성
-          const febDataPoint = {
-            id: `feb-data-${Date.now()}`,
-            account_id: accountId,
-            year: '2025',
-            month: '2',
-            record_date: '2025-02-28',
-            balance: prevBalance
-          };
-          
-          setBalanceData([febDataPoint, marchDataPoint]);
-          console.log('실제 잔고 기반 데이터 포인트 설정 완료:', [febDataPoint, marchDataPoint]);
-          return;
-        }
+      if (!data || data.length === 0) {
+        console.log('해당 계좌의 잔고 데이터가 없습니다:', accountId);
+        setBalanceData([]);
+        return;
       }
       
-      // 3. 3월 데이터 직접 조회 시도 (정확한 연도/월 지정)
-      console.log('3월 데이터 직접 조회 시도...');
-      let { data: marchData, error: marchError } = await supabase
-        .from('balance_records')
-        .select('*')
-        .eq('account_id', accountId)
-        .eq('year', '2025')  // 문자열로 비교
-        .eq('month', '3')    // 문자열로 비교
-        .order('record_date', { ascending: true });
+      console.log(`계좌 ID ${accountId}의 잔고 데이터 (${data.length}개):`, data);
+      
+      // 데이터 유효성 검사 및 변환
+      const validData = data.map(record => ({
+        ...record,
+        balance: record.balance !== null && record.balance !== undefined 
+          ? (typeof record.balance === 'string' ? parseFloat(record.balance) : record.balance) 
+          : 0
+      }));
+      
+      // 데이터를 year_month 기준으로 정렬 (과거 -> 최근)
+      const sortedData = validData.sort((a, b) => {
+        // year_month 형식: "YYYY-MM"
+        if (a.year_month && b.year_month) {
+          return a.year_month.localeCompare(b.year_month);
+        }
         
-      if (marchError) {
-        console.error('3월 잔고 데이터 가져오기 오류:', marchError);
-      } else {
-        console.log('3월 잔고 데이터 조회 결과:', marchData);
-        
-        if (marchData && marchData.length > 0) {
-          const marchBalance = marchData[marchData.length - 1].balance;
-          console.log('3월 데이터 찾음! 마지막 잔고:', marchBalance);
-          
-          // 2월 데이터 조회
-          let { data: febData, error: febError } = await supabase
-            .from('balance_records')
-            .select('*')
-            .eq('account_id', accountId)
-            .eq('year', '2025')
-            .eq('month', '2')
-            .order('record_date', { ascending: true });
-            
-          if (febError) {
-            console.error('2월 잔고 데이터 가져오기 오류:', febError);
-          }
-          
-          // 2월 데이터가 있으면 사용, 없으면 3월 데이터의 95%로 가정
-          const febBalance = febData && febData.length > 0 
-            ? febData[febData.length - 1].balance 
-            : Math.round(marchBalance * 0.95);
-          
-          console.log('2월 잔고:', febBalance);
-          
-          // 2월 데이터 포인트 생성
-          const febDataPoint = {
-            id: `feb-data-${Date.now()}`,
-            account_id: accountId,
-            year: '2025',
-            month: '2',
-            record_date: '2025-02-28',
-            balance: febBalance
-          };
-          
-          // 3월 데이터와 2월 데이터 합치기
-          const combinedData = [febDataPoint, ...marchData];
-          
-          setBalanceData(combinedData);
-          console.log('3월 및 2월 데이터 설정 완료:', combinedData);
-          return;
-        } else {
-          console.log('3월 데이터가 없습니다. 다른 방법 시도...');
-        }
-      }
+        // 날짜 기준으로 정렬 (대체 방법)
+        const dateA = new Date(a.record_date);
+        const dateB = new Date(b.record_date);
+        return dateA.getTime() - dateB.getTime();
+      });
       
-      // 4. 2월 데이터 조회 시도
-      console.log('2월 데이터 조회 시도...');
-      try {
-        const { data: feb2025Data, error: feb2025Error } = await supabase
-          .from('balance_records')
-          .select('*')
-          .eq('account_id', accountId)
-          .eq('year', '2025')
-          .eq('month', '2')
-          .order('record_date', { ascending: true });
-          
-        if (feb2025Error) {
-          console.error('2025년 2월 데이터 가져오기 오류:', feb2025Error);
-        } else if (feb2025Data && feb2025Data.length > 0) {
-          console.log('2025년 2월 데이터 조회 성공:', feb2025Data);
-          
-          // 2월 데이터의 마지막 잔고를 기준으로 3월 데이터 생성
-          const febBalance = feb2025Data[feb2025Data.length - 1].balance;
-          const marchBalance = Math.round(febBalance * 1.05); // 3월 잔고는 2월의 105%로 가정
-          
-          console.log('2월 잔고:', febBalance);
-          console.log('3월 예상 잔고:', marchBalance);
-          
-          // 3월 데이터 포인트 생성
-          const marchDataPoint = {
-            id: `march-data-${Date.now()}`,
-            account_id: accountId,
-            year: '2025',
-            month: '3',
-            record_date: '2025-03-28',
-            balance: marchBalance
-          };
-          
-          // 2월 데이터와 3월 데이터 합치기
-          const combinedData = [...feb2025Data, marchDataPoint];
-          
-          setBalanceData(combinedData);
-          console.log('2월 및 3월 데이터 설정 완료:', combinedData);
-          return;
-        } else {
-          console.log('2025년 2월 데이터가 없습니다.');
-        }
-      } catch (feb2025Error) {
-        console.error('2025년 2월 데이터 처리 중 오류:', feb2025Error);
-      }
+      console.log('정렬된 잔고 데이터:', sortedData);
+      console.log('데이터 기간:', sortedData.map(d => d.year_month).join(', '));
       
-      // 5. 어떤 데이터도 없는 경우 실제 데이터 생성 시도
-      console.log('잔고 데이터가 없습니다. 실제 데이터 생성 시도...');
-      
-      try {
-        // 실제 데이터 생성 시도
-        const { data: insertData, error: insertError } = await supabase
-          .from('balance_records')
-          .insert([
-            {
-              account_id: accountId,
-              year: '2025',
-              month: '2',
-              record_date: '2025-02-28',
-              balance: 9500000
-            },
-            {
-              account_id: accountId,
-              year: '2025',
-              month: '3',
-              record_date: '2025-03-28',
-              balance: 10000000
-            }
-          ])
-          .select();
-          
-        if (insertError) {
-          console.error('잔고 데이터 생성 오류:', insertError);
-        } else {
-          console.log('잔고 데이터 생성 성공:', insertData);
-          
-          // 생성된 데이터 사용
-          setBalanceData(insertData);
-          console.log('생성된 잔고 데이터 설정 완료:', insertData);
-          return;
-        }
-      } catch (insertError) {
-        console.error('잔고 데이터 생성 중 오류:', insertError);
-      }
-      
-      // 6. 모든 시도 실패 시 임시 데이터 사용
-      console.log('모든 시도 실패. 임시 데이터 사용...');
-      
-      // 임시 잔고 값
-      const tempFebBalance = 9500000;
-      const tempMarBalance = 10000000;
-      
-      // 2월 데이터 포인트 생성
-      const febDataPoint = {
-        id: `temp-feb-${Date.now()}`,
-        account_id: accountId,
-        year: '2025',
-        month: '2',
-        record_date: '2025-02-28',
-        balance: tempFebBalance
-      };
-      
-      // 3월 데이터 포인트 생성
-      const marchDataPoint = {
-        id: `temp-march-${Date.now()}`,
-        account_id: accountId,
-        year: '2025',
-        month: '3',
-        record_date: '2025-03-28',
-        balance: tempMarBalance
-      };
-      
-      setBalanceData([febDataPoint, marchDataPoint]);
-      console.log('임시 데이터 포인트 설정 완료:', [febDataPoint, marchDataPoint]);
-      
+      // 모든 데이터를 사용하여 그래프 표시
+      setBalanceData(sortedData);
     } catch (error) {
-      console.error('잔고 데이터 가져오기 오류:', error);
-      
-      // 오류 발생 시에도 임시 데이터 포인트 생성
-      const febDataPoint = {
-        id: `error-feb-${Date.now()}`,
-        account_id: accountId,
-        year: '2025',
-        month: '2',
-        record_date: '2025-02-28',
-        balance: 9500000
-      };
-      
-      const marchDataPoint = {
-        id: `error-march-${Date.now()}`,
-        account_id: accountId,
-        year: '2025',
-        month: '3',
-        record_date: '2025-03-28',
-        balance: 10000000
-      };
-      
-      setBalanceData([febDataPoint, marchDataPoint]);
-      console.log('오류 발생으로 인한 임시 데이터 설정:', [febDataPoint, marchDataPoint]);
+      console.error('잔고 데이터 처리 오류:', error);
+      setBalanceData([]);
     }
   };
 
@@ -746,168 +532,79 @@ export default function MonthlyReportDetail({ params }: PageProps) {
     }
   };
 
-  // 이전 달 잔고 가져오기
-  const getPreviousBalance = () => {
+  // 월별 잔고 가져오기
+  const getMonthlyBalance = () => {
     if (balanceData.length === 0) {
       console.log('잔고 데이터가 없습니다.');
       return 0;
     }
     
-    console.log('이전 잔고 계산 중... 전체 데이터:', balanceData);
-    console.log('데이터 타입 확인:', balanceData.map(item => ({
-      id: item.id,
-      balance: item.balance,
-      balanceType: typeof item.balance,
-      date: item.record_date
-    })));
+    console.log('월별 잔고 계산 중... 전체 데이터:', balanceData);
     
-    // 2월 데이터 찾기
-    const febData = balanceData
-      .filter(record => record.record_date.startsWith('2025-02'))
-      .sort((a, b) => new Date(b.record_date).getTime() - new Date(a.record_date).getTime());
+    // 현재 월 데이터 찾기 (year_month 필드 사용)
+    const currentYearMonth = `${year}-${String(month).padStart(2, '0')}`;
+    const currentMonthData = balanceData.filter(record => record.year_month === currentYearMonth);
     
-    console.log('2월 데이터:', febData);
+    console.log('현재 월 데이터 (필터링 결과):', currentMonthData);
     
-    // 2월 데이터가 있으면 가장 최신 2월 데이터의 잔고를 반환
-    if (febData.length > 0) {
+    // 현재 월 데이터가 있으면 해당 잔고를 반환
+    if (currentMonthData.length > 0) {
       // 문자열인 경우 숫자로 변환
-      const rawBalance = febData[0].balance;
-      const prevBalance = typeof rawBalance === 'string' ? parseInt(rawBalance, 10) : rawBalance;
+      const rawBalance = currentMonthData[0].balance;
+      const currentBalance = typeof rawBalance === 'string' ? parseFloat(rawBalance) : rawBalance;
       
-      console.log('2월 데이터의 이전 잔고 (원본):', rawBalance);
-      console.log('2월 데이터의 이전 잔고 (변환):', prevBalance);
+      console.log('현재 월 잔고 (원본):', rawBalance);
+      console.log('현재 월 잔고 (변환):', currentBalance);
       
-      // 숫자가 아니면 기본값 반환
-      if (isNaN(prevBalance)) {
-        console.error('이전 잔고 값이 숫자가 아닙니다:', rawBalance);
-        return 9500000; // 기본값
-      }
-      
-      return prevBalance;
-    }
-    
-    // 데이터가 하나만 있는 경우 현재 잔고의 95%를 이전 잔고로 가정
-    if (balanceData.length === 1) {
-      // 문자열인 경우 숫자로 변환
-      const rawBalance = balanceData[0].balance;
-      const currentBalance = typeof rawBalance === 'string' ? parseInt(rawBalance, 10) : rawBalance;
-      
-      // 숫자가 아니면 기본값 반환
+      // 숫자가 아니면 0 반환
       if (isNaN(currentBalance)) {
         console.error('현재 잔고 값이 숫자가 아닙니다:', rawBalance);
-        return 9500000; // 기본값
-      }
-      
-      const estimatedPrevBalance = Math.round(currentBalance * 0.95);
-      console.log('현재 잔고 기준 추정 이전 잔고 (95%):', estimatedPrevBalance);
-      return estimatedPrevBalance;
-    }
-    
-    // 모든 데이터를 날짜순으로 정렬하여 가장 오래된 데이터 사용
-    const sortedData = [...balanceData].sort(
-      (a, b) => new Date(b.record_date).getTime() - new Date(a.record_date).getTime()
-    );
-    
-    if (sortedData.length > 0) {
-      // 문자열인 경우 숫자로 변환
-      const rawBalance = sortedData[0].balance;
-      const oldestBalance = typeof rawBalance === 'string' ? parseInt(rawBalance, 10) : rawBalance;
-      
-      console.log('가장 오래된 데이터의 잔고 (원본):', rawBalance);
-      console.log('가장 오래된 데이터의 잔고 (변환):', oldestBalance);
-      
-      // 숫자가 아니면 기본값 반환
-      if (isNaN(oldestBalance)) {
-        console.error('가장 오래된 잔고 값이 숫자가 아닙니다:', rawBalance);
-        return 9500000; // 기본값
-      }
-      
-      return oldestBalance;
-    }
-    
-    // 데이터가 없으면 기본값 반환
-    console.error('유효한 이전 잔고 데이터가 없습니다.');
-    return 9500000; // 기본값
-  };
-
-  // 현재 잔고 가져오기
-  const getCurrentBalance = () => {
-    if (balanceData.length === 0) {
-      console.log('잔고 데이터가 없습니다.');
-      return 0;
-    }
-    
-    console.log('현재 잔고 계산 중... 전체 데이터:', balanceData);
-    console.log('데이터 타입 확인:', balanceData.map(item => ({
-      id: item.id,
-      balance: item.balance,
-      balanceType: typeof item.balance
-    })));
-    
-    // 3월 데이터 중 가장 최신 데이터 찾기
-    const marchData = balanceData
-      .filter(record => record.record_date.startsWith('2025-03'))
-      .sort((a, b) => new Date(b.record_date).getTime() - new Date(a.record_date).getTime());
-    
-    console.log('3월 데이터:', marchData);
-    
-    // 3월 데이터가 있으면 가장 최신 데이터의 잔고를 반환
-    if (marchData.length > 0) {
-      // 문자열인 경우 숫자로 변환
-      const rawBalance = marchData[0].balance;
-      const currentBalance = typeof rawBalance === 'string' ? parseInt(rawBalance, 10) : rawBalance;
-      
-      console.log('3월 데이터의 현재 잔고 (원본):', rawBalance);
-      console.log('3월 데이터의 현재 잔고 (변환):', currentBalance);
-      
-      // 숫자가 아니면 기본값 반환
-      if (isNaN(currentBalance)) {
-        console.error('잔고 값이 숫자가 아닙니다:', rawBalance);
-        return 10000000; // 기본값
+        return 0;
       }
       
       return currentBalance;
     }
     
-    // 모든 데이터 중 가장 최신 데이터 찾기
-    const sortedData = [...balanceData].sort(
-      (a, b) => new Date(b.record_date).getTime() - new Date(a.record_date).getTime()
-    );
+    // 현재 월 데이터가 없으면 가장 최근 데이터 사용
+    const sortedData = [...balanceData].sort((a, b) => {
+      const dateA = new Date(a.record_date);
+      const dateB = new Date(b.record_date);
+      return dateB.getTime() - dateA.getTime(); // 내림차순 정렬 (최신 -> 과거)
+    });
     
     if (sortedData.length > 0) {
-      // 문자열인 경우 숫자로 변환
-      const rawBalance = sortedData[0].balance;
-      const latestBalance = typeof rawBalance === 'string' ? parseInt(rawBalance, 10) : rawBalance;
+      const latestRecord = sortedData[0];
+      const rawBalance = latestRecord.balance;
+      const latestBalance = typeof rawBalance === 'string' ? parseFloat(rawBalance) : rawBalance;
       
-      console.log('가장 최신 데이터의 잔고 (원본):', rawBalance);
-      console.log('가장 최신 데이터의 잔고 (변환):', latestBalance);
-      
-      // 숫자가 아니면 기본값 반환
-      if (isNaN(latestBalance)) {
-        console.error('잔고 값이 숫자가 아닙니다:', rawBalance);
-        return 10000000; // 기본값
-      }
-      
+      console.log('최신 잔고 데이터 사용:', latestRecord);
       return latestBalance;
     }
     
-    // 데이터가 없으면 기본값 반환
-    console.error('유효한 잔고 데이터가 없습니다.');
-    return 10000000; // 기본값
+    // 데이터가 없으면 0 반환
+    console.warn('잔고 데이터를 찾을 수 없습니다.');
+    return 0;
   };
 
   // 날짜 포맷 함수
   const formatDate = (dateString: string) => {
     try {
+      if (!dateString) return '날짜 정보 없음';
+      
+      // 날짜 문자열을 파싱하여 년, 월, 일 추출
       const date = new Date(dateString);
+      
+      // 유효한 날짜인지 확인
       if (isNaN(date.getTime())) {
         return '날짜 정보 없음';
       }
-      return date.toLocaleDateString('ko-KR', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      });
+      
+      // 서버와 클라이언트에서 동일한 결과를 반환하도록 수동으로 포맷팅
+      const year = date.getFullYear();
+      const month = date.getMonth() + 1;
+      const day = date.getDate();
+      
+      return `${year}년 ${month}월 ${day}일`;
     } catch (error) {
       console.error('날짜 포맷 오류:', error);
       return '날짜 정보 없음';
@@ -972,306 +669,273 @@ export default function MonthlyReportDetail({ params }: PageProps) {
         {report?.title || `${year}년 ${month}월 투자 리포트`}
       </h1>
       
-      {/* 계좌 선택 */}
-      {accounts.length > 1 && (
-        <div className="mb-6">
-          <label htmlFor="account-select" className="block text-sm font-medium text-gray-700 mb-1">
-            포트폴리오 선택
-          </label>
-          <select
-            id="account-select"
-            value={selectedAccount?.id}
-            onChange={(e) => handleAccountChange(e.target.value)}
-            className="w-full md:w-auto px-3 py-2 border border-gray-300 rounded-md font-medium text-gray-800"
-          >
-            {accounts.map((account) => (
-              <option key={account.id} value={account.id}>
-                {account.portfolio_type}
-              </option>
-            ))}
-          </select>
+      {/* 포트폴리오 선택 섹션 - 강조 */}
+      <div className="mb-8 bg-white rounded-xl shadow-sm p-6 border border-blue-100">
+        <h2 className="text-xl font-semibold mb-4 text-gray-900 flex items-center">
+          <span className="inline-block w-1 h-6 bg-blue-500 rounded-full mr-3"></span>
+          포트폴리오 선택
+        </h2>
+        
+        {accounts.length > 1 ? (
+          <div className="w-full">
+            <select
+              id="account-select"
+              value={selectedAccount?.id}
+              onChange={(e) => handleAccountChange(e.target.value)}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg font-medium text-gray-800 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg"
+            >
+              {accounts.map((account) => (
+                <option key={account.id} value={account.id}>
+                  {account.portfolio_type}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : selectedAccount ? (
+          <div className="w-full px-4 py-3 bg-gray-50 rounded-lg border border-gray-200">
+            <p className="font-medium text-lg text-gray-800">{selectedAccount.portfolio_type}</p>
+          </div>
+        ) : (
+          <p className="text-gray-600">등록된 포트폴리오가 없습니다.</p>
+        )}
+      </div>
+      
+      {/* 계좌 정보 카드 */}
+      {selectedAccount && (
+        <div className="mb-8 bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+          <h2 className="text-xl font-semibold mb-4 text-gray-900 flex items-center">
+            <span className="inline-block w-1 h-6 bg-blue-500 rounded-full mr-3"></span>
+            계좌 정보
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-gray-50 rounded-lg p-4">
+              <p className="text-sm text-gray-600 mb-1">계좌번호</p>
+              <p className="text-lg font-medium text-gray-900">{selectedAccount.account_number || '정보 없음'}</p>
+            </div>
+            <div className="bg-gray-50 rounded-lg p-4">
+              <p className="text-sm text-gray-600 mb-1">포트폴리오</p>
+              <p className="text-lg font-medium text-gray-900">{selectedAccount.portfolio_type}</p>
+            </div>
+            <div className="bg-blue-50 rounded-lg p-4">
+              <p className="text-sm text-blue-600 mb-1">전월잔고</p>
+              <p className="text-lg font-bold text-gray-900">{formatCurrency(getMonthlyBalance())}원</p>
+            </div>
+          </div>
         </div>
       )}
       
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* 계좌 정보 카드 */}
-        {selectedAccount ? (
-          <div className="col-span-1 bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-            <h2 className="text-xl font-semibold mb-4 text-gray-900">계좌 정보</h2>
-            <div className="space-y-3">
-              <div className="flex justify-between">
-                <span className="text-gray-600">계좌번호</span>
-                <span className="font-medium text-gray-900">{selectedAccount.account_number}</span>
+      {/* 이달의 투자 코멘트 카드 */}
+      <div className="mb-8 bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+        <h2 className="text-xl font-semibold mb-4 text-gray-900 flex items-center">
+          <span className="inline-block w-1 h-6 bg-blue-500 rounded-full mr-3"></span>
+          이달의 투자 코멘트
+        </h2>
+        {monthlyComment ? (
+          <>
+            <div className="prose text-gray-800" dangerouslySetInnerHTML={{ __html: monthlyComment.content }} />
+            <div className="mt-4 text-right text-sm text-gray-500">
+              {formatDate(monthlyComment.comment_date)} 업데이트
+            </div>
+          </>
+        ) : (
+          <p className="text-gray-600">등록된 월간 코멘트가 없습니다.</p>
+        )}
+      </div>
+      
+      {/* 포트폴리오 리포트 카드 */}
+      {selectedAccount && portfolioReport && (
+        <div className="mb-8 bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+          <h2 className="text-xl font-semibold mb-4 text-gray-900 flex items-center">
+            <span className="inline-block w-1 h-6 bg-blue-500 rounded-full mr-3"></span>
+            포트폴리오 리포트
+          </h2>
+          <div className="flex flex-col items-center">
+            <div className="mb-3 text-center">
+              <span className="inline-block bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
+                {selectedAccount.portfolio_type} 포트폴리오
+              </span>
+            </div>
+            
+            {/* 이미지 컨테이너 */}
+            <div className="relative w-full max-w-4xl h-[500px] border border-gray-200 rounded-lg overflow-hidden">
+              {/* 이미지 로딩 상태 표시 */}
+              <div className="absolute inset-0 flex items-center justify-center bg-gray-100 z-0">
+                <div className="text-gray-500">이미지 로딩 중...</div>
               </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">포트폴리오</span>
-                <span className="font-medium text-gray-900">{selectedAccount.portfolio_type}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">이전 잔고</span>
-                <span className="font-medium text-gray-900">{formatCurrency(getPreviousBalance())}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">현재 잔고</span>
-                <span className="font-medium text-gray-900">{formatCurrency(getCurrentBalance())}</span>
+              
+              {/* 이미지 표시 - 여러 방식 시도 */}
+              {/* 1. 일반 img 태그 - 캐시 방지를 위한 타임스탬프 추가 */}
+              <img
+                src={`${portfolioReport.report_url}?t=${Date.now()}`}
+                alt={`${selectedAccount.portfolio_type} 포트폴리오 리포트`}
+                className="w-full h-full object-contain z-10 relative"
+                onLoad={(e) => {
+                  // 이미지 로드 성공 시 z-index 조정
+                  (e.target as HTMLElement).style.zIndex = '10';
+                }}
+                onError={(e) => {
+                  // 이미지 로드 실패 시 숨김
+                  (e.target as HTMLElement).style.display = 'none';
+                  
+                  // iframe 시도
+                  const iframe = document.getElementById('report-iframe');
+                  if (iframe) {
+                    (iframe as HTMLElement).style.display = 'block';
+                  }
+                }}
+              />
+              
+              {/* 2. iframe 방식 (img 태그 실패 시) */}
+              <iframe
+                id="report-iframe"
+                src={portfolioReport.report_url}
+                title={`${selectedAccount.portfolio_type} 포트폴리오 리포트`}
+                className="w-full h-full z-1 relative"
+                style={{ border: 'none', display: 'none' }}
+                onLoad={() => console.log('iframe 로드 성공')}
+                onError={() => {
+                  console.error('iframe 로드 오류');
+                  
+                  // iframe도 실패하면 background-image 방식 시도
+                  const bgDiv = document.getElementById('report-bg-div');
+                  if (bgDiv) {
+                    (bgDiv as HTMLElement).style.display = 'block';
+                  }
+                }}
+              />
+              
+              {/* 3. background-image 방식 (다른 방식이 모두 실패할 경우) */}
+              <div
+                id="report-bg-div"
+                className="w-full h-full z-1 relative"
+                style={{
+                  backgroundImage: `url(${portfolioReport.report_url})`,
+                  backgroundPosition: 'center',
+                  backgroundSize: 'contain',
+                  backgroundRepeat: 'no-repeat',
+                  display: 'none'
+                }}
+              />
+              
+              {/* 4. 대체 이미지 (모든 방식이 실패할 경우) */}
+              <div
+                id="fallback-image"
+                className="w-full h-full flex items-center justify-center"
+                style={{ display: 'none' }}
+              >
+                <div className="text-center p-4">
+                  <p className="text-gray-600 mb-4">이미지를 불러올 수 없습니다.</p>
+                  <div className="bg-gray-100 p-4 rounded-lg inline-block">
+                    <p className="text-gray-500">{selectedAccount.portfolio_type} 포트폴리오 ({year}년 {month}월)</p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-        ) : (
-          <div className="col-span-1 bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-            <h2 className="text-xl font-semibold mb-4 text-gray-900">계좌 정보</h2>
-            <p className="text-gray-600">등록된 계좌 정보가 없습니다.</p>
-            <p className="text-sm text-gray-500 mt-2">계좌를 등록하시면 더 자세한 정보를 확인하실 수 있습니다.</p>
-          </div>
-        )}
-        
-        {/* Monthly Comment 카드 */}
-        <div className="col-span-1 md:col-span-2 bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-          <h2 className="text-xl font-semibold mb-4 text-gray-900">이달의 투자 코멘트</h2>
-          {monthlyComment ? (
+        </div>
+      )}
+      
+      {/* 잔고 변화 그래프 카드 */}
+      {selectedAccount && (
+        <div className="mb-8 bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+          <h2 className="text-xl font-semibold mb-4 text-gray-900 flex items-center">
+            <span className="inline-block w-1 h-6 bg-blue-500 rounded-full mr-3"></span>
+            잔고 변화 추이 - {selectedAccount.portfolio_type}
+          </h2>
+          {balanceData.length > 0 ? (
             <>
-              <div className="prose text-gray-800" dangerouslySetInnerHTML={{ __html: monthlyComment.content }} />
-              <div className="mt-4 text-right text-sm text-gray-500">
-                {formatDate(monthlyComment.comment_date)} 업데이트
+              {/* 클라이언트 측에서만 차트 렌더링 */}
+              {isClient && (
+                <div className="h-96 mb-6">
+                  <ChartWrapper data={balanceData.map(record => ({
+                    date: record.record_date,
+                    balance: typeof record.balance === 'string' ? parseFloat(record.balance) : record.balance,
+                    year_month: record.year_month
+                  }))} />
+                </div>
+              )}
+              
+              <div className="flex flex-wrap gap-4 mb-6">
+                <div className="bg-blue-50 rounded-lg p-4 flex-1">
+                  <p className="text-sm text-blue-600 mb-1">전월잔고</p>
+                  <p className="text-2xl font-bold text-gray-900">{formatCurrency(getMonthlyBalance())}원</p>
+                </div>
+              </div>
+              
+              {/* 월별 잔고 데이터 테이블 */}
+              <div className="overflow-hidden rounded-lg border border-gray-200">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        년월
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        잔고
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        변화율
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {balanceData
+                      .filter((value, index, self) => 
+                        index === self.findIndex(t => t.year_month === value.year_month)
+                      )
+                      .sort((a, b) => b.year_month.localeCompare(a.year_month)) // 최신순 정렬
+                      .map((record, index, array) => {
+                        // 이전 달 데이터 찾기
+                        const currentBalance = typeof record.balance === 'string' ? parseFloat(record.balance) : record.balance;
+                        const prevRecord = index < array.length - 1 ? array[index + 1] : null;
+                        const prevBalance = prevRecord 
+                          ? (typeof prevRecord.balance === 'string' ? parseFloat(prevRecord.balance) : prevRecord.balance)
+                          : currentBalance;
+                        
+                        // 변화율 계산
+                        const changeRate = prevBalance !== 0 
+                          ? ((currentBalance - prevBalance) / prevBalance) * 100 
+                          : 0;
+                        
+                        return (
+                          <tr key={record.year_month} className="hover:bg-gray-50 transition-colors">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                              {record.year_month}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-gray-900">
+                              {formatCurrency(currentBalance)}원
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
+                              {index < array.length - 1 ? (
+                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                  changeRate > 0 
+                                    ? 'bg-green-100 text-green-800' 
+                                    : changeRate < 0 
+                                      ? 'bg-red-100 text-red-800' 
+                                      : 'bg-gray-100 text-gray-800'
+                                }`}>
+                                  {changeRate > 0 ? '+' : ''}{changeRate.toFixed(2)}%
+                                </span>
+                              ) : (
+                                <span className="text-gray-500">-</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                  </tbody>
+                </table>
               </div>
             </>
           ) : (
-            <p className="text-gray-600">등록된 월간 코멘트가 없습니다.</p>
-          )}
-        </div>
-      </div>
-      
-      {/* 잔고 변화 그래프 카드 */}
-      {selectedAccount ? (
-        <div className="mt-6 bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-          <h2 className="text-xl font-semibold mb-4 text-gray-900">잔고 변화 추이</h2>
-          {balanceData.length > 0 ? (
-            <ChartWrapper data={balanceData.map(record => ({
-              date: new Date(record.record_date).toISOString().split('T')[0],
-              balance: Number(record.balance)
-            }))} />
-          ) : (
-            <p className="text-gray-600">잔고 데이터가 없습니다.</p>
-          )}
-        </div>
-      ) : (
-        <div className="mt-6 bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-          <h2 className="text-xl font-semibold mb-4 text-gray-900">잔고 변화 추이</h2>
-          <p className="text-gray-600">계좌 정보가 없어 잔고 데이터를 표시할 수 없습니다.</p>
-          <p className="text-sm text-gray-500 mt-2">계좌를 등록하시면 잔고 변화 추이를 확인하실 수 있습니다.</p>
-        </div>
-      )}
-      
-      {/* 포트폴리오 리포트 카드 */}
-      {selectedAccount ? (
-        <div className="mt-6 bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-          <h2 className="text-xl font-semibold mb-4 text-gray-900">포트폴리오 리포트</h2>
-          {portfolioReport ? (
-            <div className="flex flex-col items-center">
-              <div className="mb-3 text-center">
-                <span className="inline-block bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
-                  {selectedAccount.portfolio_type} 포트폴리오
-                </span>
-                {/* 디버그 정보 - 개발 중에만 표시 */}
-                {isTestMode && (
-                  <div className="mt-2 text-xs text-gray-500">
-                    <div>포트폴리오 타입: {selectedAccount.portfolio_type}</div>
-                    <div>이미지 URL: {portfolioReport.report_url}</div>
-                  </div>
-                )}
-              </div>
-              
-              {/* 이미지 컨테이너 - 더 크게 표시 */}
-              <div className="relative w-full max-w-4xl h-[700px] border border-gray-200 rounded-lg overflow-hidden">
-                {/* 이미지 로딩 상태 표시 */}
-                <div className="absolute inset-0 flex items-center justify-center bg-gray-100 z-0">
-                  <div className="text-gray-500">이미지 로딩 중...</div>
-                </div>
-                
-                {/* 이미지 표시 - 여러 방식 시도 */}
-                {/* 1. 일반 img 태그 - 캐시 방지를 위한 타임스탬프 추가 */}
-                <img
-                  key={`img-${selectedAccount?.id || 'default'}-${Date.now()}`}
-                  src={`${portfolioReport.report_url}${portfolioReport.report_url.includes('?') ? '&' : '?'}cache=${Date.now()}`}
-                  alt={`${selectedAccount.portfolio_type} 포트폴리오 리포트`}
-                  className="w-full h-full object-contain z-1 relative"
-                  style={{ display: 'block' }}
-                  onError={(e) => {
-                    console.error('이미지 로드 오류:', e);
-                    console.error('로드 실패한 URL:', portfolioReport.report_url);
-                    e.currentTarget.style.display = 'none'; // 오류 시 숨김
-                    
-                    // 다음 방식 시도를 위해 iframe 표시
-                    const iframe = document.getElementById('report-iframe');
-                    if (iframe) {
-                      (iframe as HTMLElement).style.display = 'block';
-                    }
-                    
-                    // 3초 후에도 이미지가 로드되지 않으면 대체 이미지 표시
-                    setTimeout(() => {
-                      const fallbackImage = document.getElementById('fallback-image');
-                      if (fallbackImage && fallbackImage.style.display === 'none') {
-                        // iframe과 background-image 방식도 실패한 경우
-                        const iframe = document.getElementById('report-iframe');
-                        const bgDiv = document.getElementById('report-bg-div');
-                        
-                        if ((iframe as HTMLElement)?.style.display === 'none' && 
-                            (bgDiv as HTMLElement)?.style.display === 'none') {
-                          fallbackImage.style.display = 'flex';
-                        }
-                      }
-                    }, 3000);
-                  }}
-                  onLoad={(e) => {
-                    console.log('이미지 로드 성공:', portfolioReport.report_url);
-                    // 이미지가 성공적으로 로드되면 다른 방식은 숨김
-                    const iframe = document.getElementById('report-iframe');
-                    const bgDiv = document.getElementById('report-bg-div');
-                    const fallbackImage = document.getElementById('fallback-image');
-                    
-                    if (iframe) (iframe as HTMLElement).style.display = 'none';
-                    if (bgDiv) (bgDiv as HTMLElement).style.display = 'none';
-                    if (fallbackImage) (fallbackImage as HTMLElement).style.display = 'none';
-                  }}
-                />
-                
-                {/* 2. iframe 방식 (img 태그가 실패할 경우 사용) - 캐시 방지를 위한 타임스탬프 추가 */}
-                <iframe
-                  id="report-iframe"
-                  key={`iframe-${selectedAccount?.id || 'default'}-${Date.now()}`}
-                  src={`${portfolioReport.report_url}${portfolioReport.report_url.includes('?') ? '&' : '?'}cache=${Date.now()}`}
-                  className="w-full h-full z-1 relative"
-                  style={{ border: 'none', display: 'none' }}
-                  onLoad={() => console.log('iframe 로드 성공')}
-                  onError={() => {
-                    console.error('iframe 로드 오류');
-                    
-                    // iframe도 실패하면 background-image 방식 시도
-                    const bgDiv = document.getElementById('report-bg-div');
-                    if (bgDiv) {
-                      (bgDiv as HTMLElement).style.display = 'block';
-                    }
-                  }}
-                />
-                
-                {/* 3. background-image 방식 (다른 방식이 모두 실패할 경우) */}
-                <div
-                  id="report-bg-div"
-                  className="w-full h-full z-1 relative"
-                  style={{
-                    backgroundImage: `url(${portfolioReport.report_url})`,
-                    backgroundPosition: 'center',
-                    backgroundSize: 'contain',
-                    backgroundRepeat: 'no-repeat',
-                    display: 'none'
-                  }}
-                />
-                
-                {/* 4. 대체 이미지 (모든 방식이 실패할 경우) */}
-                <div
-                  id="fallback-image"
-                  className="w-full h-full flex items-center justify-center"
-                  style={{ display: 'none' }}
-                >
-                  <div className="text-center p-4">
-                    <p className="text-gray-600 mb-4">이미지를 불러올 수 없습니다.</p>
-                    <div className="bg-gray-100 p-4 rounded-lg inline-block">
-                      <p className="text-gray-500">{selectedAccount.portfolio_type} 포트폴리오 ({year}년 {month}월)</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              {/* 다운로드 버튼 및 정보 */}
-              <div className="mt-4 flex flex-col sm:flex-row items-center justify-center gap-4">
-                <div className="text-sm text-gray-500">
-                  {year}년 {month}월 리포트
-                </div>
-                <button 
-                  onClick={async () => {
-                    try {
-                      // 로딩 상태 표시
-                      const downloadBtn = document.getElementById('download-btn');
-                      if (downloadBtn) {
-                        downloadBtn.textContent = '다운로드 중...';
-                        downloadBtn.setAttribute('disabled', 'true');
-                      }
-                      
-                      // 이미지 가져오기
-                      const response = await fetch(portfolioReport.report_url);
-                      
-                      if (!response.ok) {
-                        throw new Error('이미지를 가져오는데 실패했습니다.');
-                      }
-                      
-                      // Blob으로 변환
-                      const blob = await response.blob();
-                      
-                      // 다운로드 링크 생성
-                      const url = window.URL.createObjectURL(blob);
-                      const a = document.createElement('a');
-                      a.style.display = 'none';
-                      a.href = url;
-                      a.download = `${selectedAccount.portfolio_type}_리포트_${year}년_${month}월.jpg`;
-                      
-                      // 링크 클릭하여 다운로드
-                      document.body.appendChild(a);
-                      a.click();
-                      
-                      // 정리
-                      window.URL.revokeObjectURL(url);
-                      document.body.removeChild(a);
-                      
-                      // 버튼 상태 복원
-                      if (downloadBtn) {
-                        downloadBtn.textContent = '다운로드';
-                        downloadBtn.removeAttribute('disabled');
-                      }
-                    } catch (error) {
-                      console.error('다운로드 오류:', error);
-                      alert('다운로드 중 오류가 발생했습니다.');
-                      
-                      // 버튼 상태 복원
-                      const downloadBtn = document.getElementById('download-btn');
-                      if (downloadBtn) {
-                        downloadBtn.textContent = '다운로드';
-                        downloadBtn.removeAttribute('disabled');
-                      }
-                    }
-                  }}
-                  id="download-btn"
-                  className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:bg-blue-400"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                  </svg>
-                  다운로드
-                </button>
-                <button
-                  onClick={() => window.open(portfolioReport.report_url, '_blank')}
-                  className="inline-flex items-center px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                  </svg>
-                  새 창에서 보기
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="text-center py-10">
-              <p className="text-gray-600 mb-4">등록된 포트폴리오 리포트가 없습니다.</p>
-              <div className="bg-gray-100 p-4 rounded-lg inline-block">
-                <p className="text-gray-500">{selectedAccount.portfolio_type} 포트폴리오 ({year}년 {month}월)</p>
-              </div>
+            <div className="text-center py-12 bg-gray-50 rounded-lg">
+              <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <p className="mt-2 text-gray-600 font-medium">잔고 데이터가 없습니다.</p>
+              <p className="text-sm text-gray-500 mt-1">해당 기간에 계좌 데이터가 없습니다. 다른 계좌를 선택하거나 관리자에게 문의하세요.</p>
             </div>
           )}
-        </div>
-      ) : (
-        <div className="mt-6 bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-          <h2 className="text-xl font-semibold mb-4 text-gray-900">포트폴리오 리포트</h2>
-          <p className="text-gray-600">계좌 정보가 없어 포트폴리오 리포트를 표시할 수 없습니다.</p>
-          <p className="text-sm text-gray-500 mt-2">계좌를 등록하시면 포트폴리오 리포트를 확인하실 수 있습니다.</p>
         </div>
       )}
     </div>

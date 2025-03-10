@@ -12,6 +12,7 @@ export default function Dashboard() {
   const [accounts, setAccounts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [balance, setBalance] = useState<any>(null);
   const router = useRouter();
 
   // 인증 상태 확인
@@ -66,6 +67,19 @@ export default function Dashboard() {
         if (userAccounts.length > 0) {
           console.log('현재 사용자의 실제 계좌 정보:', userAccounts);
           setAccounts(userAccounts);
+          
+          // 잔고 데이터 가져오기
+          const balanceResponse = await fetch(`/api/get-balance?accountId=${userAccounts[0].id}`);
+          const balanceResult = await balanceResponse.json();
+          
+          if (balanceResult.success) {
+            console.log('잔고 데이터:', balanceResult.data);
+            // 잔고 데이터를 상태에 저장
+            setBalance(balanceResult.data);
+          } else {
+            console.log('잔고 데이터를 가져오지 못했습니다.');
+          }
+          
           return;
         } else {
           console.log('일치하는 실제 계좌 정보가 없습니다. 사용자 이메일:', user.email);
@@ -168,12 +182,6 @@ export default function Dashboard() {
                     <div className="flex">
                       <span className="text-gray-600 w-24 text-sm">계좌번호:</span>
                       <span className="text-gray-900 text-sm">{account.account_number || '정보 없음'}</span>
-                    </div>
-                    <div className="flex">
-                      <span className="text-gray-600 w-24 text-sm">최초계약일:</span>
-                      <span className="text-gray-900 text-sm">
-                        {account.contract_date ? formatAccountDate(account.contract_date) : '정보 없음'}
-                      </span>
                     </div>
                   </div>
                 </li>

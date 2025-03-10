@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic';
 export interface ChartData {
   date: string;
   balance: number;
+  year_month?: string;
 }
 
 // 차트 컴포넌트 props 타입 정의

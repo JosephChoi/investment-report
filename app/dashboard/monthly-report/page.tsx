@@ -15,7 +15,6 @@ export default function MonthlyReport() {
   const [user, setUser] = useState<any>(null);
   const [accounts, setAccounts] = useState<any[]>([]);
   const [selectedAccount, setSelectedAccount] = useState<any>(null);
-  const [balanceData, setBalanceData] = useState<any[]>([]);
   const [portfolioReport, setPortfolioReport] = useState<any>(null);
   const [monthlyComment, setMonthlyComment] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -50,9 +49,6 @@ export default function MonthlyReport() {
         if (accountsData && accountsData.length > 0) {
           setAccounts(accountsData);
           setSelectedAccount(accountsData[0]);
-          
-          // 선택된 계좌의 잔고 데이터 가져오기
-          await fetchBalanceData(accountsData[0].id);
           
           // 선택된 계좌의 포트폴리오 리포트 가져오기
           await fetchPortfolioReport(accountsData[0].portfolio_type);
@@ -114,29 +110,31 @@ export default function MonthlyReport() {
 
   // 계좌 변경 시 데이터 다시 가져오기
   const handleAccountChange = async (accountId: string) => {
-    const account = accounts.find(acc => acc.id === accountId);
-    if (account) {
-      setSelectedAccount(account);
-      await fetchBalanceData(account.id);
-      await fetchPortfolioReport(account.portfolio_type);
-    }
-  };
-
-  // 잔고 데이터 가져오기
-  const fetchBalanceData = async (accountId: string) => {
     try {
-      const { data, error } = await supabase
-        .from('balance_records')
-        .select('*')
-        .eq('account_id', accountId)
-        .order('record_date', { ascending: true });
+      if (!accountId) {
+        console.error('유효하지 않은 계좌 ID입니다.');
+        return;
+      }
       
-      if (error) throw error;
+      const account = accounts.find(acc => acc.id === accountId);
+      if (!account) {
+        console.error('선택한 계좌를 찾을 수 없습니다:', accountId);
+        return;
+      }
       
-      setBalanceData(data || []);
-    } catch (error: any) {
-      console.error('잔고 데이터 로딩 오류:', error);
-      setError('잔고 데이터를 불러오는 중 오류가 발생했습니다.');
+      setSelectedAccount(account);
+      
+      // 데이터 로딩 중 상태 설정
+      setLoading(true);
+      
+      // 포트폴리오 리포트 가져오기
+      await fetchPortfolioReport(account.portfolio_type);
+      
+      setLoading(false);
+    } catch (error) {
+      console.error('계좌 변경 중 오류 발생:', error);
+      setError('계좌 정보를 변경하는 중 오류가 발생했습니다.');
+      setLoading(false);
     }
   };
 
@@ -185,17 +183,6 @@ export default function MonthlyReport() {
       month: 'long',
       day: 'numeric'
     });
-  };
-
-  // 현재 잔고와 이전 잔고 계산
-  const getCurrentBalance = () => {
-    if (balanceData.length === 0) return 0;
-    return Number(balanceData[balanceData.length - 1].balance);
-  };
-
-  const getPreviousBalance = () => {
-    if (balanceData.length <= 1) return 0;
-    return Number(balanceData[balanceData.length - 2].balance);
   };
 
   if (loading) {

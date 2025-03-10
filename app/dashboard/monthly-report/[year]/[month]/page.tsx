@@ -831,6 +831,93 @@ export default function MonthlyReportDetail({ params }: PageProps) {
                 </div>
               </div>
             </div>
+            
+            {/* 버튼 그룹 - 이미지 아래에 배치 */}
+            <div className="flex justify-center space-x-4 mt-6 w-full">
+              <a 
+                href={portfolioReport.report_url} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="flex items-center justify-center px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors shadow-sm"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
+                </svg>
+                새창으로 보기
+              </a>
+              <button 
+                onClick={async () => {
+                  try {
+                    // 로딩 상태 표시 (실제 구현 시 상태 변수 추가)
+                    console.log('파일 다운로드 시작...');
+                    
+                    // 파일 가져오기
+                    const response = await fetch(portfolioReport.report_url);
+                    
+                    // 응답 확인
+                    if (!response.ok) {
+                      throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    
+                    // Blob으로 변환
+                    const blob = await response.blob();
+                    
+                    // 파일 확장자 추출
+                    let fileExtension = 'jpg'; // 기본 확장자
+                    
+                    // URL에서 확장자 추출 시도
+                    const urlPath = new URL(portfolioReport.report_url).pathname;
+                    const extensionMatch = urlPath.match(/\.([a-zA-Z0-9]+)(?:\?|$)/);
+                    if (extensionMatch && extensionMatch[1]) {
+                      fileExtension = extensionMatch[1].toLowerCase();
+                    } 
+                    // Content-Type에서 확장자 추출 시도
+                    else {
+                      const contentType = response.headers.get('content-type');
+                      if (contentType) {
+                        if (contentType.includes('jpeg') || contentType.includes('jpg')) {
+                          fileExtension = 'jpg';
+                        } else if (contentType.includes('png')) {
+                          fileExtension = 'png';
+                        } else if (contentType.includes('pdf')) {
+                          fileExtension = 'pdf';
+                        } else if (contentType.includes('gif')) {
+                          fileExtension = 'gif';
+                        }
+                      }
+                    }
+                    
+                    console.log('파일 확장자 결정:', fileExtension);
+                    
+                    // 다운로드 링크 생성
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = url;
+                    a.download = `${selectedAccount.portfolio_type}_포트폴리오_${year}년_${month}월.${fileExtension}`;
+                    
+                    // 링크 클릭하여 다운로드 시작
+                    document.body.appendChild(a);
+                    a.click();
+                    
+                    // 정리
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                    
+                    console.log('파일 다운로드 완료');
+                  } catch (error) {
+                    console.error('파일 다운로드 오류:', error);
+                    alert('파일 다운로드 중 오류가 발생했습니다.');
+                  }
+                }}
+                className="flex items-center justify-center px-6 py-3 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors shadow-sm"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+                다운로드
+              </button>
+            </div>
           </div>
         </div>
       )}

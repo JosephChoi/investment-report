@@ -196,6 +196,7 @@ export default function MonthlyReportAdmin() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // 월 선택 확인
     if (!selectedMonth) {
       setError('월을 선택해주세요.');
       return;
@@ -284,7 +285,7 @@ export default function MonthlyReportAdmin() {
           // Supabase 테이블 구조 확인
           console.log('월간 코멘트 저장 시도:', {
             year_month: selectedMonth,
-            content: monthlyComment,
+            content: monthlyComment.replace(/\n/g, '<br>'),  // 줄 바꿈을 <br> 태그로 변환
             comment_date: new Date().toISOString()
           });
           
@@ -292,7 +293,7 @@ export default function MonthlyReportAdmin() {
             .from('monthly_comments')
             .upsert({
               year_month: selectedMonth,  // 'year'와 'month' 대신 'year_month' 사용
-              content: monthlyComment,
+              content: monthlyComment.replace(/\n/g, '<br>'),  // 줄 바꿈을 <br> 태그로 변환
               comment_date: new Date().toISOString()
             })
             .select();
@@ -308,6 +309,8 @@ export default function MonthlyReportAdmin() {
           setError(`월간 코멘트 저장 중 오류: ${commentError.message}`);
           // 월간 코멘트 저장 실패해도 계속 진행
         }
+      } else {
+        console.log('월간 코멘트가 입력되지 않았습니다. 기존 코멘트를 유지합니다.');
       }
       
       // 2. 고객 데이터 파일 업로드 (실제로는 API를 통해 처리)
@@ -729,11 +732,11 @@ export default function MonthlyReportAdmin() {
         {/* 공통 Monthly Comment 작성 */}
         <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
           <h2 className="text-xl font-semibold mb-4 text-gray-900">공통 Monthly Comment 작성</h2>
-          <p className="text-gray-600 text-sm mb-4">모든 고객에게 표시될 월간 코멘트를 작성하세요.</p>
+          <p className="text-gray-600 text-sm mb-4">모든 고객에게 표시될 월간 코멘트를 작성하세요. 작성하지 않으면 기존 코멘트가 유지됩니다.</p>
           
           <div>
             <label htmlFor="monthlyComment" className="block text-sm font-medium text-gray-700 mb-1">
-              월간 코멘트
+              월간 코멘트 <span className="text-gray-500 font-normal">(선택사항)</span>
             </label>
             <textarea
               id="monthlyComment"
@@ -741,9 +744,9 @@ export default function MonthlyReportAdmin() {
               value={monthlyComment}
               onChange={handleCommentChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-500 text-black"
-              placeholder="이번 달의 투자 코멘트를 작성하세요..."
-              required
+              placeholder="이번 달의 투자 코멘트를 작성하세요. 작성하지 않으면 기존 코멘트가 유지됩니다."
             ></textarea>
+            <p className="mt-1 text-sm text-gray-500">줄 바꿈은 자동으로 적용됩니다.</p>
           </div>
         </div>
         

@@ -129,7 +129,7 @@ export default function MonthlyReportDetail({ params }: PageProps) {
             await fetchBalanceData(userAccounts[0].id);
             
             // 선택된 계좌의 포트폴리오 리포트 가져오기
-            await fetchPortfolioReportByType(userAccounts[0].portfolio_type);
+            await fetchPortfolioReportByType(userAccounts[0].portfolio_type + `?t=${Date.now()}`);
             
             return;
           } else {
@@ -158,7 +158,7 @@ export default function MonthlyReportDetail({ params }: PageProps) {
           await fetchBalanceData(accountsData[0].id);
           
           // 선택된 계좌의 포트폴리오 리포트 가져오기
-          await fetchPortfolioReportByType(accountsData[0].portfolio_type);
+          await fetchPortfolioReportByType(accountsData[0].portfolio_type + `?t=${Date.now()}`);
           
           return;
         }
@@ -188,7 +188,7 @@ export default function MonthlyReportDetail({ params }: PageProps) {
             await fetchBalanceData(accountsData[0].id);
             
             // 선택된 계좌의 포트폴리오 리포트 가져오기
-            await fetchPortfolioReportByType(accountsData[0].portfolio_type);
+            await fetchPortfolioReportByType(accountsData[0].portfolio_type + `?t=${Date.now()}`);
             
             return;
           }
@@ -232,7 +232,7 @@ export default function MonthlyReportDetail({ params }: PageProps) {
         // 병렬로 데이터 가져오기
         await Promise.all([
           fetchBalanceData(account.id),
-          fetchPortfolioReportByType(account.portfolio_type)
+          fetchPortfolioReportByType(account.portfolio_type + `?t=${Date.now()}`)
         ]);
         
         console.log('계좌 변경 완료:', account.portfolio_type);
@@ -250,8 +250,11 @@ export default function MonthlyReportDetail({ params }: PageProps) {
   };
 
   // 포트폴리오 타입으로 직접 리포트 가져오기 (새 함수)
-  const fetchPortfolioReportByType = async (portfolioType: string) => {
+  const fetchPortfolioReportByType = async (portfolioTypeWithTimestamp: string) => {
     try {
+      // 타임스탬프 파라미터 제거
+      const portfolioType = portfolioTypeWithTimestamp.split('?')[0];
+      
       console.log('포트폴리오 타입으로 리포트 가져오기 시작:', portfolioType);
       
       if (!portfolioType) {
@@ -260,6 +263,8 @@ export default function MonthlyReportDetail({ params }: PageProps) {
       }
       
       const year_month = `${year}-${String(month).padStart(2, '0')}`;
+      const formattedYear = year;
+      const formattedMonth = String(month).padStart(2, '0');
       
       console.log('포트폴리오 리포트 조회 조건:', { portfolioType, year_month });
       
@@ -270,6 +275,7 @@ export default function MonthlyReportDetail({ params }: PageProps) {
           .from('portfolio_reports')
           .select('*')
           .eq('portfolio_type', portfolioType)
+          .eq('year_month', year_month) // 현재 선택된 연월에 해당하는 데이터만 조회
           .order('report_date', { ascending: false })
           .limit(1);
           
@@ -282,64 +288,182 @@ export default function MonthlyReportDetail({ params }: PageProps) {
           const dbUrl = reportData[0].report_url;
           console.log('데이터베이스에서 가져온 URL:', dbUrl);
           
-          // 포트폴리오 리포트 데이터 설정
-          setPortfolioReport({
-            id: reportData[0].id,
-            portfolio_type: reportData[0].portfolio_type,
-            year_month: year_month,
-            report_url: dbUrl, // 일단 DB에서 가져온 URL 사용
-            report_date: reportData[0].report_date || new Date().toISOString()
-          });
-          
-          // URL이 유효한지 확인하고 필요한 경우 스토리지에서 새 URL 생성
-          if (!dbUrl || !dbUrl.startsWith('http')) {
-            console.log('DB URL이 유효하지 않습니다. 스토리지에서 새 URL 생성 시도...');
-            
-            // 포트폴리오 타입에 따라 파일 경로 결정
-            let filePath = getFilePathByPortfolioType(portfolioType);
-            
-            // 스토리지에서 URL 생성
-            const storageUrl = await getStorageUrl('portfolio-reports', filePath);
-            
-            if (storageUrl) {
-              console.log('스토리지에서 새 URL 생성 성공:', storageUrl);
-              
-              // 새 URL로 업데이트
-              setPortfolioReport((prev: any) => ({
-                ...prev,
-                report_url: storageUrl
-              }));
+          // URL이 유효한지 확인
+          if (dbUrl && dbUrl.startsWith('http')) {
+            try {
+              // URL 유효성 확인
+              const response = await fetch(dbUrl, { method: 'HEAD' });
+              if (response.ok) {
+                console.log('데이터베이스 URL 유효성 확인 성공');
+                
+                // 포트폴리오 리포트 데이터 설정
+                setPortfolioReport({
+                  id: reportData[0].id,
+                  portfolio_type: reportData[0].portfolio_type,
+                  year_month: year_month,
+                  report_url: dbUrl,
+                  report_date: reportData[0].report_date || new Date().toISOString()
+                });
+                
+                return;
+              } else {
+                console.log(`데이터베이스 URL 유효성 검사 실패: ${response.status} ${response.statusText}`);
+                // URL이 유효하지 않으면 스토리지에서 새 URL 생성 시도
+              }
+            } catch (fetchError) {
+              console.error('URL 유효성 확인 중 오류:', fetchError);
+              // 오류 발생 시 스토리지에서 새 URL 생성 시도
             }
           }
           
-          return;
+          // DB URL이 유효하지 않거나 오류가 발생한 경우 스토리지에서 새 URL 생성 시도
+          console.log('DB URL이 유효하지 않습니다. 스토리지에서 새 URL 생성 시도...');
         }
       } catch (dbError) {
         console.error('DB 조회 중 오류 발생:', dbError);
       }
       
-      // 2. DB에서 찾지 못한 경우 스토리지에서 직접 URL 생성
-      console.log('DB에서 데이터를 찾지 못해 스토리지에서 직접 URL 생성 시도...');
+      // 2. 스토리지에서 여러 파일명 패턴을 시도
+      console.log('스토리지에서 여러 파일명 패턴 시도...');
       
-      // 포트폴리오 타입에 따라 파일 경로 결정
-      let filePath = getFilePathByPortfolioType(portfolioType);
+      // 기본 경로 (단일 경로 구조만 사용)
+      const basePath = `${formattedYear}/${formattedMonth}`;
       
-      // 스토리지에서 URL 생성
-      const storageUrl = await getStorageUrl('portfolio-reports', filePath);
+      console.log('기본 경로:', basePath);
+      console.log('연도:', formattedYear, '월:', formattedMonth);
       
-      if (storageUrl) {
-        console.log('스토리지에서 URL 생성 성공:', storageUrl);
+      // 포트폴리오 타입에 따른 파일명 패턴 결정
+      let fileNamePatterns = [];
+      const type = portfolioType.toLowerCase();
+      
+      console.log('포트폴리오 타입 (소문자):', type);
+      console.log('포트폴리오 타입 조건 확인:',
+        '국내 포함:', type.includes('국내'),
+        '적립식 포함:', type.includes('적립식'),
+        'ETF 포함:', type.includes('etf'),
+        '연금 포함:', type.includes('연금')
+      );
+      
+      // 영문 파일명 패턴 (새로운 명명 규칙)
+      // 더 구체적인 조건을 먼저 확인
+      if (type.includes('국내') && type.includes('적립식') && type.includes('etf')) {
+        console.log('국내 적립식 ETF 패턴 추가');
+        fileNamePatterns.push(`domestic_savings_etf_${formattedMonth}.jpg`);
+      } else if (type.includes('국내') && type.includes('etf')) {
+        console.log('국내 ETF 패턴 추가');
+        fileNamePatterns.push(`domestic_etf_${formattedMonth}.jpg`);
+      } else if (type.includes('연금') && type.includes('적립식')) {
+        console.log('연금 적립식 패턴 추가');
+        fileNamePatterns.push(`pension_savings_${formattedMonth}.jpg`);
+      } else if (type.includes('연금') || type.includes('irp')) {
+        console.log('연금/IRP 패턴 추가');
+        fileNamePatterns.push(`pension_${formattedMonth}.jpg`);
+      } else if (type.includes('적립식')) {
+        console.log('적립식 패턴 추가');
+        fileNamePatterns.push(`savings_${formattedMonth}.jpg`);
+      } else if (type.includes('isa')) {
+        console.log('ISA 패턴 추가');
+        fileNamePatterns.push(`isa_${formattedMonth}.jpg`);
+      } else if (type.includes('bdc') || type.includes('배당')) {
+        console.log('BDC/배당 패턴 추가');
+        fileNamePatterns.push(`dividend_${formattedMonth}.jpg`);
+      } else if (type.includes('채권')) {
+        console.log('채권 패턴 추가');
+        fileNamePatterns.push(`bond_${formattedMonth}.jpg`);
+      } else if (type.includes('글로벌') || type.includes('해외')) {
+        console.log('글로벌/해외 패턴 추가');
+        fileNamePatterns.push(`global_${formattedMonth}.jpg`);
+      } else {
+        console.log('기본 패턴 추가');
+        fileNamePatterns.push(`portfolio_${portfolioType.replace(/\s+/g, '_').replace(/[^\w.-]/g, '')}_${formattedMonth}.jpg`);
+      }
+      
+      // 기존 파일명 패턴도 추가 (이전 파일과의 호환성)
+      if (type.includes('국내') && type.includes('적립식') && type.includes('etf')) {
+        console.log('국내 적립식 ETF 기존 패턴 추가');
+        fileNamePatterns.push(`국내적립식EMP_${formattedMonth}.JPG`);
+        fileNamePatterns.push(`국내적립식ETF_${formattedMonth}.JPG`);
+      } else if (type.includes('국내') && type.includes('etf')) {
+        console.log('국내 ETF 기존 패턴 추가');
+        fileNamePatterns.push(`__EMP_${formattedMonth}.JPG`);
+        fileNamePatterns.push(`국내_EMP_${formattedMonth}.JPG`);
+        fileNamePatterns.push(`국내ETF_${formattedMonth}.JPG`);
+      } else if (type.includes('연금') && type.includes('적립식')) {
+        console.log('연금 적립식 기존 패턴 추가');
+        fileNamePatterns.push(`연금적립식_${formattedMonth}.JPG`);
+      } else if (type.includes('연금') || type.includes('irp')) {
+        console.log('연금/IRP 기존 패턴 추가');
+        fileNamePatterns.push(`_IRP_1_EMP_${formattedMonth}.JPG`);
+        fileNamePatterns.push(`IRP_EMP_${formattedMonth}.JPG`);
+        fileNamePatterns.push(`연금_${formattedMonth}.JPG`);
+      } else if (type.includes('적립식')) {
+        console.log('적립식 기존 패턴 추가');
+        fileNamePatterns.push(`적립식_${formattedMonth}.JPG`);
+      } else if (type.includes('isa')) {
+        console.log('ISA 기존 패턴 추가');
+        fileNamePatterns.push(`ISA_EMP_${formattedMonth}.JPG`);
+        fileNamePatterns.push(`ISA_${formattedMonth}.JPG`);
+      } else if (type.includes('bdc') || type.includes('배당')) {
+        console.log('BDC/배당 기존 패턴 추가');
+        fileNamePatterns.push(`_BDC__${formattedMonth}.JPG`);
+        fileNamePatterns.push(`BDC_${formattedMonth}.JPG`);
+        fileNamePatterns.push(`배당형_${formattedMonth}.JPG`);
+      } else if (type.includes('채권')) {
+        console.log('채권 기존 패턴 추가');
+        fileNamePatterns.push(`국내채권_${formattedMonth}.JPG`);
+        fileNamePatterns.push(`채권_${formattedMonth}.JPG`);
+      } else if (type.includes('글로벌') || type.includes('해외')) {
+        console.log('글로벌/해외 기존 패턴 추가');
+        fileNamePatterns.push(`글로벌_${formattedMonth}.JPG`);
+        fileNamePatterns.push(`해외_${formattedMonth}.JPG`);
+        fileNamePatterns.push(`글로벌ETF_${formattedMonth}.JPG`);
+      } else {
+        console.log('기본 기존 패턴 추가');
+        fileNamePatterns.push(`__EMP_${formattedMonth}.JPG`);
+        fileNamePatterns.push(`기본_${formattedMonth}.JPG`);
+        fileNamePatterns.push(`리포트_${formattedMonth}.JPG`);
+      }
+      
+      // 소문자 확장자 버전도 추가
+      const lowerCasePatterns = fileNamePatterns
+        .filter(pattern => pattern.endsWith('.JPG'))
+        .map(pattern => pattern.replace('.JPG', '.jpg'));
+      fileNamePatterns = [...fileNamePatterns, ...lowerCasePatterns];
+      
+      // 월 숫자만 사용하는 버전도 추가
+      const monthNumber = parseInt(month, 10);
+      const monthNumberPatterns = fileNamePatterns.map(pattern => 
+        pattern.replace(`_${formattedMonth}.`, `_${monthNumber}.`)
+              .replace(`_${formattedMonth}`, `_${monthNumber}`)
+      );
+      fileNamePatterns = [...fileNamePatterns, ...monthNumberPatterns];
+      
+      console.log('시도할 파일명 패턴 (총 ' + fileNamePatterns.length + '개):', fileNamePatterns);
+      
+      // 각 패턴을 순차적으로 시도
+      for (const pattern of fileNamePatterns) {
+        const filePath = `${basePath}/${pattern}`;
+        console.log(`파일 경로 시도: ${filePath}`);
         
-        // 포트폴리오 리포트 데이터 설정
-        setPortfolioReport({
-          id: 'storage',
-          portfolio_type: portfolioType,
-          year_month: year_month,
-          report_url: storageUrl,
-          report_date: new Date().toISOString()
-        });
+        const storageUrl = await getStorageUrl('portfolio-reports', filePath);
         
-        return;
+        // 유효한 URL을 찾으면 사용
+        if (storageUrl && !storageUrl.includes('리포트 이미지를 찾을 수 없습니다')) {
+          console.log('유효한 URL 찾음:', storageUrl);
+          
+          // 포트폴리오 리포트 데이터 설정
+          setPortfolioReport({
+            id: 'storage',
+            portfolio_type: portfolioType,
+            year_month: year_month,
+            report_url: storageUrl,
+            report_date: new Date().toISOString()
+          });
+          
+          // 성공적으로 URL을 찾았으므로 함수 종료
+          console.log('포트폴리오 리포트 설정 완료:', portfolioType);
+          return;
+        }
       }
       
       // 3. 모든 시도 실패 시 플레이스홀더 이미지 사용
@@ -355,35 +479,22 @@ export default function MonthlyReportDetail({ params }: PageProps) {
         report_url: placeholderUrl,
         report_date: new Date().toISOString()
       });
+      
+      console.log('플레이스홀더 이미지로 포트폴리오 리포트 설정 완료:', portfolioType);
     } catch (error) {
       console.error('포트폴리오 리포트 가져오기 오류:', error);
-    }
-  };
-  
-  // 포트폴리오 타입에 따라 파일 경로 결정하는 함수 (중복 코드 제거)
-  const getFilePathByPortfolioType = (portfolioType: string): string => {
-    console.log('포트폴리오 타입에 따른 파일 경로 결정:', portfolioType);
-    
-    // 대소문자 구분 없이 비교하기 위해 소문자로 변환
-    const type = portfolioType.toLowerCase();
-    
-    // 더 정확한 매칭을 위해 정규식 패턴 사용
-    if (type.includes('국내') && type.includes('etf')) {
-      console.log('국내 ETF 포트폴리오 이미지 선택');
-      return 'portfolio-reports/2025/03/__EMP_3.JPG';
-    } else if (type.includes('연금') || type.includes('적립식') || type.includes('irp')) {
-      console.log('연금/IRP 포트폴리오 이미지 선택');
-      return 'portfolio-reports/2025/03/_IRP_1_EMP_3.JPG';
-    } else if (type.includes('isa')) {
-      console.log('ISA 포트폴리오 이미지 선택');
-      return 'portfolio-reports/2025/03/ISA_EMP_3.JPG';
-    } else if (type.includes('bdc')) {
-      console.log('BDC 포트폴리오 이미지 선택');
-      return 'portfolio-reports/2025/03/_BDC__3.JPG';
-    } else {
-      // 기본값으로 국내 ETF 이미지 사용
-      console.log('기본 포트폴리오 이미지 선택 (매칭되는 타입 없음)');
-      return 'portfolio-reports/2025/03/__EMP_3.JPG';
+      
+      // 오류 발생 시 플레이스홀더 이미지 사용
+      const placeholderUrl = `https://placehold.co/800x600/png?text=${encodeURIComponent('오류 발생')}`;
+      
+      // 포트폴리오 리포트 데이터 설정
+      setPortfolioReport({
+        id: 'error',
+        portfolio_type: portfolioTypeWithTimestamp.split('?')[0], // 타임스탬프 제거
+        year_month: `${year}-${String(month).padStart(2, '0')}`,
+        report_url: placeholderUrl,
+        report_date: new Date().toISOString()
+      });
     }
   };
 
@@ -479,7 +590,7 @@ export default function MonthlyReportDetail({ params }: PageProps) {
     try {
       console.log(`스토리지 URL 생성 시도: 버킷=${bucket}, 경로=${path}`);
       
-      // 1. 공개 URL 시도 (버킷이 퍼블릭으로 설정되었으므로 이제 작동해야 함)
+      // 1. 공개 URL 시도
       try {
         const { data: publicData } = await supabase
           .storage
@@ -487,48 +598,45 @@ export default function MonthlyReportDetail({ params }: PageProps) {
           .getPublicUrl(path);
           
         if (publicData?.publicUrl) {
-          console.log('공개 URL 생성 성공:', publicData.publicUrl);
+          // 캐시 방지를 위한 타임스탬프 추가
+          const cacheBreaker = `?t=${Date.now()}`;
+          const publicUrl = publicData.publicUrl + cacheBreaker;
           
-          // URL이 유효한지 확인
-          try {
-            const response = await fetch(publicData.publicUrl, { method: 'HEAD' });
-            if (response.ok) {
-              console.log('공개 URL 유효성 확인 성공');
-              return publicData.publicUrl;
-            } else {
-              console.log(`공개 URL 유효성 검사 실패: ${response.status} ${response.statusText}`);
-            }
-          } catch (fetchError) {
-            console.error('URL 유효성 검사 중 오류:', fetchError);
-          }
+          console.log('공개 URL 생성 성공 (캐시 방지 파라미터 추가):', publicUrl);
+          return publicUrl;
         }
       } catch (publicUrlError) {
         console.error('공개 URL 생성 중 오류:', publicUrlError);
       }
       
-      // 2. 서명된 URL 시도 (백업)
+      // 2. 서명된 URL 시도
       try {
-        const { data, error } = await supabase
+        const { data: signedData, error: signedError } = await supabase
           .storage
           .from(bucket)
-          .createSignedUrl(path, 31536000); // 1년(365일) 유효한 서명된 URL 생성
+          .createSignedUrl(path, 60 * 60); // 1시간 유효
           
-        if (error) {
-          console.error('서명된 URL 생성 오류:', error);
-        } else if (data?.signedUrl) {
-          console.log('서명된 URL 생성 성공:', data.signedUrl);
-          return data.signedUrl;
+        if (signedError) {
+          console.error('서명된 URL 생성 오류:', signedError);
+        } else if (signedData?.signedUrl) {
+          // 캐시 방지를 위한 타임스탬프 추가 (이미 쿼리 파라미터가 있을 수 있으므로 &로 연결)
+          const cacheBreaker = `&t=${Date.now()}`;
+          const signedUrl = signedData.signedUrl + cacheBreaker;
+          
+          console.log('서명된 URL 생성 성공 (캐시 방지 파라미터 추가):', signedUrl);
+          return signedUrl;
         }
       } catch (signedUrlError) {
         console.error('서명된 URL 생성 중 오류:', signedUrlError);
       }
       
-      // 3. 모든 시도 실패 시 플레이스홀더 이미지 URL 반환
-      console.log('URL 생성 실패. 플레이스홀더 이미지 URL 반환');
-      return `https://placehold.co/800x600/png?text=${encodeURIComponent(bucket)}+${encodeURIComponent(path)}`;
+      // 모든 시도 실패 시 기본 이미지 URL 반환
+      console.log('모든 URL 생성 시도 실패. 기본 이미지 URL 반환');
+      return `https://placehold.co/800x600/png?text=${encodeURIComponent('리포트 이미지를 찾을 수 없습니다')}`;
     } catch (error) {
-      console.error('스토리지 URL 생성 오류:', error);
-      return null;
+      console.error('스토리지 URL 생성 중 오류:', error);
+      // 오류 발생 시 기본 이미지 URL 반환
+      return `https://placehold.co/800x600/png?text=${encodeURIComponent('리포트 이미지를 찾을 수 없습니다')}`;
     }
   };
 
@@ -618,7 +726,7 @@ export default function MonthlyReportDetail({ params }: PageProps) {
       setSelectedAccount(firstAccount);
       
       fetchBalanceData(firstAccount.id);
-      fetchPortfolioReportByType(firstAccount.portfolio_type);
+      fetchPortfolioReportByType(firstAccount.portfolio_type + `?t=${Date.now()}`);
     }
   }, [accounts]);
   
@@ -626,7 +734,7 @@ export default function MonthlyReportDetail({ params }: PageProps) {
   useEffect(() => {
     if (selectedAccount) {
       console.log('선택된 계좌 변경 감지:', selectedAccount.portfolio_type);
-      fetchPortfolioReportByType(selectedAccount.portfolio_type);
+      fetchPortfolioReportByType(selectedAccount.portfolio_type + `?t=${Date.now()}`);
     }
   }, [selectedAccount?.id]);
 
@@ -766,40 +874,82 @@ export default function MonthlyReportDetail({ params }: PageProps) {
               {/* 이미지 표시 - 여러 방식 시도 */}
               {/* 1. 일반 img 태그 - 캐시 방지를 위한 타임스탬프 추가 */}
               <img
-                src={`${portfolioReport.report_url}?t=${Date.now()}`}
+                src={`${portfolioReport.report_url}`}
                 alt={`${selectedAccount.portfolio_type} 포트폴리오 리포트`}
                 className="w-full h-full object-contain z-10 relative"
                 onLoad={(e) => {
                   // 이미지 로드 성공 시 z-index 조정
+                  console.log('이미지 로드 성공:', portfolioReport.report_url);
                   (e.target as HTMLElement).style.zIndex = '10';
                 }}
                 onError={(e) => {
                   // 이미지 로드 실패 시 숨김
+                  console.error('이미지 로드 실패:', portfolioReport.report_url);
                   (e.target as HTMLElement).style.display = 'none';
                   
-                  // iframe 시도
-                  const iframe = document.getElementById('report-iframe');
-                  if (iframe) {
-                    (iframe as HTMLElement).style.display = 'block';
+                  // 새로운 타임스탬프로 다시 시도
+                  const newTimestamp = Date.now();
+                  const imgElement = e.target as HTMLImageElement;
+                  const currentSrc = imgElement.src;
+                  
+                  // URL에 이미 타임스탬프가 있는지 확인
+                  if (currentSrc.includes('?t=')) {
+                    // 기존 타임스탬프 교체
+                    const newSrc = currentSrc.replace(/\?t=\d+/, `?t=${newTimestamp}`);
+                    console.log('새 타임스탬프로 이미지 다시 시도:', newSrc);
+                    imgElement.src = newSrc;
+                  } else {
+                    // 타임스탬프 추가
+                    const newSrc = `${currentSrc}${currentSrc.includes('?') ? '&' : '?'}t=${newTimestamp}`;
+                    console.log('타임스탬프 추가하여 이미지 다시 시도:', newSrc);
+                    imgElement.src = newSrc;
                   }
+                  
+                  // 두 번째 시도 후에도 실패하면 iframe 시도
+                  imgElement.onerror = () => {
+                    console.error('이미지 두 번째 로드 시도 실패');
+                    imgElement.style.display = 'none';
+                    
+                    // iframe 시도
+                    const iframe = document.getElementById('report-iframe');
+                    if (iframe) {
+                      console.log('iframe으로 대체 시도');
+                      (iframe as HTMLElement).style.display = 'block';
+                    }
+                  };
                 }}
+                loading="eager"
+                fetchPriority="high"
+                crossOrigin="anonymous"
               />
               
               {/* 2. iframe 방식 (img 태그 실패 시) */}
               <iframe
                 id="report-iframe"
-                src={portfolioReport.report_url}
+                src={`${portfolioReport.report_url}`}
                 title={`${selectedAccount.portfolio_type} 포트폴리오 리포트`}
                 className="w-full h-full z-1 relative"
                 style={{ border: 'none', display: 'none' }}
                 onLoad={() => console.log('iframe 로드 성공')}
-                onError={() => {
+                onError={(e) => {
                   console.error('iframe 로드 오류');
                   
-                  // iframe도 실패하면 background-image 방식 시도
-                  const bgDiv = document.getElementById('report-bg-div');
-                  if (bgDiv) {
-                    (bgDiv as HTMLElement).style.display = 'block';
+                  // 새로운 타임스탬프로 다시 시도
+                  const newTimestamp = Date.now();
+                  const iframeElement = e.target as HTMLIFrameElement;
+                  const currentSrc = iframeElement.src;
+                  
+                  // URL에 이미 타임스탬프가 있는지 확인
+                  if (currentSrc.includes('?t=')) {
+                    // 기존 타임스탬프 교체
+                    const newSrc = currentSrc.replace(/\?t=\d+/, `?t=${newTimestamp}`);
+                    console.log('새 타임스탬프로 iframe 다시 시도:', newSrc);
+                    iframeElement.src = newSrc;
+                  } else {
+                    // 타임스탬프 추가
+                    const newSrc = `${currentSrc}${currentSrc.includes('?') ? '&' : '?'}t=${newTimestamp}`;
+                    console.log('타임스탬프 추가하여 iframe 다시 시도:', newSrc);
+                    iframeElement.src = newSrc;
                   }
                 }}
               />

@@ -240,38 +240,7 @@ export default function MonthlyReportAdmin() {
       
       // 각 테이블의 구조 확인
       try {
-        const { data: monthlyCommentsColumns, error: monthlyCommentsError } = await supabase
-          .from('monthly_comments')
-          .select('*')
-          .limit(1);
-          
-        console.log('monthly_comments 테이블 구조:', monthlyCommentsColumns);
-        
-        const { data: portfolioReportsColumns, error: portfolioReportsError } = await supabase
-          .from('portfolio_reports')
-          .select('*')
-          .limit(1);
-          
-        console.log('portfolio_reports 테이블 구조:', portfolioReportsColumns);
-        
-        const { data: monthlyReportsColumns, error: monthlyReportsError } = await supabase
-          .from('monthly_reports')
-          .select('*')
-          .limit(1);
-          
-        console.log('monthly_reports 테이블 구조:', monthlyReportsColumns);
-        
-        // 테이블 목록 가져오기
-        const { data: tables, error: tablesError } = await supabase
-          .from('information_schema.tables')
-          .select('table_name')
-          .eq('table_schema', 'public');
-          
-        if (tablesError) {
-          console.error('테이블 목록 가져오기 오류:', tablesError);
-        } else {
-          console.log('사용 가능한 테이블:', tables);
-        }
+        console.log('데이터 저장을 시작합니다.');
       } catch (error) {
         console.error('테이블 구조 확인 중 오류:', error);
       }
@@ -282,32 +251,39 @@ export default function MonthlyReportAdmin() {
       // 1. 월간 코멘트 저장
       if (monthlyComment) {
         try {
-          // Supabase 테이블 구조 확인
           console.log('월간 코멘트 저장 시도:', {
             year_month: selectedMonth,
             content: monthlyComment.replace(/\n/g, '<br>'),  // 줄 바꿈을 <br> 태그로 변환
             comment_date: new Date().toISOString()
           });
           
-          const { data: commentData, error: commentError } = await supabase
-            .from('monthly_comments')
-            .upsert({
-              year_month: selectedMonth,  // 'year'와 'month' 대신 'year_month' 사용
-              content: monthlyComment.replace(/\n/g, '<br>'),  // 줄 바꿈을 <br> 태그로 변환
+          // API를 통해 월간 코멘트 저장
+          const response = await fetch('/api/admin/monthly-comment/save', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              year_month: selectedMonth,
+              content: monthlyComment.replace(/\n/g, '<br>'),
               comment_date: new Date().toISOString()
             })
-            .select();
-            
-          if (commentError) {
-            console.error('월간 코멘트 저장 오류 상세:', commentError);
-            throw new Error(`월간 코멘트 저장 오류: ${commentError.message}`);
+          });
+          
+          const result = await response.json();
+          
+          if (!response.ok) {
+            console.error('월간 코멘트 저장 응답:', result);
+            throw new Error(`월간 코멘트 저장 오류: ${result.error || '알 수 없는 오류'}`);
           }
           
-          console.log('월간 코멘트 저장 성공:', commentData);
+          console.log('월간 코멘트 저장 성공:', result);
         } catch (commentError: any) {
           console.error('월간 코멘트 저장 중 오류:', commentError);
           setError(`월간 코멘트 저장 중 오류: ${commentError.message}`);
-          // 월간 코멘트 저장 실패해도 계속 진행
+          // 오류 발생 시 성공 메시지를 표시하지 않고 함수 종료
+          setLoading(false);
+          return;
         }
       } else {
         console.log('월간 코멘트가 입력되지 않았습니다. 기존 코멘트를 유지합니다.');
@@ -352,78 +328,131 @@ export default function MonthlyReportAdmin() {
         } catch (uploadError: any) {
           console.error('고객 데이터 업로드 중 오류:', uploadError);
           setError(`고객 데이터 업로드 중 오류: ${uploadError.message}`);
-          // 고객 데이터 업로드 실패해도 계속 진행
+          // 오류 발생 시 성공 메시지를 표시하지 않고 함수 종료
+          setLoading(false);
+          return;
         }
       }
       
       // 3. 포트폴리오 파일 업로드
       if (portfolioFiles.length > 0) {
+        console.log('포트폴리오 파일 업로드 시작...');
+        
         for (const file of portfolioFiles) {
           try {
-            // 파일 이름에서 공백과 특수 문자 제거
-            const safeFileName = file.name.replace(/\s+/g, '_').replace(/[^\w.-]/g, '');
-            
-            // 파일 경로 생성
-            const filePath = `portfolio-reports/${year}/${month}/${safeFileName}`;
-            
-            console.log('파일 업로드 경로:', filePath);
-            
-            // Storage에 파일 업로드
-            const { data: uploadData, error: uploadError } = await supabase.storage
-              .from('portfolio-reports')
-              .upload(filePath, file, {
-                upsert: true // 같은 이름의 파일이 있으면 덮어쓰기
-              });
-              
-            if (uploadError) {
-              console.error('파일 업로드 오류 상세:', uploadError);
-              throw new Error(`포트폴리오 파일 업로드 오류: ${uploadError.message}`);
+            // 파일 유형 검증
+            const validImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+            if (!validImageTypes.includes(file.type)) {
+              console.error('지원되지 않는 파일 형식:', file.type);
+              setError(`파일 '${file.name}'은 지원되지 않는 형식입니다. JPG, PNG, GIF 형식만 지원합니다.`);
+              setLoading(false);
+              return;
             }
             
-            console.log('파일 업로드 성공:', uploadData);
-            
-            // 공개 URL 생성 (버킷이 퍼블릭으로 설정되었으므로 이제 작동해야 함)
-            const { data: urlData } = supabase.storage
-              .from('portfolio-reports')
-              .getPublicUrl(filePath);
-              
-            if (!urlData || !urlData.publicUrl) {
-              throw new Error('파일 URL을 가져올 수 없습니다.');
+            // 파일 크기 검증 (10MB 제한)
+            if (file.size > 10 * 1024 * 1024) {
+              console.error('파일 크기가 너무 큽니다:', file.size);
+              setError(`파일 '${file.name}'의 크기가 너무 큽니다. 최대 10MB까지 업로드 가능합니다.`);
+              setLoading(false);
+              return;
             }
             
-            console.log('공개 파일 URL:', urlData.publicUrl);
-            
-            // 매핑된 포트폴리오 타입 사용
+            // 포트폴리오 타입 결정 (파일명 기반)
             const portfolioType = portfolioTypeMappings[file.name] || (portfolioTypes.length > 0 ? portfolioTypes[0] : file.name.replace(/\.[^/.]+$/, ''));
-              
-            // 포트폴리오 리포트 정보 저장
-            console.log('포트폴리오 리포트 저장 시도:', {
-              year_month: selectedMonth,
-              portfolio_type: portfolioType,
-              report_url: urlData.publicUrl,
-              report_date: new Date().toISOString()
+            
+            // 파일 확장자 추출 및 소문자 변환
+            const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+            const portfolioTypeLower = portfolioType.toLowerCase();
+            
+            // 파일명에서 특수 문자 및 공백 제거하는 함수
+            const sanitizeFileName = (name: string) => {
+              // 공백을 언더스코어로 변경하고 특수 문자 제거
+              return name.replace(/\s+/g, '_').replace(/[^\w.-]/g, '');
+            };
+            
+            // 영문 파일명 생성
+            let englishFileName = '';
+            
+            // 더 구체적인 타입을 먼저 확인 (순서 중요)
+            if (portfolioTypeLower.includes('국내') && portfolioTypeLower.includes('적립식') && portfolioTypeLower.includes('etf')) {
+              englishFileName = `domestic_savings_etf_${month}.${fileExt}`;
+            } else if (portfolioTypeLower.includes('국내') && portfolioTypeLower.includes('etf')) {
+              englishFileName = `domestic_etf_${month}.${fileExt}`;
+            } else if (portfolioTypeLower.includes('연금') && portfolioTypeLower.includes('적립식')) {
+              englishFileName = `pension_savings_${month}.${fileExt}`;
+            } else if (portfolioTypeLower.includes('연금') || portfolioTypeLower.includes('irp')) {
+              englishFileName = `pension_${month}.${fileExt}`;
+            } else if (portfolioTypeLower.includes('적립식')) {
+              englishFileName = `savings_${month}.${fileExt}`;
+            } else if (portfolioTypeLower.includes('isa')) {
+              englishFileName = `isa_${month}.${fileExt}`;
+            } else if (portfolioTypeLower.includes('bdc') || portfolioTypeLower.includes('배당')) {
+              englishFileName = `dividend_${month}.${fileExt}`;
+            } else if (portfolioTypeLower.includes('채권')) {
+              englishFileName = `bond_${month}.${fileExt}`;
+            } else if (portfolioTypeLower.includes('글로벌') || portfolioTypeLower.includes('해외')) {
+              englishFileName = `global_${month}.${fileExt}`;
+            } else {
+              // 기본값: 포트폴리오 타입을 영문화하여 사용
+              englishFileName = `portfolio_${sanitizeFileName(portfolioType)}_${month}.${fileExt}`;
+            }
+            
+            // 최종 파일명 정리 (안전한 파일명으로 변환)
+            englishFileName = sanitizeFileName(englishFileName);
+            
+            console.log('포트폴리오 파일 업로드 시도:', {
+              file: file.name,
+              englishFileName,
+              portfolioType,
+              year_month: selectedMonth
             });
             
-            const { data: reportData, error: reportError } = await supabase
-              .from('portfolio_reports')
-              .insert({
-                year_month: selectedMonth,
-                portfolio_type: portfolioType,
-                report_url: urlData.publicUrl,
-                report_date: new Date().toISOString()
-              })
-              .select();
+            // FormData 생성
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('fileName', englishFileName); // 영문 파일명 사용
+            formData.append('portfolioType', portfolioType);
+            formData.append('year_month', selectedMonth);
+            formData.append('year', year);
+            formData.append('month', month);
+            
+            // API를 통해 포트폴리오 파일 업로드
+            const response = await fetch('/api/admin/portfolio-file/upload', {
+              method: 'POST',
+              body: formData
+            });
+            
+            const result = await response.json();
+            
+            if (!response.ok) {
+              console.error('포트폴리오 파일 업로드 응답:', result);
               
-            if (reportError) {
-              console.error('포트폴리오 리포트 정보 저장 오류 상세:', reportError);
-              throw new Error(`포트폴리오 리포트 정보 저장 오류: ${reportError.message}`);
+              // 오류 메시지 상세화
+              let errorMessage = `파일 '${file.name}' 처리 중 오류`;
+              
+              if (result.error) {
+                errorMessage += `: ${result.error}`;
+              } else if (result.message) {
+                errorMessage += `: ${result.message}`;
+              } else {
+                errorMessage += ': 알 수 없는 오류';
+              }
+              
+              // 원본 오류 정보가 있으면 콘솔에 로깅
+              if (result.originalError) {
+                console.error('원본 오류 정보:', result.originalError);
+              }
+              
+              throw new Error(errorMessage);
             }
             
-            console.log('포트폴리오 리포트 저장 성공:', reportData);
+            console.log('포트폴리오 파일 업로드 성공:', result);
           } catch (fileError: any) {
             console.error('파일 처리 중 오류:', fileError);
             setError(`파일 '${file.name}' 처리 중 오류: ${fileError.message}`);
-            // 하나의 파일에서 오류가 발생해도 다른 파일은 계속 처리
+            // 오류 발생 시 성공 메시지를 표시하지 않고 함수 종료
+            setLoading(false);
+            return;
           }
         }
       }
@@ -436,28 +465,36 @@ export default function MonthlyReportAdmin() {
           description: '월간 투자 현황 및 포트폴리오 리포트입니다.'
         });
         
-        const { data: reportData, error: monthlyReportError } = await supabase
-          .from('monthly_reports')
-          .upsert({
+        // API를 통해 월간 리포트 정보 저장
+        const response = await fetch('/api/admin/monthly-report/save', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
             year_month: selectedMonth,
             title: `${year}년 ${month}월 투자 리포트`,
             description: '월간 투자 현황 및 포트폴리오 리포트입니다.'
           })
-          .select();
-          
-        if (monthlyReportError) {
-          console.error('월간 리포트 정보 저장 오류 상세:', monthlyReportError);
-          throw new Error(`월간 리포트 정보 저장 오류: ${monthlyReportError.message}`);
+        });
+        
+        const result = await response.json();
+        
+        if (!response.ok) {
+          console.error('월간 리포트 정보 저장 응답:', result);
+          throw new Error(`월간 리포트 정보 저장 오류: ${result.error || '알 수 없는 오류'}`);
         }
         
-        console.log('월간 리포트 정보 저장 성공:', reportData);
+        console.log('월간 리포트 정보 저장 성공:', result);
       } catch (reportError: any) {
         console.error('월간 리포트 저장 중 오류:', reportError);
         setError(`월간 리포트 저장 중 오류: ${reportError.message}`);
-        // 월간 리포트 저장 실패해도 성공 메시지는 표시
+        // 오류 발생 시 성공 메시지를 표시하지 않고 함수 종료
+        setLoading(false);
+        return;
       }
       
-      // 성공 메시지 설정
+      // 성공 메시지 설정 - 모든 작업이 성공적으로 완료된 경우에만 표시
       setSuccess('데이터가 성공적으로 저장되었습니다.');
       
       // 폼 초기화

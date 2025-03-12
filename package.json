@@ -23,9 +23,12 @@
     "next": "15.2.1",
     "pg": "^8.13.3",
     "postgres": "^3.4.5",
+    "quill": "^2.0.3",
     "react": "^19.0.0",
     "react-datepicker": "^8.1.0",
     "react-dom": "^19.0.0",
+    "react-hot-toast": "^2.5.2",
+    "react-quill": "^2.0.0",
     "recharts": "^2.15.1",
     "tailwind-merge": "^3.0.2",
     "xlsx": "^0.18.5"

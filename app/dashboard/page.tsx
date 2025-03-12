@@ -195,16 +195,16 @@ export default function Dashboard() {
           )}
         </div>
         
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-          <h2 className="text-xl font-semibold mb-4 text-gray-900">월간 리포트</h2>
-          <p className="text-gray-600 mb-4">월간 투자 현황 및 포트폴리오 리포트를 확인하세요.</p>
-          <Link
-            href="/dashboard/monthly-report"
-            className="inline-block px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-          >
-            월간 리포트 보기
-          </Link>
-        </div>
+        <Link href="/dashboard/monthly-report" className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow">
+          <div className="flex items-center mb-4">
+            <div className="bg-blue-100 p-3 rounded-full mr-4">
+              <FileText className="h-6 w-6 text-blue-600" />
+            </div>
+            <h2 className="text-xl font-bold text-gray-900">월간 리포트</h2>
+          </div>
+          <p className="text-gray-600 mb-4">월별 투자 성과와 포트폴리오 분석 리포트를 확인하세요.</p>
+          <div className="text-blue-600 font-medium">리포트 보기 &rarr;</div>
+        </Link>
         
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
           <h2 className="text-xl font-semibold mb-4 text-gray-900">내 정보</h2>
@@ -239,28 +239,37 @@ export default function Dashboard() {
           <p className="text-gray-600">전화: 02-1234-5678</p>
         </Link>
         
-        <Link href="#" className="block p-6 bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow border border-gray-100">
+        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow">
           <div className="flex items-center mb-4">
-            <AlertTriangle className="w-8 h-8 text-yellow-500 mr-3" />
-            <h2 className="text-xl font-semibold text-gray-900">연체정보</h2>
+            <div className="bg-red-100 p-3 rounded-full mr-4">
+              <AlertTriangle className="h-6 w-6 text-red-600" />
+            </div>
+            <h2 className="text-xl font-bold text-gray-900">연체 정보</h2>
           </div>
-          <p className="text-gray-600">연체 내역 및 상환 일정을 확인하세요.</p>
-        </Link>
+          <p className="text-gray-600 mb-4">현재 연체 상태 및 납부 예정 금액을 확인하세요.</p>
+          <div className="text-blue-600 font-medium">정보 보기 &rarr;</div>
+        </div>
         
-        <Link href="#" className="block p-6 bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow border border-gray-100">
+        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow">
           <div className="flex items-center mb-4">
-            <RefreshCw className="w-8 h-8 text-green-500 mr-3" />
-            <h2 className="text-xl font-semibold text-gray-900">리밸런싱 히스토리</h2>
+            <div className="bg-green-100 p-3 rounded-full mr-4">
+              <RefreshCw className="h-6 w-6 text-green-600" />
+            </div>
+            <h2 className="text-xl font-bold text-gray-900">리밸런싱 히스토리</h2>
           </div>
-          <p className="text-gray-600">포트폴리오 리밸런싱 내역을 확인하세요.</p>
-        </Link>
+          <p className="text-gray-600 mb-4">포트폴리오 리밸런싱 내역과 변경 사항을 확인하세요.</p>
+          <div className="text-blue-600 font-medium">히스토리 보기 &rarr;</div>
+        </div>
         
-        <Link href="#" className="block p-6 bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow border border-gray-100">
+        <Link href="/dashboard/consultation" className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow">
           <div className="flex items-center mb-4">
-            <MessageSquare className="w-8 h-8 text-purple-500 mr-3" />
-            <h2 className="text-xl font-semibold text-gray-900">관리자 상담</h2>
+            <div className="bg-purple-100 p-3 rounded-full mr-4">
+              <MessageSquare className="h-6 w-6 text-purple-600" />
+            </div>
+            <h2 className="text-xl font-bold text-gray-900">관리자 상담 내역</h2>
           </div>
-          <p className="text-gray-600">관리자와의 상담 내역을 확인하세요.</p>
+          <p className="text-gray-600 mb-4">관리자와의 상담 내역 및 문의 답변을 확인하세요.</p>
+          <div className="text-purple-600 font-medium">상담 내역 보기 &rarr;</div>
         </Link>
       </div>
       

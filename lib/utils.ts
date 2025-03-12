@@ -41,15 +41,25 @@ export function extractDateFromFilename(filename: string): Date | null {
 }
 
 /**
- * 날짜를 YYYY-MM-DD 형식의 문자열로 변환하는 함수
- * @param date 날짜 객체
- * @returns YYYY-MM-DD 형식의 문자열
+ * 날짜 문자열을 포맷팅하는 함수
+ * @param dateString ISO 형식의 날짜 문자열 또는 Date 객체
+ * @returns 포맷팅된 날짜 문자열 (예: 2024년 3월 15일)
  */
-export function formatDate(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+export function formatDate(dateString: string | Date): string {
+  if (!dateString) return '날짜 정보 없음';
+  
+  try {
+    const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
+    
+    return date.toLocaleDateString('ko-KR', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  } catch (error) {
+    console.error('날짜 포맷 오류:', error);
+    return '날짜 형식 오류';
+  }
 }
 
 /**

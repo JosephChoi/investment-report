@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { FileText, AlertTriangle, RefreshCw, MessageSquare, Bell, LogOut, User, ChevronRight } from 'lucide-react';
+import { FileText, AlertTriangle, RefreshCw, MessageSquare, Bell, LogOut, User, ChevronRight, Info } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { formatDate } from '@/lib/utils';
@@ -15,12 +15,23 @@ import {
   CardFooter 
 } from '@/components/ui/card';
 
+// 공지사항 타입 정의
+interface Announcement {
+  id: string;
+  title: string;
+  content: string;
+  importance_level: 1 | 2 | 3; // 1: 매우 중요, 2: 중요, 3: 보통
+  created_at: string;
+}
+
 export default function Dashboard() {
   const [user, setUser] = useState<any>(null);
   const [accounts, setAccounts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [balance, setBalance] = useState<any>(null);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [loadingAnnouncements, setLoadingAnnouncements] = useState(true);
   const router = useRouter();
 
   // 인증 상태 확인
@@ -41,6 +52,9 @@ export default function Dashboard() {
         
         // 사용자 계좌 정보 가져오기
         await fetchUserAccounts(user);
+        
+        // 공지사항 가져오기
+        await fetchAnnouncements();
       } catch (error) {
         console.error('인증 확인 오류:', error);
         setError('사용자 정보를 불러오는 중 오류가 발생했습니다.');
@@ -115,6 +129,55 @@ export default function Dashboard() {
     }
   };
 
+  // 공지사항 가져오기 함수
+  const fetchAnnouncements = async () => {
+    try {
+      setLoadingAnnouncements(true);
+      
+      // 실제 API 연동 전 임시 데이터
+      // 실제 구현 시에는 아래 주석 처리된 API 호출 코드를 사용
+      /*
+      const response = await fetch('/api/announcements/user');
+      const result = await response.json();
+      
+      if (result.success && result.data) {
+        setAnnouncements(result.data);
+      }
+      */
+      
+      // 임시 데이터
+      const dummyAnnouncements: Announcement[] = [
+        {
+          id: '1',
+          title: '시스템 점검 안내',
+          content: '2023년 4월 15일 오전 2시부터 6시까지 시스템 점검이 예정되어 있습니다. 해당 시간 동안 서비스 이용이 제한될 수 있습니다.',
+          importance_level: 1, // 매우 중요
+          created_at: '2023-04-10T09:00:00Z'
+        },
+        {
+          id: '2',
+          title: '3월 포트폴리오 리포트 업데이트',
+          content: '3월 포트폴리오 리포트가 업데이트되었습니다. 대시보드에서 확인하실 수 있습니다.',
+          importance_level: 2, // 중요
+          created_at: '2023-04-05T14:30:00Z'
+        },
+        {
+          id: '3',
+          title: '다음 리밸런싱 일정 안내',
+          content: '다음 리밸런싱 일정은 2023년 4월 15일입니다.',
+          importance_level: 3, // 보통
+          created_at: '2023-04-01T11:15:00Z'
+        }
+      ];
+      
+      setAnnouncements(dummyAnnouncements);
+    } catch (error) {
+      console.error('공지사항 가져오기 오류:', error);
+    } finally {
+      setLoadingAnnouncements(false);
+    }
+  };
+
   // 로그아웃 처리
   const handleLogout = async () => {
     try {
@@ -140,6 +203,53 @@ export default function Dashboard() {
     } catch (error) {
       console.error('날짜 포맷 오류:', error);
       return '날짜 형식 오류';
+    }
+  };
+  
+  // 공지사항 날짜 포맷 함수
+  const formatAnnouncementDate = (dateString: string) => {
+    if (!dateString) return '정보 없음';
+    
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('ko-KR', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+    } catch (error) {
+      console.error('날짜 포맷 오류:', error);
+      return '날짜 형식 오류';
+    }
+  };
+  
+  // 중요도에 따른 스타일 클래스 반환 함수
+  const getImportanceStyles = (level: number) => {
+    switch (level) {
+      case 1: // 매우 중요
+        return {
+          bg: 'bg-red-50',
+          border: 'border-red-200',
+          text: 'text-red-800',
+          hoverBg: 'hover:bg-red-100',
+          icon: <AlertTriangle className="h-5 w-5 text-red-600 mr-2" />
+        };
+      case 2: // 중요
+        return {
+          bg: 'bg-blue-50',
+          border: 'border-blue-200',
+          text: 'text-blue-800',
+          hoverBg: 'hover:bg-blue-100',
+          icon: <Info className="h-5 w-5 text-blue-600 mr-2" />
+        };
+      default: // 보통
+        return {
+          bg: 'bg-gray-50',
+          border: 'border-gray-200',
+          text: 'text-gray-800',
+          hoverBg: 'hover:bg-gray-100',
+          icon: <Bell className="h-5 w-5 text-gray-600 mr-2" />
+        };
     }
   };
 
@@ -365,26 +475,58 @@ export default function Dashboard() {
           </Link>
         </div>
         
-        {/* 알림 섹션 */}
+        {/* 공지사항 섹션 */}
         <Card className="mb-8 border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden">
           <div className="absolute h-1 w-full bg-amber-500 top-0 left-0"></div>
           <CardHeader className="pb-2">
-            <div className="flex items-center">
-              <div className="bg-amber-100 p-1.5 rounded-full mr-2">
-                <Bell className="w-4 h-4 text-amber-600" />
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <div className="bg-amber-100 p-1.5 rounded-full mr-2">
+                  <Bell className="w-4 h-4 text-amber-600" />
+                </div>
+                <CardTitle className="text-xl text-gray-900">공지사항</CardTitle>
               </div>
-              <CardTitle className="text-xl text-gray-900">최근 알림</CardTitle>
+              <Link href="/dashboard/announcements" className="text-sm text-blue-600 hover:text-blue-800 flex items-center">
+                <span>모든 공지 보기</span>
+                <ChevronRight className="h-4 w-4 ml-1" />
+              </Link>
             </div>
           </CardHeader>
           <CardContent>
-            <ul className="space-y-3">
-              <li className="p-3 bg-blue-50 rounded-lg text-blue-800 border border-blue-100 hover:bg-blue-100 transition-colors duration-300">
-                <span className="font-medium">3월 포트폴리오 리포트</span>가 업데이트되었습니다.
-              </li>
-              <li className="p-3 bg-gray-50 rounded-lg text-gray-800 border border-gray-200 hover:bg-gray-100 transition-colors duration-300">
-                다음 리밸런싱 일정은 <span className="font-medium">2023년 4월 15일</span>입니다.
-              </li>
-            </ul>
+            {loadingAnnouncements ? (
+              <div className="flex justify-center py-4">
+                <div className="w-8 h-8 border-t-2 border-b-2 border-blue-500 rounded-full animate-spin"></div>
+              </div>
+            ) : announcements.length > 0 ? (
+              <ul className="space-y-3">
+                {announcements.map((announcement) => {
+                  const styles = getImportanceStyles(announcement.importance_level);
+                  return (
+                    <li 
+                      key={announcement.id} 
+                      className={`p-4 rounded-lg border ${styles.border} ${styles.bg} ${styles.text} ${styles.hoverBg} transition-colors duration-300 cursor-pointer`}
+                    >
+                      <div className="flex items-start">
+                        {styles.icon}
+                        <div>
+                          <div className="flex items-center">
+                            <h3 className="font-medium">{announcement.title}</h3>
+                            <span className="text-xs ml-2 opacity-70">
+                              {formatAnnouncementDate(announcement.created_at)}
+                            </span>
+                          </div>
+                          <p className="mt-1 text-sm">{announcement.content}</p>
+                        </div>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              <div className="p-4 text-center text-gray-500">
+                <p>등록된 공지사항이 없습니다.</p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

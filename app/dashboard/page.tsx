@@ -2,10 +2,18 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { FileText, AlertTriangle, RefreshCw, MessageSquare, Bell } from 'lucide-react';
+import { FileText, AlertTriangle, RefreshCw, MessageSquare, Bell, LogOut, User, ChevronRight } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { formatDate } from '@/lib/utils';
+import { 
+  Card, 
+  CardHeader, 
+  CardTitle, 
+  CardDescription, 
+  CardContent, 
+  CardFooter 
+} from '@/components/ui/card';
 
 export default function Dashboard() {
   const [user, setUser] = useState<any>(null);
@@ -137,155 +145,248 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="container mx-auto px-4 py-8 flex items-center justify-center min-h-screen">
-        <p className="text-lg text-gray-600">로딩 중...</p>
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+        <div className="flex flex-col items-center space-y-4">
+          <div className="w-12 h-12 border-t-4 border-b-4 border-blue-600 rounded-full animate-spin"></div>
+          <p className="text-lg font-medium text-gray-800">로딩 중...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 bg-gray-50 min-h-screen">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">대시보드</h1>
-        
-        <div className="flex items-center space-x-4">
-          <div className="text-right">
-            <p className="text-sm text-gray-600">
-              {user?.user_metadata?.name || user?.email}님 환영합니다
-            </p>
-            <button
-              onClick={handleLogout}
-              className="text-sm text-blue-600 hover:text-blue-800"
-            >
-              로그아웃
-            </button>
-          </div>
-        </div>
-      </div>
-      
-      {error && (
-        <div className="mb-6 p-4 bg-red-100 text-red-700 rounded-md">
-          {error}
-        </div>
-      )}
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-          <h2 className="text-xl font-semibold mb-4 text-gray-900">계좌 정보</h2>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* 헤더 섹션 */}
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">대시보드</h1>
           
-          {accounts && accounts.length > 0 ? (
-            <ul className="space-y-4">
-              {accounts.map((account, index) => (
-                <li key={account.id || `account-${index}`} className="p-4 bg-gray-50 rounded-md">
-                  <div className="space-y-2">
-                    <p className="font-medium text-gray-900">{account.portfolio_type || '포트폴리오 정보 없음'}</p>
-                    <div className="flex">
-                      <span className="text-gray-600 w-24 text-sm">계좌번호:</span>
-                      <span className="text-gray-900 text-sm">{account.account_number || '정보 없음'}</span>
-                    </div>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-full shadow-sm border border-gray-100 hover:shadow-md transition-all duration-300">
+              <div className="bg-blue-100 p-1.5 rounded-full">
+                <User className="h-4 w-4 text-blue-600" />
+              </div>
+              <span className="text-sm font-medium text-gray-800">
+                {user?.user_metadata?.name || user?.email}
+              </span>
+              <button
+                onClick={handleLogout}
+                className="ml-2 p-1.5 rounded-full hover:bg-red-50 transition-colors duration-300 group"
+                aria-label="로그아웃"
+              >
+                <LogOut className="h-4 w-4 text-gray-500 group-hover:text-red-500 transition-colors duration-300" />
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        {/* 에러 메시지 */}
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg animate-fadeIn">
+            <div className="flex items-center">
+              <AlertTriangle className="h-5 w-5 mr-2 text-red-500" />
+              <p>{error}</p>
+            </div>
+          </div>
+        )}
+        
+        {/* 상단 카드 섹션 */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+          {/* 내 정보 카드 */}
+          <Card className="border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden">
+            <div className="absolute h-1 w-full bg-blue-500 top-0 left-0"></div>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xl text-gray-900 flex items-center">
+                <div className="bg-blue-100 p-1.5 rounded-full mr-2">
+                  <User className="h-4 w-4 text-blue-600" />
+                </div>
+                내 정보
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <div className="flex items-center">
+                  <span className="font-medium w-20 text-gray-700">이메일:</span> 
+                  <span className="text-gray-900">{user?.email}</span>
+                </div>
+                <div className="flex items-center">
+                  <span className="font-medium w-20 text-gray-700">이름:</span> 
+                  <span className="text-gray-900">{user?.user_metadata?.name || '미설정'}</span>
+                </div>
+                <div className="flex items-center">
+                  <span className="font-medium w-20 text-gray-700">연락처:</span> 
+                  <span className="text-gray-900">{user?.user_metadata?.phone || '미설정'}</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          {/* 계좌 정보 카드 */}
+          <Card className="border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden">
+            <div className="absolute h-1 w-full bg-green-500 top-0 left-0"></div>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xl text-gray-900 flex items-center">
+                <div className="bg-green-100 p-1.5 rounded-full mr-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="2" y="5" width="20" height="14" rx="2" />
+                    <line x1="2" y1="10" x2="22" y2="10" />
+                  </svg>
+                </div>
+                계좌 정보
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {accounts && accounts.length > 0 ? (
+                <ul className="space-y-4">
+                  {accounts.map((account, index) => (
+                    <li key={account.id || `account-${index}`} className="p-4 bg-white rounded-lg border border-gray-200 hover:border-green-300 transition-colors duration-300 shadow-sm">
+                      <div className="space-y-2">
+                        <p className="font-medium text-gray-900">{account.portfolio_type || '포트폴리오 정보 없음'}</p>
+                        <div className="flex">
+                          <span className="text-gray-600 w-24 text-sm">계좌번호:</span>
+                          <span className="text-gray-900 text-sm">{account.account_number || '정보 없음'}</span>
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <div className="p-4 bg-white text-gray-700 rounded-lg border border-gray-200">
+                  <p>등록된 계좌 정보가 없습니다.</p>
+                  <p className="text-sm mt-2 text-gray-500">관리자에게 문의하여 계좌 정보를 등록해주세요.</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+          
+          {/* 관리자 연락처 카드 */}
+          <Card className="border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden">
+            <div className="absolute h-1 w-full bg-purple-500 top-0 left-0"></div>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xl text-gray-900 flex items-center">
+                <div className="bg-purple-100 p-1.5 rounded-full mr-2">
+                  <MessageSquare className="h-4 w-4 text-purple-600" />
+                </div>
+                관리자 연락처
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-gray-700">문의사항이 있으시면 연락주세요.</p>
+              <div className="mt-3 space-y-2">
+                <div className="flex items-center p-2 rounded-lg hover:bg-gray-50 transition-colors duration-300">
+                  <span className="text-gray-600 w-16">이메일:</span>
+                  <span className="text-gray-900">support@example.com</span>
+                </div>
+                <div className="flex items-center p-2 rounded-lg hover:bg-gray-50 transition-colors duration-300">
+                  <span className="text-gray-600 w-16">전화:</span>
+                  <span className="text-gray-900">02-1234-5678</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+        
+        {/* 하단 카드 섹션 */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          {/* 월간 리포트 카드 */}
+          <Link href="/dashboard/monthly-report" className="block group">
+            <Card className="h-full border-gray-200 shadow-sm group-hover:shadow-md transition-all duration-300 overflow-hidden">
+              <div className="absolute h-1 w-full bg-blue-500 top-0 left-0 transform origin-left transition-transform duration-300 group-hover:scale-x-110"></div>
+              <CardContent className="p-6">
+                <div className="flex items-center mb-4">
+                  <div className="bg-blue-100 p-3 rounded-full mr-4 group-hover:bg-blue-200 transition-colors duration-300">
+                    <FileText className="h-6 w-6 text-blue-600" />
                   </div>
-                </li>
-              ))}
+                  <CardTitle className="text-xl text-gray-900">월간 리포트</CardTitle>
+                </div>
+                <p className="text-gray-600 mb-4">월별 투자 성과와 포트폴리오 분석 리포트를 확인하세요.</p>
+                <div className="text-blue-600 font-medium flex items-center">
+                  <span>리포트 보기</span>
+                  <ChevronRight className="h-4 w-4 ml-1 transform transition-transform duration-300 group-hover:translate-x-1" />
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+          
+          {/* 연체 정보 카드 */}
+          <Card className="h-full border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden group">
+            <div className="absolute h-1 w-full bg-red-500 top-0 left-0 transform origin-left transition-transform duration-300 group-hover:scale-x-110"></div>
+            <CardContent className="p-6">
+              <div className="flex items-center mb-4">
+                <div className="bg-red-100 p-3 rounded-full mr-4 group-hover:bg-red-200 transition-colors duration-300">
+                  <AlertTriangle className="h-6 w-6 text-red-600" />
+                </div>
+                <CardTitle className="text-xl text-gray-900">연체 정보</CardTitle>
+              </div>
+              <p className="text-gray-600 mb-4">현재 연체 상태 및 납부 예정 금액을 확인하세요.</p>
+              <div className="text-red-600 font-medium flex items-center">
+                <span>정보 보기</span>
+                <ChevronRight className="h-4 w-4 ml-1 transform transition-transform duration-300 group-hover:translate-x-1" />
+              </div>
+            </CardContent>
+          </Card>
+          
+          {/* 리밸런싱 히스토리 카드 */}
+          <Card className="h-full border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden group">
+            <div className="absolute h-1 w-full bg-green-500 top-0 left-0 transform origin-left transition-transform duration-300 group-hover:scale-x-110"></div>
+            <CardContent className="p-6">
+              <div className="flex items-center mb-4">
+                <div className="bg-green-100 p-3 rounded-full mr-4 group-hover:bg-green-200 transition-colors duration-300">
+                  <RefreshCw className="h-6 w-6 text-green-600" />
+                </div>
+                <CardTitle className="text-xl text-gray-900">리밸런싱 히스토리</CardTitle>
+              </div>
+              <p className="text-gray-600 mb-4">포트폴리오 리밸런싱 내역과 변경 사항을 확인하세요.</p>
+              <div className="text-green-600 font-medium flex items-center">
+                <span>히스토리 보기</span>
+                <ChevronRight className="h-4 w-4 ml-1 transform transition-transform duration-300 group-hover:translate-x-1" />
+              </div>
+            </CardContent>
+          </Card>
+          
+          {/* 관리자 상담 내역 카드 */}
+          <Link href="/dashboard/consultation" className="block group">
+            <Card className="h-full border-gray-200 shadow-sm group-hover:shadow-md transition-all duration-300 overflow-hidden">
+              <div className="absolute h-1 w-full bg-purple-500 top-0 left-0 transform origin-left transition-transform duration-300 group-hover:scale-x-110"></div>
+              <CardContent className="p-6">
+                <div className="flex items-center mb-4">
+                  <div className="bg-purple-100 p-3 rounded-full mr-4 group-hover:bg-purple-200 transition-colors duration-300">
+                    <MessageSquare className="h-6 w-6 text-purple-600" />
+                  </div>
+                  <CardTitle className="text-xl text-gray-900">관리자 상담 내역</CardTitle>
+                </div>
+                <p className="text-gray-600 mb-4">관리자와의 상담 내역 및 문의 답변을 확인하세요.</p>
+                <div className="text-purple-600 font-medium flex items-center">
+                  <span>상담 내역 보기</span>
+                  <ChevronRight className="h-4 w-4 ml-1 transform transition-transform duration-300 group-hover:translate-x-1" />
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+        </div>
+        
+        {/* 알림 섹션 */}
+        <Card className="mb-8 border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden">
+          <div className="absolute h-1 w-full bg-amber-500 top-0 left-0"></div>
+          <CardHeader className="pb-2">
+            <div className="flex items-center">
+              <div className="bg-amber-100 p-1.5 rounded-full mr-2">
+                <Bell className="w-4 h-4 text-amber-600" />
+              </div>
+              <CardTitle className="text-xl text-gray-900">최근 알림</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-3">
+              <li className="p-3 bg-blue-50 rounded-lg text-blue-800 border border-blue-100 hover:bg-blue-100 transition-colors duration-300">
+                <span className="font-medium">3월 포트폴리오 리포트</span>가 업데이트되었습니다.
+              </li>
+              <li className="p-3 bg-gray-50 rounded-lg text-gray-800 border border-gray-200 hover:bg-gray-100 transition-colors duration-300">
+                다음 리밸런싱 일정은 <span className="font-medium">2023년 4월 15일</span>입니다.
+              </li>
             </ul>
-          ) : (
-            <div className="p-4 bg-yellow-50 text-yellow-700 rounded-md">
-              <p>등록된 계좌 정보가 없습니다.</p>
-              <p className="text-sm mt-2">관리자에게 문의하여 계좌 정보를 등록해주세요.</p>
-            </div>
-          )}
-        </div>
-        
-        <Link href="/dashboard/monthly-report" className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow">
-          <div className="flex items-center mb-4">
-            <div className="bg-blue-100 p-3 rounded-full mr-4">
-              <FileText className="h-6 w-6 text-blue-600" />
-            </div>
-            <h2 className="text-xl font-bold text-gray-900">월간 리포트</h2>
-          </div>
-          <p className="text-gray-600 mb-4">월별 투자 성과와 포트폴리오 분석 리포트를 확인하세요.</p>
-          <div className="text-blue-600 font-medium">리포트 보기 &rarr;</div>
-        </Link>
-        
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-          <h2 className="text-xl font-semibold mb-4 text-gray-900">내 정보</h2>
-          <div className="space-y-3">
-            <div className="flex">
-              <span className="font-medium w-20 text-gray-700">이메일:</span> 
-              <span className="text-gray-900">{user?.email}</span>
-            </div>
-            <div className="flex">
-              <span className="font-medium w-20 text-gray-700">이름:</span> 
-              <span className="text-gray-900">{user?.user_metadata?.name || '미설정'}</span>
-            </div>
-            <div className="flex">
-              <span className="font-medium w-20 text-gray-700">연락처:</span> 
-              <span className="text-gray-900">{user?.user_metadata?.phone || '미설정'}</span>
-            </div>
-            <div className="flex">
-              <span className="font-medium w-20 text-gray-700">가입일:</span> 
-              <span className="text-gray-900">{formatAccountDate(user?.created_at)}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <Link href="#" className="block p-6 bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow border border-gray-100">
-          <div className="flex items-center mb-4">
-            <h2 className="text-xl font-semibold text-gray-900">연락처</h2>
-          </div>
-          <p className="text-gray-600">문의사항이 있으시면 연락주세요.</p>
-          <p className="text-gray-600 mt-2">이메일: support@example.com</p>
-          <p className="text-gray-600">전화: 02-1234-5678</p>
-        </Link>
-        
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow">
-          <div className="flex items-center mb-4">
-            <div className="bg-red-100 p-3 rounded-full mr-4">
-              <AlertTriangle className="h-6 w-6 text-red-600" />
-            </div>
-            <h2 className="text-xl font-bold text-gray-900">연체 정보</h2>
-          </div>
-          <p className="text-gray-600 mb-4">현재 연체 상태 및 납부 예정 금액을 확인하세요.</p>
-          <div className="text-blue-600 font-medium">정보 보기 &rarr;</div>
-        </div>
-        
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow">
-          <div className="flex items-center mb-4">
-            <div className="bg-green-100 p-3 rounded-full mr-4">
-              <RefreshCw className="h-6 w-6 text-green-600" />
-            </div>
-            <h2 className="text-xl font-bold text-gray-900">리밸런싱 히스토리</h2>
-          </div>
-          <p className="text-gray-600 mb-4">포트폴리오 리밸런싱 내역과 변경 사항을 확인하세요.</p>
-          <div className="text-blue-600 font-medium">히스토리 보기 &rarr;</div>
-        </div>
-        
-        <Link href="/dashboard/consultation" className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow">
-          <div className="flex items-center mb-4">
-            <div className="bg-purple-100 p-3 rounded-full mr-4">
-              <MessageSquare className="h-6 w-6 text-purple-600" />
-            </div>
-            <h2 className="text-xl font-bold text-gray-900">관리자 상담 내역</h2>
-          </div>
-          <p className="text-gray-600 mb-4">관리자와의 상담 내역 및 문의 답변을 확인하세요.</p>
-          <div className="text-purple-600 font-medium">상담 내역 보기 &rarr;</div>
-        </Link>
-      </div>
-      
-      <div className="mt-8 p-6 bg-white rounded-xl shadow-sm border border-gray-100">
-        <div className="flex items-center mb-4">
-          <Bell className="w-6 h-6 text-gray-500 mr-2" />
-          <h2 className="text-lg font-semibold text-gray-900">최근 알림</h2>
-        </div>
-        <ul className="space-y-3">
-          <li className="p-3 bg-blue-50 rounded-md text-blue-800">
-            <span className="font-medium">3월 포트폴리오 리포트</span>가 업데이트되었습니다.
-          </li>
-          <li className="p-3 bg-gray-50 rounded-md text-gray-800">
-            다음 리밸런싱 일정은 <span className="font-medium">2023년 4월 15일</span>입니다.
-          </li>
-        </ul>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

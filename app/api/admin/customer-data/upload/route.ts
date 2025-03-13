@@ -239,13 +239,81 @@ export async function POST(request: NextRequest) {
           contractDate: formattedContractDate 
         });
         
+        // portfolio_types 테이블이 있는지 확인
+        let hasPortfolioTypesTable = true;
+        try {
+          const { data: tableCheck, error: tableCheckError } = await serviceSupabase
+            .from('portfolio_types')
+            .select('id')
+            .limit(1);
+            
+          if (tableCheckError) {
+            console.warn('portfolio_types 테이블 확인 오류:', tableCheckError);
+            hasPortfolioTypesTable = false;
+          }
+        } catch (e) {
+          console.warn('portfolio_types 테이블이 존재하지 않을 수 있습니다:', e);
+          hasPortfolioTypesTable = false;
+        }
+        
+        // 포트폴리오 타입 ID 조회
+        let portfolioTypeId = null;
+        if (portfolioType && hasPortfolioTypesTable) {
+          try {
+            const { data: portfolioTypeData, error: portfolioTypeError } = await serviceSupabase
+              .from('portfolio_types')
+              .select('id')
+              .eq('name', portfolioType)
+              .single();
+              
+            if (portfolioTypeError) {
+              console.warn('포트폴리오 타입 ID 조회 오류:', portfolioTypeError);
+              console.log('포트폴리오 타입 이름으로 새로운 항목 생성 시도:', portfolioType);
+              
+              // 포트폴리오 타입이 없는 경우 새로 생성
+              const { data: newPortfolioType, error: createError } = await serviceSupabase
+                .from('portfolio_types')
+                .insert({
+                  name: portfolioType,
+                  description: `${portfolioType} 포트폴리오`
+                })
+                .select('id');
+                
+              if (createError) {
+                console.error('포트폴리오 타입 생성 오류:', createError);
+              } else if (newPortfolioType && newPortfolioType.length > 0) {
+                portfolioTypeId = newPortfolioType[0].id;
+                console.log('새로운 포트폴리오 타입 생성 성공:', { id: portfolioTypeId, name: portfolioType });
+              }
+            } else if (portfolioTypeData) {
+              portfolioTypeId = portfolioTypeData.id;
+              console.log('포트폴리오 타입 ID 조회 성공:', { id: portfolioTypeId, name: portfolioType });
+            }
+          } catch (e) {
+            console.error('포트폴리오 타입 처리 중 오류:', e);
+          }
+        }
+        
         // 계좌 정보 객체 생성
         const accountData = {
           user_id: userId,
           account_number: accountNumber,
-          portfolio_type: portfolioType || 'Unknown',
           updated_at: new Date().toISOString()
         };
+        
+        // 포트폴리오 타입 정보 추가
+        if (hasPortfolioTypesTable && portfolioTypeId) {
+          // @ts-ignore - 동적 필드 추가
+          accountData.portfolio_type_id = portfolioTypeId;
+        } else if (portfolioType) {
+          // 이전 방식 호환성 유지 (portfolio_type 컬럼이 아직 존재하는 경우)
+          try {
+            // @ts-ignore - 동적 필드 추가
+            accountData.portfolio_type = portfolioType || 'Unknown';
+          } catch (e) {
+            console.warn('portfolio_type 컬럼이 존재하지 않습니다:', e);
+          }
+        }
         
         // 계약일 정보가 있으면 추가
         if (formattedContractDate) {

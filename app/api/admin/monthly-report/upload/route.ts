@@ -68,11 +68,27 @@ export async function POST(request: NextRequest) {
           });
           
           if (!account) {
-            // 새 계좌 생성
+            // 포트폴리오 타입 ID 조회
+            let portfolioTypeId = null;
+            const { data: portfolioType, error: portfolioTypeError } = await serviceSupabase
+              .from('portfolio_types')
+              .select('id')
+              .eq('name', 포트폴리오명)
+              .single();
+            
+            if (!portfolioTypeError && portfolioType) {
+              portfolioTypeId = portfolioType.id;
+            } else {
+              console.warn('포트폴리오 타입 ID 조회 실패:', 포트폴리오명);
+            }
+            
+            // 새 계좌 생성 - Drizzle ORM에서는 스키마에 정의된 필드만 사용
             const [newAccount] = await tx.insert(accounts).values({
               user_id: user.id,
               account_number: 계좌번호,
-              portfolio_type: 포트폴리오명
+              portfolio_type: 포트폴리오명,
+              // portfolio_type_id 필드는 Drizzle 스키마에 정의되어 있지 않으면 사용할 수 없음
+              // contract_date 필드도 스키마에 정의되어 있는지 확인 필요
             }).returning();
             
             account = newAccount;
@@ -153,13 +169,29 @@ export async function POST(request: NextRequest) {
             .single();
           
           if (accountError || !account) {
+            // 포트폴리오 타입 ID 조회
+            let portfolioTypeId = null;
+            const { data: portfolioType, error: portfolioTypeError } = await serviceSupabase
+              .from('portfolio_types')
+              .select('id')
+              .eq('name', 포트폴리오명)
+              .single();
+            
+            if (!portfolioTypeError && portfolioType) {
+              portfolioTypeId = portfolioType.id;
+            } else {
+              console.warn('포트폴리오 타입 ID 조회 실패:', 포트폴리오명);
+            }
+            
             // 새 계좌 생성
             const { data: newAccount, error: insertAccountError } = await serviceSupabase
               .from('accounts')
               .insert({
                 user_id: user.id,
                 account_number: 계좌번호,
-                portfolio_type: 포트폴리오명
+                portfolio_type: 포트폴리오명,
+                portfolio_type_id: portfolioTypeId,
+                contract_date: row.계약일 ? new Date(row.계약일).toISOString() : null
               })
               .select()
               .single();

@@ -2,15 +2,19 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { FileText, AlertTriangle, RefreshCw, MessageSquare, Bell, Trash2 } from 'lucide-react';
+import { FileText, AlertTriangle, RefreshCw, MessageSquare, Bell, LogOut, User } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import { 
+  Card, 
+  CardHeader, 
+  CardTitle, 
+  CardContent
+} from '@/components/ui/card';
 
 export default function AdminDashboard() {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [deleteLoading, setDeleteLoading] = useState(false);
-  const [deleteMessage, setDeleteMessage] = useState<string | null>(null);
   const router = useRouter();
 
   // 인증 상태 확인
@@ -56,187 +60,147 @@ export default function AdminDashboard() {
     }
   };
 
-  // 가상 계좌 삭제 처리
-  const handleDeleteVirtualAccounts = async () => {
-    if (!confirm('가상 계좌 정보(123-456-789, 987-654-321)를 삭제하시겠습니까?')) {
-      return;
-    }
-    
-    setDeleteLoading(true);
-    setDeleteMessage(null);
-    
-    try {
-      const response = await fetch('/api/admin/delete-virtual-accounts', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-      
-      const result = await response.json();
-      
-      if (result.success) {
-        setDeleteMessage('가상 계좌 정보가 성공적으로 삭제되었습니다.');
-      } else {
-        setDeleteMessage(`오류: ${result.error}`);
-      }
-    } catch (error: any) {
-      console.error('가상 계좌 삭제 오류:', error);
-      setDeleteMessage(`오류: ${error.message || '가상 계좌 삭제 중 오류가 발생했습니다.'}`);
-    } finally {
-      setDeleteLoading(false);
-    }
-  };
-
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p className="text-lg text-gray-600">로딩 중...</p>
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+        <div className="flex flex-col items-center space-y-4">
+          <div className="w-12 h-12 border-t-4 border-b-4 border-blue-600 rounded-full animate-spin"></div>
+          <p className="text-lg font-medium text-gray-800">로딩 중...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 bg-gray-50 min-h-screen">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">관리자 대시보드</h1>
-        <button
-          onClick={handleLogout}
-          className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300"
-        >
-          로그아웃
-        </button>
-      </div>
-      
-      {deleteMessage && (
-        <div className={`mb-6 p-4 rounded-md ${deleteMessage.includes('오류') ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
-          {deleteMessage}
-        </div>
-      )}
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {/* 월간리포트 관리 카드 */}
-        <Link href="/admin/monthly-report" className="block">
-          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 h-full transition-all hover:shadow-md hover:border-gray-200">
-            <div className="flex items-start">
-              <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mr-4">
-                <FileText className="w-6 h-6 text-gray-700" />
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* 헤더 섹션 */}
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">관리자 대시보드</h1>
+          
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-full shadow-sm border border-gray-100 hover:shadow-md transition-all duration-300">
+              <div className="bg-blue-100 p-1.5 rounded-full">
+                <User className="h-4 w-4 text-blue-600" />
               </div>
-              <div>
-                <h2 className="text-xl font-semibold mb-2 text-gray-900">월간리포트 관리</h2>
-                <p className="text-gray-600 text-sm mb-4">월별 고객 리스트, 포트폴리오 자료, 월간 코멘트를 관리합니다.</p>
-                <ul className="text-sm text-gray-500 list-disc list-inside">
-                  <li>월별 전체 고객 리스트 업로드</li>
-                  <li>포트폴리오 자료(JPG) 업로드</li>
-                  <li>공통 Monthly Comment 작성</li>
-                </ul>
-              </div>
-            </div>
-          </div>
-        </Link>
-        
-        {/* 연체정보 관리 카드 */}
-        <Link href="/admin/delinquency" className="block">
-          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 h-full transition-all hover:shadow-md hover:border-gray-200">
-            <div className="flex items-start">
-              <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mr-4">
-                <AlertTriangle className="w-6 h-6 text-gray-700" />
-              </div>
-              <div>
-                <h2 className="text-xl font-semibold mb-2 text-gray-900">연체정보 관리</h2>
-                <p className="text-gray-600 text-sm mb-4">고객 연체정보를 관리합니다.</p>
-                <ul className="text-sm text-gray-500 list-disc list-inside">
-                  <li>연체정보 엑셀 업로드</li>
-                  <li>연체정보 수정 및 관리</li>
-                </ul>
-              </div>
-            </div>
-          </div>
-        </Link>
-        
-        {/* 리밸런싱 히스토리 관리 카드 */}
-        <Link href="/admin/rebalancing" className="block">
-          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 h-full transition-all hover:shadow-md hover:border-gray-200">
-            <div className="flex items-start">
-              <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mr-4">
-                <RefreshCw className="w-6 h-6 text-gray-700" />
-              </div>
-              <div>
-                <h2 className="text-xl font-semibold mb-2 text-gray-900">리밸런싱 히스토리 관리</h2>
-                <p className="text-gray-600 text-sm mb-4">포트폴리오 리밸런싱 내역을 관리합니다.</p>
-                <ul className="text-sm text-gray-500 list-disc list-inside">
-                  <li>월별 리밸런싱 내용 엑셀 업로드</li>
-                  <li>리밸런싱 히스토리 관리</li>
-                </ul>
-              </div>
-            </div>
-          </div>
-        </Link>
-        
-        {/* 관리자 상담 내역 관리 카드 */}
-        <Link href="/admin/consultation" className="block">
-          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 h-full transition-all hover:shadow-md hover:border-gray-200">
-            <div className="flex items-start">
-              <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mr-4">
-                <MessageSquare className="w-6 h-6 text-gray-700" />
-              </div>
-              <div>
-                <h2 className="text-xl font-semibold mb-2 text-gray-900">관리자 상담 내역 관리</h2>
-                <p className="text-gray-600 text-sm mb-4">고객 상담 내역을 관리합니다.</p>
-                <ul className="text-sm text-gray-500 list-disc list-inside">
-                  <li>상담 내역 등록 및 수정</li>
-                  <li>상담 내역 조회</li>
-                </ul>
-              </div>
-            </div>
-          </div>
-        </Link>
-        
-        {/* 최근 알림 관리 카드 */}
-        <Link href="/admin/announcements" className="block">
-          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 h-full transition-all hover:shadow-md hover:border-gray-200">
-            <div className="flex items-start">
-              <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mr-4">
-                <Bell className="w-6 h-6 text-gray-700" />
-              </div>
-              <div>
-                <h2 className="text-xl font-semibold mb-2 text-gray-900">공지사항 관리</h2>
-                <p className="text-gray-600 text-sm mb-4">고객에게 표시될 공지사항을 관리합니다.</p>
-                <ul className="text-sm text-gray-500 list-disc list-inside">
-                  <li>공지사항 등록 및 수정</li>
-                  <li>중요도 및 대상 설정</li>
-                  <li>첨부 파일 관리</li>
-                </ul>
-              </div>
-            </div>
-          </div>
-        </Link>
-        
-        {/* 가상 계좌 삭제 카드 */}
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 h-full">
-          <div className="flex items-start">
-            <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mr-4">
-              <Trash2 className="w-6 h-6 text-red-700" />
-            </div>
-            <div>
-              <h2 className="text-xl font-semibold mb-2 text-gray-900">가상 계좌 삭제</h2>
-              <p className="text-gray-600 text-sm mb-4">테스트용 가상 계좌 정보를 삭제합니다.</p>
+              <span className="text-sm font-medium text-gray-800">
+                {user?.user_metadata?.name || user?.email}
+              </span>
               <button
-                onClick={handleDeleteVirtualAccounts}
-                disabled={deleteLoading}
-                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:bg-red-300"
+                onClick={handleLogout}
+                className="ml-2 p-1.5 rounded-full hover:bg-red-50 transition-colors duration-300 group"
+                aria-label="로그아웃"
               >
-                {deleteLoading ? '삭제 중...' : '가상 계좌 삭제'}
+                <LogOut className="h-4 w-4 text-gray-500 group-hover:text-red-500 transition-colors duration-300" />
               </button>
             </div>
           </div>
         </div>
-      </div>
-      
-      <div className="mt-8 text-center">
-        <Link href="/dashboard" className="text-gray-600 hover:text-gray-900 text-sm">
-          대시보드로 이동
-        </Link>
+        
+        {/* 관리 메뉴 카드 섹션 */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+          {/* 월간 리포트 관리 카드 */}
+          <Link href="/admin/monthly-report" className="block group">
+            <Card className="h-full border-gray-200 shadow-sm group-hover:shadow-md transition-all duration-300 overflow-hidden">
+              <div className="absolute h-1 w-full bg-blue-500 top-0 left-0 transform origin-left transition-transform duration-300 group-hover:scale-x-110"></div>
+              <CardContent className="p-6">
+                <div className="flex items-center mb-4">
+                  <div className="bg-blue-100 p-3 rounded-full mr-4 group-hover:bg-blue-200 transition-colors duration-300">
+                    <FileText className="h-6 w-6 text-blue-600" />
+                  </div>
+                  <CardTitle className="text-xl text-gray-900">월간 리포트 관리</CardTitle>
+                </div>
+                <p className="text-gray-600 mb-4">월간 리포트를 등록하고 관리합니다.</p>
+              </CardContent>
+            </Card>
+          </Link>
+          
+          {/* 연체 정보 관리 카드 */}
+          <Link href="/admin/delinquency" className="block group">
+            <Card className="h-full border-gray-200 shadow-sm group-hover:shadow-md transition-all duration-300 overflow-hidden">
+              <div className="absolute h-1 w-full bg-red-500 top-0 left-0 transform origin-left transition-transform duration-300 group-hover:scale-x-110"></div>
+              <CardContent className="p-6">
+                <div className="flex items-center mb-4">
+                  <div className="bg-red-100 p-3 rounded-full mr-4 group-hover:bg-red-200 transition-colors duration-300">
+                    <AlertTriangle className="h-6 w-6 text-red-600" />
+                  </div>
+                  <CardTitle className="text-xl text-gray-900">연체 정보 관리</CardTitle>
+                </div>
+                <p className="text-gray-600 mb-4">고객의 연체 정보를 등록하고 관리합니다.</p>
+              </CardContent>
+            </Card>
+          </Link>
+          
+          {/* 리밸런싱 히스토리 관리 카드 */}
+          <Link href="/admin/rebalancing" className="block group">
+            <Card className="h-full border-gray-200 shadow-sm group-hover:shadow-md transition-all duration-300 overflow-hidden">
+              <div className="absolute h-1 w-full bg-green-500 top-0 left-0 transform origin-left transition-transform duration-300 group-hover:scale-x-110"></div>
+              <CardContent className="p-6">
+                <div className="flex items-center mb-4">
+                  <div className="bg-green-100 p-3 rounded-full mr-4 group-hover:bg-green-200 transition-colors duration-300">
+                    <RefreshCw className="h-6 w-6 text-green-600" />
+                  </div>
+                  <CardTitle className="text-xl text-gray-900">리밸런싱 히스토리 관리</CardTitle>
+                </div>
+                <p className="text-gray-600 mb-4">포트폴리오 리밸런싱 내역을 등록하고 관리합니다.</p>
+              </CardContent>
+            </Card>
+          </Link>
+          
+          {/* 관리자 상담 내역 관리 카드 */}
+          <Link href="/admin/consultation" className="block group">
+            <Card className="h-full border-gray-200 shadow-sm group-hover:shadow-md transition-all duration-300 overflow-hidden">
+              <div className="absolute h-1 w-full bg-purple-500 top-0 left-0 transform origin-left transition-transform duration-300 group-hover:scale-x-110"></div>
+              <CardContent className="p-6">
+                <div className="flex items-center mb-4">
+                  <div className="bg-purple-100 p-3 rounded-full mr-4 group-hover:bg-purple-200 transition-colors duration-300">
+                    <MessageSquare className="h-6 w-6 text-purple-600" />
+                  </div>
+                  <CardTitle className="text-xl text-gray-900">관리자 상담 내역 관리</CardTitle>
+                </div>
+                <p className="text-gray-600 mb-4">고객과의 상담 내역을 등록하고 관리합니다.</p>
+              </CardContent>
+            </Card>
+          </Link>
+          
+          {/* 공지사항 관리 카드 */}
+          <Link href="/admin/announcements" className="block group">
+            <Card className="h-full border-gray-200 shadow-sm group-hover:shadow-md transition-all duration-300 overflow-hidden">
+              <div className="absolute h-1 w-full bg-amber-500 top-0 left-0 transform origin-left transition-transform duration-300 group-hover:scale-x-110"></div>
+              <CardContent className="p-6">
+                <div className="flex items-center mb-4">
+                  <div className="bg-amber-100 p-3 rounded-full mr-4 group-hover:bg-amber-200 transition-colors duration-300">
+                    <Bell className="h-6 w-6 text-amber-600" />
+                  </div>
+                  <CardTitle className="text-xl text-gray-900">공지사항 관리</CardTitle>
+                </div>
+                <p className="text-gray-600 mb-4">공지사항을 등록하고 관리합니다.</p>
+              </CardContent>
+            </Card>
+          </Link>
+          
+          {/* 사용자 역할 관리 카드 */}
+          <Link href="/admin/user-role" className="block group">
+            <Card className="h-full border-gray-200 shadow-sm group-hover:shadow-md transition-all duration-300 overflow-hidden">
+              <div className="absolute h-1 w-full bg-indigo-500 top-0 left-0 transform origin-left transition-transform duration-300 group-hover:scale-x-110"></div>
+              <CardContent className="p-6">
+                <div className="flex items-center mb-4">
+                  <div className="bg-indigo-100 p-3 rounded-full mr-4 group-hover:bg-indigo-200 transition-colors duration-300">
+                    <User className="h-6 w-6 text-indigo-600" />
+                  </div>
+                  <CardTitle className="text-xl text-gray-900">사용자 역할 관리</CardTitle>
+                </div>
+                <p className="text-gray-600 mb-4">사용자의 역할(관리자/일반 사용자)을 관리합니다.</p>
+              </CardContent>
+            </Card>
+          </Link>
+        </div>
+        
+        <div className="mt-8 text-center">
+          <Link href="/dashboard" className="text-gray-600 hover:text-gray-900 text-sm">
+            대시보드로 이동
+          </Link>
+        </div>
       </div>
     </div>
   );

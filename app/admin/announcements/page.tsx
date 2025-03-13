@@ -16,8 +16,6 @@ export default function AdminAnnouncements() {
   const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [editingAnnouncement, setEditingAnnouncement] = useState<Announcement | null>(null);
-  const [selectedAnnouncement, setSelectedAnnouncement] = useState<Announcement | null>(null);
-  const [showDetailModal, setShowDetailModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [importanceFilter, setImportanceFilter] = useState<number | null>(null);
   const [targetFilter, setTargetFilter] = useState<'all' | 'portfolio' | null>(null);
@@ -136,12 +134,15 @@ export default function AdminAnnouncements() {
         throw new Error('인증 세션이 없습니다. 다시 로그인해주세요.');
       }
       
+      console.log('공지사항 생성 요청 - 사용자 ID:', session.user.id);
+      
       // 공지사항 생성 API 호출
       const response = await fetch('/api/announcements', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
+          'Authorization': `Bearer ${session.access_token}`,
+          'x-user-id': session.user.id
         },
         body: JSON.stringify(formData),
       });
@@ -275,8 +276,8 @@ export default function AdminAnnouncements() {
 
   // 공지사항 상세 보기
   const handleViewDetail = (announcement: Announcement) => {
-    setSelectedAnnouncement(announcement);
-    setShowDetailModal(true);
+    // 모달 대신 상세 페이지로 이동
+    router.push(`/announcements/${announcement.id}`);
   };
 
   // 공지사항 수정 폼 열기
@@ -305,27 +306,21 @@ export default function AdminAnnouncements() {
     setEditingAnnouncement(null);
   };
 
-  // 모달 닫기
-  const handleCloseModal = () => {
-    setShowDetailModal(false);
-    setSelectedAnnouncement(null);
-  };
-
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-6xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-6">
-          <Link href="/admin" className="inline-flex items-center text-gray-700 hover:text-gray-900">
+          <Link href="/admin" className="inline-flex items-center text-blue-600 hover:text-blue-800 transition-colors duration-300">
             <ArrowLeft className="w-4 h-4 mr-2" />
             <span>관리자 페이지로 돌아가기</span>
           </Link>
         </div>
         
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">공지사항 관리</h1>
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">공지사항 관리</h1>
           <button
             onClick={() => setShowForm(true)}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center"
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center shadow-sm hover:shadow-md transition-all duration-300"
           >
             <Plus className="h-5 w-5 mr-1" />
             새 공지사항
@@ -333,7 +328,7 @@ export default function AdminAnnouncements() {
         </div>
         
         {/* 검색 및 필터링 */}
-        <div className="bg-white rounded-lg shadow p-4 mb-6">
+        <div className="bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-300 p-6 mb-6 border border-gray-200">
           <form onSubmit={handleSearch} className="flex flex-wrap gap-4">
             <div className="flex-1 min-w-[200px]">
               <div className="relative">
@@ -378,14 +373,14 @@ export default function AdminAnnouncements() {
             <div className="flex space-x-2">
               <button
                 type="submit"
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 shadow-sm hover:shadow-md transition-all duration-300"
               >
                 검색
               </button>
               <button
                 type="button"
                 onClick={handleResetFilters}
-                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 flex items-center"
+                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 flex items-center shadow-sm hover:shadow-md transition-all duration-300"
               >
                 <RefreshCw className="h-4 w-4 mr-1" />
                 초기화
@@ -394,12 +389,11 @@ export default function AdminAnnouncements() {
           </form>
         </div>
         
-        {/* 공지사항 목록 */}
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-300 p-6 border border-gray-200">
           {loading ? (
             <div className="flex justify-center items-center h-64">
-              <RefreshCw className="h-8 w-8 text-blue-500 animate-spin" />
-              <span className="ml-2 text-lg text-gray-600">로딩 중...</span>
+              <div className="w-12 h-12 border-t-4 border-b-4 border-blue-600 rounded-full animate-spin"></div>
+              <span className="ml-3 text-lg text-gray-600">로딩 중...</span>
             </div>
           ) : error ? (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">
@@ -418,9 +412,9 @@ export default function AdminAnnouncements() {
       
       {/* 공지사항 폼 모달 */}
       {showForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-3xl max-h-[90vh] overflow-y-auto">
-            <h2 className="text-xl font-bold mb-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-5xl max-h-[90vh] overflow-y-auto">
+            <h2 className="text-2xl font-bold mb-6 text-gray-900 border-b pb-3 border-blue-500">
               {editingAnnouncement ? '공지사항 수정' : '새 공지사항 작성'}
             </h2>
             <AnnouncementForm
@@ -430,14 +424,6 @@ export default function AdminAnnouncements() {
             />
           </div>
         </div>
-      )}
-      
-      {/* 공지사항 상세 모달 */}
-      {showDetailModal && selectedAnnouncement && (
-        <AnnouncementDetail
-          announcementId={selectedAnnouncement.id}
-          onClose={handleCloseModal}
-        />
       )}
     </div>
   );

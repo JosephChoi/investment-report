@@ -41,7 +41,7 @@ export default function MonthlyReport() {
         // 사용자의 계좌 정보 가져오기
         const { data: accountsData, error: accountsError } = await supabase
           .from('accounts')
-          .select('*')
+          .select('*, portfolio:portfolio_types(id, name)')
           .eq('user_id', user.id);
         
         if (accountsError) throw accountsError;
@@ -51,7 +51,7 @@ export default function MonthlyReport() {
           setSelectedAccount(accountsData[0]);
           
           // 선택된 계좌의 포트폴리오 리포트 가져오기
-          await fetchPortfolioReport(accountsData[0].portfolio_type);
+          await fetchPortfolioReport(accountsData[0].portfolio_type_id);
         }
         
         // 최신 월간 코멘트 가져오기
@@ -128,7 +128,7 @@ export default function MonthlyReport() {
       setLoading(true);
       
       // 포트폴리오 리포트 가져오기
-      await fetchPortfolioReport(account.portfolio_type);
+      await fetchPortfolioReport(account.portfolio_type_id);
       
       setLoading(false);
     } catch (error) {
@@ -139,16 +139,38 @@ export default function MonthlyReport() {
   };
 
   // 포트폴리오 리포트 가져오기
-  const fetchPortfolioReport = async (portfolioType: string) => {
+  const fetchPortfolioReport = async (portfolioTypeId: string) => {
     try {
       const { data, error } = await supabase
         .from('portfolio_reports')
         .select('*')
-        .eq('portfolio_type', portfolioType)
+        .eq('portfolio_type_id', portfolioTypeId)
         .order('report_date', { ascending: false })
         .limit(1);
       
       if (error) throw error;
+      
+      // 데이터가 없는 경우 기존 portfolio_type 필드로 시도
+      if (!data || data.length === 0) {
+        console.log('portfolio_type_id로 리포트를 찾을 수 없어 portfolio_type으로 시도합니다.');
+        
+        // 선택된 계정의 portfolio_type 가져오기
+        const portfolioType = selectedAccount?.portfolio_type;
+        
+        if (portfolioType) {
+          const { data: legacyData, error: legacyError } = await supabase
+            .from('portfolio_reports')
+            .select('*')
+            .eq('portfolio_type', portfolioType)
+            .order('report_date', { ascending: false })
+            .limit(1);
+            
+          if (legacyError) throw legacyError;
+          
+          setPortfolioReport(legacyData && legacyData.length > 0 ? legacyData[0] : null);
+          return;
+        }
+      }
       
       setPortfolioReport(data && data.length > 0 ? data[0] : null);
     } catch (error: any) {

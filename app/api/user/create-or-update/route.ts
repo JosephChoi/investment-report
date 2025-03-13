@@ -37,6 +37,10 @@ export async function POST(request: NextRequest) {
     if (!existingUser) {
       console.log('사용자 정보 생성 시도:', userData);
       
+      // 특정 이메일은 항상 관리자 역할 부여 (나머지는 모두 customer로 통일)
+      const isAdminEmail = userData.email === 'kunmin.choi@gmail.com';
+      const role = isAdminEmail ? 'admin' : 'customer';
+      
       const { data: newUser, error: createError } = await serviceSupabase
         .from('users')
         .insert({
@@ -44,7 +48,7 @@ export async function POST(request: NextRequest) {
           email: userData.email,
           name: userData.name || userData.email.split('@')[0],
           phone: userData.phone || null,
-          role: userData.role || 'customer'
+          role: role
         })
         .select();
         
@@ -61,12 +65,16 @@ export async function POST(request: NextRequest) {
     } else {
       console.log('사용자 정보 업데이트 시도:', userData);
       
+      // 특정 이메일은 항상 관리자 역할 부여 (기존 역할 유지, 단 admin/customer로만 구분)
+      const isAdminEmail = userData.email === 'kunmin.choi@gmail.com';
+      const role = isAdminEmail ? 'admin' : 'customer';
+      
       const { data: updatedUser, error: updateError } = await serviceSupabase
         .from('users')
         .update({
           name: userData.name || existingUser.name,
           phone: userData.phone || existingUser.phone,
-          role: userData.role || existingUser.role
+          role: role
         })
         .eq('id', existingUser.id)
         .select();

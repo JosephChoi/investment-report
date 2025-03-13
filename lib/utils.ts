@@ -42,24 +42,22 @@ export function extractDateFromFilename(filename: string): Date | null {
 
 /**
  * 날짜 문자열을 포맷팅하는 함수
- * @param dateString ISO 형식의 날짜 문자열 또는 Date 객체
- * @returns 포맷팅된 날짜 문자열 (예: 2024년 3월 15일)
+ * @param dateString - ISO 형식의 날짜 문자열
+ * @returns 포맷팅된 날짜 문자열 (YYYY년 MM월 DD일)
  */
-export function formatDate(dateString: string | Date): string {
-  if (!dateString) return '날짜 정보 없음';
+export function formatDate(dateString: string): string {
+  const date = new Date(dateString);
   
-  try {
-    const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
-    
-    return date.toLocaleDateString('ko-KR', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-  } catch (error) {
-    console.error('날짜 포맷 오류:', error);
-    return '날짜 형식 오류';
+  // 유효한 날짜인지 확인
+  if (isNaN(date.getTime())) {
+    return '날짜 정보 없음';
   }
+  
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  
+  return `${year}년 ${month}월 ${day}일`;
 }
 
 /**
@@ -73,4 +71,19 @@ export function formatCurrency(amount: number): string {
     currency: 'KRW',
     maximumFractionDigits: 0,
   }).format(amount);
+}
+
+/**
+ * 파일 크기를 사람이 읽기 쉬운 형식으로 변환하는 함수
+ * @param bytes 바이트 단위의 파일 크기
+ * @returns 포맷팅된 파일 크기 문자열 (예: "1.5 MB")
+ */
+export function formatFileSize(bytes: number): string {
+  if (bytes === 0) return '0 Bytes';
+  
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 } 

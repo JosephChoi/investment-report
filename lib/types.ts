@@ -8,6 +8,7 @@ export interface Announcement {
   created_at: string;
   updated_at: string;
   created_by: string;
+  portfolio_details?: Portfolio[];
 }
 
 export interface AnnouncementAttachment {
@@ -31,7 +32,9 @@ export interface AnnouncementFormData {
 export interface Portfolio {
   id: string;
   name: string;
-  user_id: string;
+  user_id?: string;
+  description?: string;
+  type?: string;
   // 기타 포트폴리오 관련 필드
 }
 

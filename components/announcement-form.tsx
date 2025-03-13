@@ -28,22 +28,53 @@ export default function AnnouncementForm({
   useEffect(() => {
     const fetchPortfolios = async () => {
       try {
+        console.log('포트폴리오 목록 조회 시작...');
         const response = await fetch('/api/portfolios');
         
         if (!response.ok) {
-          throw new Error('포트폴리오 목록을 불러오는데 실패했습니다.');
+          console.error(`포트폴리오 API 응답 오류: ${response.status} ${response.statusText}`);
+          const errorData = await response.json();
+          throw new Error(`포트폴리오 목록을 불러오는데 실패했습니다. (${errorData.error || response.statusText})`);
         }
         
-        const { data } = await response.json();
-        setPortfolios(data);
+        const result = await response.json();
+        console.log('API 응답 데이터:', result);
+        
+        const { data } = result;
+        if (!data || data.length === 0) {
+          console.log('포트폴리오 데이터가 없습니다.');
+          throw new Error('포트폴리오 데이터가 없습니다. 관리자에게 문의하세요.');
+        } else {
+          console.log(`${data.length}개의 포트폴리오를 불러왔습니다.`);
+          setPortfolios(data);
+          setError(null);
+        }
       } catch (err) {
         console.error('포트폴리오 목록 조회 중 오류 발생:', err);
-        setError(err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다.');
+        setError('포트폴리오 목록을 불러오는데 실패했습니다: ' + (err instanceof Error ? err.message : '알 수 없는 오류'));
+        // 오류 발생 시 빈 배열 설정
+        setPortfolios([]);
       }
     };
 
     fetchPortfolios();
   }, []);
+
+  // 포트폴리오 선택 핸들러
+  const handlePortfolioChange = (portfolioId: string) => {
+    setSelectedPortfolios((prev) => {
+      if (prev.includes(portfolioId)) {
+        return prev.filter(id => id !== portfolioId);
+      } else {
+        return [...prev, portfolioId];
+      }
+    });
+  };
+
+  // 파일 업로드 핸들러
+  const handleFileChange = (newFiles: File[]) => {
+    setFiles(newFiles);
+  };
 
   // 폼 제출 핸들러
   const handleSubmit = async (e: React.FormEvent) => {
@@ -62,7 +93,7 @@ export default function AnnouncementForm({
       }
       
       if (targetType === 'portfolio' && selectedPortfolios.length === 0) {
-        throw new Error('대상 포트폴리오를 선택해주세요.');
+        throw new Error('하나 이상의 대상 포트폴리오를 선택해주세요.');
       }
       
       // 폼 데이터 생성
@@ -73,6 +104,8 @@ export default function AnnouncementForm({
         target_type: targetType,
         target_portfolios: targetType === 'portfolio' ? selectedPortfolios : []
       };
+      
+      console.log('공지사항 폼 제출:', formData);
       
       // 폼 제출
       await onSubmit(formData, files.length > 0 ? files : undefined);
@@ -93,22 +126,6 @@ export default function AnnouncementForm({
     }
   };
 
-  // 포트폴리오 선택 핸들러
-  const handlePortfolioChange = (portfolioId: string) => {
-    setSelectedPortfolios((prev) => {
-      if (prev.includes(portfolioId)) {
-        return prev.filter(id => id !== portfolioId);
-      } else {
-        return [...prev, portfolioId];
-      }
-    });
-  };
-
-  // 파일 업로드 핸들러
-  const handleFileChange = (newFiles: File[]) => {
-    setFiles(newFiles);
-  };
-
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {error && (
@@ -118,7 +135,7 @@ export default function AnnouncementForm({
       )}
       
       <div>
-        <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
+        <label htmlFor="title" className="block text-sm font-medium text-black mb-1">
           제목 <span className="text-red-500">*</span>
         </label>
         <input
@@ -126,14 +143,14 @@ export default function AnnouncementForm({
           id="title"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-black"
           placeholder="공지사항 제목을 입력하세요"
           required
         />
       </div>
       
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="block text-sm font-medium text-black mb-1">
           중요도 <span className="text-red-500">*</span>
         </label>
         <div className="flex space-x-4">
@@ -166,15 +183,15 @@ export default function AnnouncementForm({
               value="3"
               checked={importanceLevel === 3}
               onChange={() => setImportanceLevel(3)}
-              className="h-4 w-4 text-gray-600 focus:ring-gray-500 border-gray-300"
+              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
             />
-            <span className="ml-2 text-sm text-gray-600">보통</span>
+            <span className="ml-2 text-sm text-black">보통</span>
           </label>
         </div>
       </div>
       
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="block text-sm font-medium text-black mb-1">
           대상 <span className="text-red-500">*</span>
         </label>
         <div className="flex space-x-4">
@@ -187,7 +204,7 @@ export default function AnnouncementForm({
               onChange={() => setTargetType('all')}
               className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
             />
-            <span className="ml-2 text-sm">전체 공지</span>
+            <span className="ml-2 text-sm text-black">전체 공지</span>
           </label>
           <label className="inline-flex items-center">
             <input
@@ -198,38 +215,59 @@ export default function AnnouncementForm({
               onChange={() => setTargetType('portfolio')}
               className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
             />
-            <span className="ml-2 text-sm">특정 포트폴리오</span>
+            <span className="ml-2 text-sm text-black">특정 포트폴리오</span>
           </label>
         </div>
       </div>
       
       {targetType === 'portfolio' && (
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-black mb-1">
             대상 포트폴리오 <span className="text-red-500">*</span>
           </label>
-          {portfolios.length === 0 ? (
-            <div className="text-gray-500 text-sm">포트폴리오가 없습니다.</div>
+          {loading ? (
+            <div className="flex justify-center items-center h-20">
+              <div className="w-6 h-6 border-t-2 border-b-2 border-blue-600 rounded-full animate-spin"></div>
+              <span className="ml-2 text-sm text-gray-600">포트폴리오 목록 로딩 중...</span>
+            </div>
+          ) : portfolios.length === 0 ? (
+            <div className="text-sm text-gray-500">
+              사용 가능한 포트폴리오가 없습니다.
+            </div>
           ) : (
-            <div className="max-h-40 overflow-y-auto border border-gray-300 rounded-md p-2">
-              {portfolios.map((portfolio) => (
-                <label key={portfolio.id} className="flex items-center py-1">
-                  <input
-                    type="checkbox"
-                    checked={selectedPortfolios.includes(portfolio.id)}
-                    onChange={() => handlePortfolioChange(portfolio.id)}
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                  />
-                  <span className="ml-2 text-sm">{portfolio.name}</span>
-                </label>
-              ))}
+            <div>
+              <div className="text-sm text-gray-500 mb-2">
+                {selectedPortfolios.length > 0 ? (
+                  <span>선택된 포트폴리오: {selectedPortfolios.length}개</span>
+                ) : (
+                  <span>포트폴리오를 선택해주세요</span>
+                )}
+              </div>
+              <div className="max-h-96 overflow-y-auto border border-gray-300 rounded-md p-2">
+                {portfolios.map((portfolio) => (
+                  <label 
+                    key={portfolio.id} 
+                    className="flex items-center py-3 hover:bg-gray-50 px-3 rounded cursor-pointer border-b border-gray-200 last:border-b-0"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedPortfolios.includes(portfolio.id)}
+                      onChange={() => handlePortfolioChange(portfolio.id)}
+                      className="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    />
+                    <div className="ml-3 flex-1">
+                      <div className="text-sm font-medium text-black">{portfolio.name}</div>
+                    </div>
+                  </label>
+                ))}
+              </div>
             </div>
           )}
         </div>
       )}
       
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="block text-sm font-medium text-black mb-1">
           내용 <span className="text-red-500">*</span>
         </label>
         <QuillEditor
@@ -240,7 +278,7 @@ export default function AnnouncementForm({
       </div>
       
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="block text-sm font-medium text-black mb-1">
           첨부 파일
         </label>
         <FileUploader

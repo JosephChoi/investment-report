@@ -155,8 +155,8 @@ export default function QuillEditor({ value, onChange, placeholder = '내용을 
   // 로딩 상태 표시
   if (!isClient) {
     return (
-      <div className="h-[200px] border border-gray-300 rounded-md p-3 bg-gray-50">
-        에디터 로딩 중...
+      <div className="h-[200px] border border-gray-300 rounded-md p-3 bg-white">
+        <span className="text-black">에디터 로딩 중...</span>
       </div>
     );
   }
@@ -164,40 +164,58 @@ export default function QuillEditor({ value, onChange, placeholder = '내용을 
   return (
     <div className="quill-editor-container">
       {/* 에디터 컨테이너 */}
-      <div ref={editorRef} style={{ height: '250px' }}></div>
+      <div ref={editorRef} style={{ height: '250px', minWidth: '800px' }}></div>
       
       {/* 스타일 */}
       <style jsx global>{`
         .quill-editor-container {
           border-radius: 0.375rem;
           overflow: hidden;
+          width: 100%;
         }
         .quill-editor-container .ql-editor {
           min-height: 200px;
           font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
           font-size: 16px;
           line-height: 1.5;
-          color: black;
+          color: #000000;
           direction: ltr !important;
           text-align: left !important;
           unicode-bidi: normal !important;
+          background-color: white;
         }
         .quill-editor-container .ql-editor p {
           direction: ltr !important;
           text-align: left !important;
           unicode-bidi: normal !important;
+          color: #000000;
         }
         .quill-editor-container .ql-snow .ql-editor h1 {
           font-size: 2em;
           font-weight: bold;
+          color: #000000;
         }
         .quill-editor-container .ql-snow .ql-editor h2 {
           font-size: 1.5em;
           font-weight: bold;
+          color: #000000;
         }
         .quill-editor-container .ql-snow .ql-editor h3 {
           font-size: 1.17em;
           font-weight: bold;
+          color: #000000;
+        }
+        .quill-editor-container .ql-toolbar {
+          background-color: white;
+          display: flex;
+          flex-wrap: wrap;
+          justify-content: flex-start;
+        }
+        .quill-editor-container .ql-toolbar .ql-formats {
+          margin-right: 10px;
+        }
+        .quill-editor-container .ql-container {
+          background-color: white;
         }
       `}</style>
     </div>

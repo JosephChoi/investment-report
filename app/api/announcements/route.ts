@@ -1,42 +1,11 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
 import { AnnouncementFormData } from '@/lib/types';
+import { supabase, getServiceSupabase } from '@/lib/supabase';
 
 // 모든 공지사항 조회 (관리자용)
 export async function GET(request: NextRequest) {
   try {
-    // Authorization 헤더에서 토큰 추출
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ error: '인증 토큰이 필요합니다.' }, { status: 401 });
-    }
-    
-    const token = authHeader.split(' ')[1];
-    
-    // Supabase 클라이언트 생성
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
-    
-    // 토큰으로 세션 설정
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    
-    if (authError || !user) {
-      return NextResponse.json({ error: '인증되지 않은 사용자입니다.' }, { status: 401 });
-    }
-    
-    // 관리자 권한 확인
-    const { data: userData } = await supabase
-      .from('users')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-    
-    if (!userData || userData.role !== 'admin') {
-      return NextResponse.json({ error: '권한이 없습니다.' }, { status: 403 });
-    }
-    
     // 쿼리 파라미터 가져오기
     const url = new URL(request.url);
     const importance_level = url.searchParams.get('importance_level');
@@ -47,8 +16,13 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(url.searchParams.get('limit') || '10');
     const offset = (page - 1) * limit;
     
+    console.log('공지사항 조회 요청:', { importance_level, target_type, start_date, end_date, page, limit });
+    
+    // 서비스 역할 키를 사용하는 Supabase 클라이언트 가져오기
+    const serviceSupabase = getServiceSupabase();
+    
     // 쿼리 빌더
-    let query = supabase
+    let query = serviceSupabase
       .from('announcements')
       .select('*')
       .order('created_at', { ascending: false })
@@ -75,9 +49,11 @@ export async function GET(request: NextRequest) {
     const { data, error, count } = await query;
     
     if (error) {
+      console.error('공지사항 조회 오류:', error);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
     
+    console.log(`${data?.length || 0}개의 공지사항을 조회했습니다.`);
     return NextResponse.json({ data, count });
   } catch (error) {
     console.error('공지사항 조회 중 오류 발생:', error);
@@ -88,64 +64,59 @@ export async function GET(request: NextRequest) {
 // 새로운 공지사항 생성
 export async function POST(request: NextRequest) {
   try {
-    // Authorization 헤더에서 토큰 추출
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ error: '인증 토큰이 필요합니다.' }, { status: 401 });
-    }
-    
-    const token = authHeader.split(' ')[1];
-    
-    // Supabase 클라이언트 생성
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
-    
-    // 토큰으로 세션 설정
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    
-    if (authError || !user) {
-      return NextResponse.json({ error: '인증되지 않은 사용자입니다.' }, { status: 401 });
-    }
-    
-    // 관리자 권한 확인
-    const { data: userData } = await supabase
-      .from('users')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-    
-    if (!userData || userData.role !== 'admin') {
-      return NextResponse.json({ error: '권한이 없습니다.' }, { status: 403 });
-    }
-    
     // 요청 본문 파싱
     const body: AnnouncementFormData = await request.json();
+    
+    console.log('공지사항 생성 요청:', { title: body.title, target_type: body.target_type });
     
     // 필수 필드 검증
     if (!body.title || !body.content || !body.importance_level || !body.target_type) {
       return NextResponse.json({ error: '필수 필드가 누락되었습니다.' }, { status: 400 });
     }
     
+    // 서비스 역할 키를 사용하는 Supabase 클라이언트 가져오기
+    const serviceSupabase = getServiceSupabase();
+    
+    // 요청 헤더에서 사용자 ID 가져오기 (없으면 기본값 사용)
+    const userId = request.headers.get('x-user-id') || 'system';
+    
+    // 포트폴리오 ID 처리 - UUID 배열 형식으로 변환
+    let targetPortfolios: string[] = [];
+    if (body.target_portfolios && body.target_portfolios.length > 0) {
+      // 문자열 배열을 UUID 배열로 변환
+      targetPortfolios = body.target_portfolios.map(id => {
+        try {
+          // 이미 UUID 형식인지 확인
+          return id;
+        } catch (e) {
+          console.error('포트폴리오 ID UUID 변환 오류:', e);
+          return id;
+        }
+      });
+    }
+    
+    console.log('대상 포트폴리오 ID:', targetPortfolios);
+    
     // 공지사항 생성
-    const { data, error } = await supabase
+    const { data, error } = await serviceSupabase
       .from('announcements')
       .insert({
         title: body.title,
         content: body.content,
         importance_level: body.importance_level,
         target_type: body.target_type,
-        target_portfolios: body.target_portfolios || [],
-        created_by: user.id
+        target_portfolios: targetPortfolios,
+        created_by: userId
       })
       .select()
       .single();
     
     if (error) {
+      console.error('공지사항 생성 오류:', error);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
     
+    console.log('공지사항 생성 성공:', data.id);
     return NextResponse.json({ data }, { status: 201 });
   } catch (error) {
     console.error('공지사항 생성 중 오류 발생:', error);

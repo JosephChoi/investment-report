@@ -129,7 +129,7 @@ export default function MonthlyReportDetail({ params }: PageProps) {
             await fetchBalanceData(userAccounts[0].id);
             
             // 선택된 계좌의 포트폴리오 리포트 가져오기
-            await fetchPortfolioReportByType(userAccounts[0].portfolio_type + `?t=${Date.now()}`);
+            await fetchPortfolioReportByType(userAccounts[0].portfolio_type_id);
             
             return;
           } else {
@@ -158,7 +158,7 @@ export default function MonthlyReportDetail({ params }: PageProps) {
           await fetchBalanceData(accountsData[0].id);
           
           // 선택된 계좌의 포트폴리오 리포트 가져오기
-          await fetchPortfolioReportByType(accountsData[0].portfolio_type + `?t=${Date.now()}`);
+          await fetchPortfolioReportByType(accountsData[0].portfolio_type_id);
           
           return;
         }
@@ -188,7 +188,7 @@ export default function MonthlyReportDetail({ params }: PageProps) {
             await fetchBalanceData(accountsData[0].id);
             
             // 선택된 계좌의 포트폴리오 리포트 가져오기
-            await fetchPortfolioReportByType(accountsData[0].portfolio_type + `?t=${Date.now()}`);
+            await fetchPortfolioReportByType(accountsData[0].portfolio_type_id);
             
             return;
           }
@@ -232,10 +232,10 @@ export default function MonthlyReportDetail({ params }: PageProps) {
         // 병렬로 데이터 가져오기
         await Promise.all([
           fetchBalanceData(account.id),
-          fetchPortfolioReportByType(account.portfolio_type + `?t=${Date.now()}`)
+          fetchPortfolioReportByType(account.portfolio_type_id)
         ]);
         
-        console.log('계좌 변경 완료:', account.portfolio_type);
+        console.log('계좌 변경 완료:', account.portfolio_type_id);
       } catch (dataError) {
         console.error('계좌 데이터 가져오기 오류:', dataError);
         setError('계좌 데이터를 불러오는 중 오류가 발생했습니다.');
@@ -249,252 +249,40 @@ export default function MonthlyReportDetail({ params }: PageProps) {
     }
   };
 
-  // 포트폴리오 타입으로 직접 리포트 가져오기 (새 함수)
-  const fetchPortfolioReportByType = async (portfolioTypeWithTimestamp: string) => {
+  // 포트폴리오 리포트 가져오기
+  const fetchPortfolioReportByType = async (portfolioTypeId: string) => {
     try {
-      // 타임스탬프 파라미터 제거
-      const portfolioType = portfolioTypeWithTimestamp.split('?')[0];
+      console.log('포트폴리오 리포트 가져오기:', portfolioTypeId);
       
-      console.log('포트폴리오 타입으로 리포트 가져오기 시작:', portfolioType);
-      
-      if (!portfolioType) {
-        console.error('포트폴리오 타입이 없습니다.');
+      if (!portfolioTypeId) {
+        console.error('포트폴리오 타입 ID가 제공되지 않았습니다.');
+        setError('포트폴리오 정보가 없습니다.');
         return;
       }
       
-      const year_month = `${year}-${String(month).padStart(2, '0')}`;
-      const formattedYear = year;
-      const formattedMonth = String(month).padStart(2, '0');
+      const { data, error } = await supabase
+        .from('portfolio_reports')
+        .select('*')
+        .eq('portfolio_type_id', portfolioTypeId)
+        .order('report_date', { ascending: false })
+        .limit(1);
       
-      console.log('포트폴리오 리포트 조회 조건:', { portfolioType, year_month });
-      
-      // 1. 먼저 portfolio_reports 테이블에서 조회
-      try {
-        console.log('portfolio_reports 테이블에서 조회 시도...');
-        const { data: reportData, error: reportError } = await supabase
-          .from('portfolio_reports')
-          .select('*')
-          .eq('portfolio_type', portfolioType)
-          .eq('year_month', year_month) // 현재 선택된 연월에 해당하는 데이터만 조회
-          .order('report_date', { ascending: false })
-          .limit(1);
-          
-        if (reportError) {
-          console.error('portfolio_reports 테이블 조회 오류:', reportError);
-        } else if (reportData && reportData.length > 0) {
-          console.log('portfolio_reports 테이블에서 데이터 찾음:', reportData[0]);
-          
-          // 테이블에서 URL 가져오기
-          const dbUrl = reportData[0].report_url;
-          console.log('데이터베이스에서 가져온 URL:', dbUrl);
-          
-          // URL이 유효한지 확인
-          if (dbUrl && dbUrl.startsWith('http')) {
-            try {
-              // URL 유효성 확인
-              const response = await fetch(dbUrl, { method: 'HEAD' });
-              if (response.ok) {
-                console.log('데이터베이스 URL 유효성 확인 성공');
-                
-                // 포트폴리오 리포트 데이터 설정
-                setPortfolioReport({
-                  id: reportData[0].id,
-                  portfolio_type: reportData[0].portfolio_type,
-                  year_month: year_month,
-                  report_url: dbUrl,
-                  report_date: reportData[0].report_date || new Date().toISOString()
-                });
-                
-                return;
-              } else {
-                console.log(`데이터베이스 URL 유효성 검사 실패: ${response.status} ${response.statusText}`);
-                // URL이 유효하지 않으면 스토리지에서 새 URL 생성 시도
-              }
-            } catch (fetchError) {
-              console.error('URL 유효성 확인 중 오류:', fetchError);
-              // 오류 발생 시 스토리지에서 새 URL 생성 시도
-            }
-          }
-          
-          // DB URL이 유효하지 않거나 오류가 발생한 경우 스토리지에서 새 URL 생성 시도
-          console.log('DB URL이 유효하지 않습니다. 스토리지에서 새 URL 생성 시도...');
-        }
-      } catch (dbError) {
-        console.error('DB 조회 중 오류 발생:', dbError);
+      if (error) {
+        console.error('포트폴리오 리포트 가져오기 오류:', error);
+        setError('포트폴리오 리포트를 불러오는 중 오류가 발생했습니다.');
+        return;
       }
       
-      // 2. 스토리지에서 여러 파일명 패턴을 시도
-      console.log('스토리지에서 여러 파일명 패턴 시도...');
-      
-      // 기본 경로 (단일 경로 구조만 사용)
-      const basePath = `${formattedYear}/${formattedMonth}`;
-      
-      console.log('기본 경로:', basePath);
-      console.log('연도:', formattedYear, '월:', formattedMonth);
-      
-      // 포트폴리오 타입에 따른 파일명 패턴 결정
-      let fileNamePatterns = [];
-      const type = portfolioType.toLowerCase();
-      
-      console.log('포트폴리오 타입 (소문자):', type);
-      console.log('포트폴리오 타입 조건 확인:',
-        '국내 포함:', type.includes('국내'),
-        '적립식 포함:', type.includes('적립식'),
-        'ETF 포함:', type.includes('etf'),
-        '연금 포함:', type.includes('연금')
-      );
-      
-      // 영문 파일명 패턴 (새로운 명명 규칙)
-      // 더 구체적인 조건을 먼저 확인
-      if (type.includes('국내') && type.includes('적립식') && type.includes('etf')) {
-        console.log('국내 적립식 ETF 패턴 추가');
-        fileNamePatterns.push(`domestic_savings_etf_${formattedMonth}.jpg`);
-      } else if (type.includes('국내') && type.includes('etf')) {
-        console.log('국내 ETF 패턴 추가');
-        fileNamePatterns.push(`domestic_etf_${formattedMonth}.jpg`);
-      } else if (type.includes('연금') && type.includes('적립식')) {
-        console.log('연금 적립식 패턴 추가');
-        fileNamePatterns.push(`pension_savings_${formattedMonth}.jpg`);
-      } else if (type.includes('연금') || type.includes('irp')) {
-        console.log('연금/IRP 패턴 추가');
-        fileNamePatterns.push(`pension_${formattedMonth}.jpg`);
-      } else if (type.includes('적립식')) {
-        console.log('적립식 패턴 추가');
-        fileNamePatterns.push(`savings_${formattedMonth}.jpg`);
-      } else if (type.includes('isa')) {
-        console.log('ISA 패턴 추가');
-        fileNamePatterns.push(`isa_${formattedMonth}.jpg`);
-      } else if (type.includes('bdc') || type.includes('배당')) {
-        console.log('BDC/배당 패턴 추가');
-        fileNamePatterns.push(`dividend_${formattedMonth}.jpg`);
-      } else if (type.includes('채권')) {
-        console.log('채권 패턴 추가');
-        fileNamePatterns.push(`bond_${formattedMonth}.jpg`);
-      } else if (type.includes('글로벌') || type.includes('해외')) {
-        console.log('글로벌/해외 패턴 추가');
-        fileNamePatterns.push(`global_${formattedMonth}.jpg`);
+      if (data && data.length > 0) {
+        console.log('포트폴리오 리포트 데이터:', data[0]);
+        setPortfolioReport(data[0]);
       } else {
-        console.log('기본 패턴 추가');
-        fileNamePatterns.push(`portfolio_${portfolioType.replace(/\s+/g, '_').replace(/[^\w.-]/g, '')}_${formattedMonth}.jpg`);
+        console.log('포트폴리오 리포트가 없습니다.');
+        setPortfolioReport(null);
       }
-      
-      // 기존 파일명 패턴도 추가 (이전 파일과의 호환성)
-      if (type.includes('국내') && type.includes('적립식') && type.includes('etf')) {
-        console.log('국내 적립식 ETF 기존 패턴 추가');
-        fileNamePatterns.push(`국내적립식EMP_${formattedMonth}.JPG`);
-        fileNamePatterns.push(`국내적립식ETF_${formattedMonth}.JPG`);
-      } else if (type.includes('국내') && type.includes('etf')) {
-        console.log('국내 ETF 기존 패턴 추가');
-        fileNamePatterns.push(`__EMP_${formattedMonth}.JPG`);
-        fileNamePatterns.push(`국내_EMP_${formattedMonth}.JPG`);
-        fileNamePatterns.push(`국내ETF_${formattedMonth}.JPG`);
-      } else if (type.includes('연금') && type.includes('적립식')) {
-        console.log('연금 적립식 기존 패턴 추가');
-        fileNamePatterns.push(`연금적립식_${formattedMonth}.JPG`);
-      } else if (type.includes('연금') || type.includes('irp')) {
-        console.log('연금/IRP 기존 패턴 추가');
-        fileNamePatterns.push(`_IRP_1_EMP_${formattedMonth}.JPG`);
-        fileNamePatterns.push(`IRP_EMP_${formattedMonth}.JPG`);
-        fileNamePatterns.push(`연금_${formattedMonth}.JPG`);
-      } else if (type.includes('적립식')) {
-        console.log('적립식 기존 패턴 추가');
-        fileNamePatterns.push(`적립식_${formattedMonth}.JPG`);
-      } else if (type.includes('isa')) {
-        console.log('ISA 기존 패턴 추가');
-        fileNamePatterns.push(`ISA_EMP_${formattedMonth}.JPG`);
-        fileNamePatterns.push(`ISA_${formattedMonth}.JPG`);
-      } else if (type.includes('bdc') || type.includes('배당')) {
-        console.log('BDC/배당 기존 패턴 추가');
-        fileNamePatterns.push(`_BDC__${formattedMonth}.JPG`);
-        fileNamePatterns.push(`BDC_${formattedMonth}.JPG`);
-        fileNamePatterns.push(`배당형_${formattedMonth}.JPG`);
-      } else if (type.includes('채권')) {
-        console.log('채권 기존 패턴 추가');
-        fileNamePatterns.push(`국내채권_${formattedMonth}.JPG`);
-        fileNamePatterns.push(`채권_${formattedMonth}.JPG`);
-      } else if (type.includes('글로벌') || type.includes('해외')) {
-        console.log('글로벌/해외 기존 패턴 추가');
-        fileNamePatterns.push(`글로벌_${formattedMonth}.JPG`);
-        fileNamePatterns.push(`해외_${formattedMonth}.JPG`);
-        fileNamePatterns.push(`글로벌ETF_${formattedMonth}.JPG`);
-      } else {
-        console.log('기본 기존 패턴 추가');
-        fileNamePatterns.push(`__EMP_${formattedMonth}.JPG`);
-        fileNamePatterns.push(`기본_${formattedMonth}.JPG`);
-        fileNamePatterns.push(`리포트_${formattedMonth}.JPG`);
-      }
-      
-      // 소문자 확장자 버전도 추가
-      const lowerCasePatterns = fileNamePatterns
-        .filter(pattern => pattern.endsWith('.JPG'))
-        .map(pattern => pattern.replace('.JPG', '.jpg'));
-      fileNamePatterns = [...fileNamePatterns, ...lowerCasePatterns];
-      
-      // 월 숫자만 사용하는 버전도 추가
-      const monthNumber = parseInt(month, 10);
-      const monthNumberPatterns = fileNamePatterns.map(pattern => 
-        pattern.replace(`_${formattedMonth}.`, `_${monthNumber}.`)
-              .replace(`_${formattedMonth}`, `_${monthNumber}`)
-      );
-      fileNamePatterns = [...fileNamePatterns, ...monthNumberPatterns];
-      
-      console.log('시도할 파일명 패턴 (총 ' + fileNamePatterns.length + '개):', fileNamePatterns);
-      
-      // 각 패턴을 순차적으로 시도
-      for (const pattern of fileNamePatterns) {
-        const filePath = `${basePath}/${pattern}`;
-        console.log(`파일 경로 시도: ${filePath}`);
-        
-        const storageUrl = await getStorageUrl('portfolio-reports', filePath);
-        
-        // 유효한 URL을 찾으면 사용
-        if (storageUrl && !storageUrl.includes('리포트 이미지를 찾을 수 없습니다')) {
-          console.log('유효한 URL 찾음:', storageUrl);
-          
-          // 포트폴리오 리포트 데이터 설정
-          setPortfolioReport({
-            id: 'storage',
-            portfolio_type: portfolioType,
-            year_month: year_month,
-            report_url: storageUrl,
-            report_date: new Date().toISOString()
-          });
-          
-          // 성공적으로 URL을 찾았으므로 함수 종료
-          console.log('포트폴리오 리포트 설정 완료:', portfolioType);
-          return;
-        }
-      }
-      
-      // 3. 모든 시도 실패 시 플레이스홀더 이미지 사용
-      console.log('모든 시도 실패. 플레이스홀더 이미지 사용');
-      
-      const placeholderUrl = `https://placehold.co/800x600/png?text=${encodeURIComponent(portfolioType)}+리포트+(${year}-${month})`;
-      
-      // 포트폴리오 리포트 데이터 설정
-      setPortfolioReport({
-        id: 'placeholder',
-        portfolio_type: portfolioType,
-        year_month: year_month,
-        report_url: placeholderUrl,
-        report_date: new Date().toISOString()
-      });
-      
-      console.log('플레이스홀더 이미지로 포트폴리오 리포트 설정 완료:', portfolioType);
     } catch (error) {
-      console.error('포트폴리오 리포트 가져오기 오류:', error);
-      
-      // 오류 발생 시 플레이스홀더 이미지 사용
-      const placeholderUrl = `https://placehold.co/800x600/png?text=${encodeURIComponent('오류 발생')}`;
-      
-      // 포트폴리오 리포트 데이터 설정
-      setPortfolioReport({
-        id: 'error',
-        portfolio_type: portfolioTypeWithTimestamp.split('?')[0], // 타임스탬프 제거
-        year_month: `${year}-${String(month).padStart(2, '0')}`,
-        report_url: placeholderUrl,
-        report_date: new Date().toISOString()
-      });
+      console.error('포트폴리오 리포트 처리 오류:', error);
+      setError('포트폴리오 리포트를 처리하는 중 오류가 발생했습니다.');
     }
   };
 
@@ -585,61 +373,6 @@ export default function MonthlyReportDetail({ params }: PageProps) {
     }
   };
 
-  // 스토리지 URL 생성 함수
-  const getStorageUrl = async (bucket: string, path: string) => {
-    try {
-      console.log(`스토리지 URL 생성 시도: 버킷=${bucket}, 경로=${path}`);
-      
-      // 1. 공개 URL 시도
-      try {
-        const { data: publicData } = await supabase
-          .storage
-          .from(bucket)
-          .getPublicUrl(path);
-          
-        if (publicData?.publicUrl) {
-          // 캐시 방지를 위한 타임스탬프 추가
-          const cacheBreaker = `?t=${Date.now()}`;
-          const publicUrl = publicData.publicUrl + cacheBreaker;
-          
-          console.log('공개 URL 생성 성공 (캐시 방지 파라미터 추가):', publicUrl);
-          return publicUrl;
-        }
-      } catch (publicUrlError) {
-        console.error('공개 URL 생성 중 오류:', publicUrlError);
-      }
-      
-      // 2. 서명된 URL 시도
-      try {
-        const { data: signedData, error: signedError } = await supabase
-          .storage
-          .from(bucket)
-          .createSignedUrl(path, 60 * 60); // 1시간 유효
-          
-        if (signedError) {
-          console.error('서명된 URL 생성 오류:', signedError);
-        } else if (signedData?.signedUrl) {
-          // 캐시 방지를 위한 타임스탬프 추가 (이미 쿼리 파라미터가 있을 수 있으므로 &로 연결)
-          const cacheBreaker = `&t=${Date.now()}`;
-          const signedUrl = signedData.signedUrl + cacheBreaker;
-          
-          console.log('서명된 URL 생성 성공 (캐시 방지 파라미터 추가):', signedUrl);
-          return signedUrl;
-        }
-      } catch (signedUrlError) {
-        console.error('서명된 URL 생성 중 오류:', signedUrlError);
-      }
-      
-      // 모든 시도 실패 시 기본 이미지 URL 반환
-      console.log('모든 URL 생성 시도 실패. 기본 이미지 URL 반환');
-      return `https://placehold.co/800x600/png?text=${encodeURIComponent('리포트 이미지를 찾을 수 없습니다')}`;
-    } catch (error) {
-      console.error('스토리지 URL 생성 중 오류:', error);
-      // 오류 발생 시 기본 이미지 URL 반환
-      return `https://placehold.co/800x600/png?text=${encodeURIComponent('리포트 이미지를 찾을 수 없습니다')}`;
-    }
-  };
-
   // 월별 잔고 가져오기
   const getMonthlyBalance = () => {
     if (balanceData.length === 0) {
@@ -726,15 +459,15 @@ export default function MonthlyReportDetail({ params }: PageProps) {
       setSelectedAccount(firstAccount);
       
       fetchBalanceData(firstAccount.id);
-      fetchPortfolioReportByType(firstAccount.portfolio_type + `?t=${Date.now()}`);
+      fetchPortfolioReportByType(firstAccount.portfolio_type_id);
     }
   }, [accounts]);
   
   // 선택된 계좌가 변경될 때마다 포트폴리오 리포트 업데이트
   useEffect(() => {
     if (selectedAccount) {
-      console.log('선택된 계좌 변경 감지:', selectedAccount.portfolio_type);
-      fetchPortfolioReportByType(selectedAccount.portfolio_type + `?t=${Date.now()}`);
+      console.log('선택된 계좌 변경 감지:', selectedAccount.portfolio_type_id);
+      fetchPortfolioReportByType(selectedAccount.portfolio_type_id);
     }
   }, [selectedAccount?.id]);
 
@@ -794,14 +527,14 @@ export default function MonthlyReportDetail({ params }: PageProps) {
             >
               {accounts.map((account) => (
                 <option key={account.id} value={account.id}>
-                  {account.portfolio_type}
+                  {account.portfolio?.name || '정보 없음'}
                 </option>
               ))}
             </select>
           </div>
         ) : selectedAccount ? (
           <div className="w-full px-4 py-3 bg-gray-50 rounded-lg border border-gray-200">
-            <p className="font-medium text-lg text-gray-800">{selectedAccount.portfolio_type}</p>
+            <p className="font-medium text-lg text-gray-800">{selectedAccount.portfolio?.name || '정보 없음'}</p>
           </div>
         ) : (
           <p className="text-gray-600">등록된 포트폴리오가 없습니다.</p>
@@ -822,7 +555,7 @@ export default function MonthlyReportDetail({ params }: PageProps) {
             </div>
             <div className="bg-gray-50 rounded-lg p-4">
               <p className="text-sm text-gray-600 mb-1">포트폴리오</p>
-              <p className="text-lg font-medium text-gray-900">{selectedAccount.portfolio_type}</p>
+              <p className="text-lg font-medium text-gray-900">{selectedAccount.portfolio?.name || '정보 없음'}</p>
             </div>
             <div className="bg-blue-50 rounded-lg p-4">
               <p className="text-sm text-blue-600 mb-1">전월잔고</p>
@@ -860,7 +593,7 @@ export default function MonthlyReportDetail({ params }: PageProps) {
           <div className="flex flex-col items-center">
             <div className="mb-3 text-center">
               <span className="inline-block bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
-                {selectedAccount.portfolio_type} 포트폴리오
+                {selectedAccount.portfolio?.name} 포트폴리오
               </span>
             </div>
             
@@ -875,7 +608,7 @@ export default function MonthlyReportDetail({ params }: PageProps) {
               {/* 1. 일반 img 태그 - 캐시 방지를 위한 타임스탬프 추가 */}
               <img
                 src={`${portfolioReport.report_url}`}
-                alt={`${selectedAccount.portfolio_type} 포트폴리오 리포트`}
+                alt={`${selectedAccount.portfolio?.name} 포트폴리오 리포트`}
                 className="w-full h-full object-contain z-10 relative"
                 onLoad={(e) => {
                   // 이미지 로드 성공 시 z-index 조정
@@ -927,7 +660,7 @@ export default function MonthlyReportDetail({ params }: PageProps) {
               <iframe
                 id="report-iframe"
                 src={`${portfolioReport.report_url}`}
-                title={`${selectedAccount.portfolio_type} 포트폴리오 리포트`}
+                title={`${selectedAccount.portfolio?.name} 포트폴리오 리포트`}
                 className="w-full h-full z-1 relative"
                 style={{ border: 'none', display: 'none' }}
                 onLoad={() => console.log('iframe 로드 성공')}
@@ -976,7 +709,7 @@ export default function MonthlyReportDetail({ params }: PageProps) {
                 <div className="text-center p-4">
                   <p className="text-gray-600 mb-4">이미지를 불러올 수 없습니다.</p>
                   <div className="bg-gray-100 p-4 rounded-lg inline-block">
-                    <p className="text-gray-500">{selectedAccount.portfolio_type} 포트폴리오 ({year}년 {month}월)</p>
+                    <p className="text-gray-500">{selectedAccount.portfolio?.name} 포트폴리오 ({year}년 {month}월)</p>
                   </div>
                 </div>
               </div>
@@ -1044,7 +777,7 @@ export default function MonthlyReportDetail({ params }: PageProps) {
                     const a = document.createElement('a');
                     a.style.display = 'none';
                     a.href = url;
-                    a.download = `${selectedAccount.portfolio_type}_포트폴리오_${year}년_${month}월.${fileExtension}`;
+                    a.download = `${selectedAccount.portfolio?.name}_포트폴리오_${year}년_${month}월.${fileExtension}`;
                     
                     // 링크 클릭하여 다운로드 시작
                     document.body.appendChild(a);
@@ -1077,7 +810,7 @@ export default function MonthlyReportDetail({ params }: PageProps) {
         <div className="mb-8 bg-white rounded-xl shadow-sm p-6 border border-gray-100">
           <h2 className="text-xl font-semibold mb-4 text-gray-900 flex items-center">
             <span className="inline-block w-1 h-6 bg-blue-500 rounded-full mr-3"></span>
-            잔고 변화 추이 - {selectedAccount.portfolio_type}
+            잔고 변화 추이 - {selectedAccount.portfolio?.name}
           </h2>
           {balanceData.length > 0 ? (
             <>

@@ -193,18 +193,19 @@ export default function AdminDashboard() {
         </Link>
         
         {/* 최근 알림 관리 카드 */}
-        <Link href="/admin/notifications" className="block">
+        <Link href="/admin/announcements" className="block">
           <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 h-full transition-all hover:shadow-md hover:border-gray-200">
             <div className="flex items-start">
               <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mr-4">
                 <Bell className="w-6 h-6 text-gray-700" />
               </div>
               <div>
-                <h2 className="text-xl font-semibold mb-2 text-gray-900">최근 알림 관리</h2>
-                <p className="text-gray-600 text-sm mb-4">고객에게 표시될 알림을 관리합니다.</p>
+                <h2 className="text-xl font-semibold mb-2 text-gray-900">공지사항 관리</h2>
+                <p className="text-gray-600 text-sm mb-4">고객에게 표시될 공지사항을 관리합니다.</p>
                 <ul className="text-sm text-gray-500 list-disc list-inside">
                   <li>공지사항 등록 및 수정</li>
-                  <li>알림 관리</li>
+                  <li>중요도 및 대상 설정</li>
+                  <li>첨부 파일 관리</li>
                 </ul>
               </div>
             </div>

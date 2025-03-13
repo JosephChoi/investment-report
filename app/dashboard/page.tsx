@@ -14,6 +14,7 @@ import {
   CardContent, 
   CardFooter 
 } from '@/components/ui/card';
+import DashboardAnnouncements from '@/components/dashboard-announcements';
 
 // 공지사항 타입 정의
 interface Announcement {

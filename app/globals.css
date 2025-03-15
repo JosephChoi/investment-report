@@ -3,13 +3,10 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
-}
-
-@theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -44,4 +41,29 @@ body {
       transform: translateY(0);
     }
   }
+}
+
+/* 공지사항 본문 스타일 개선 */
+.prose p {
+  color: #1a202c !important;
+  font-size: 1rem !important;
+  line-height: 1.6 !important;
+  margin-bottom: 1rem !important;
+}
+
+.prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6 {
+  color: #1a202c !important;
+  font-weight: 600 !important;
+  margin-top: 1.5rem !important;
+  margin-bottom: 1rem !important;
+}
+
+.prose ul, .prose ol {
+  color: #1a202c !important;
+  margin-bottom: 1rem !important;
+}
+
+.prose li {
+  color: #1a202c !important;
+  margin-bottom: 0.5rem !important;
 }

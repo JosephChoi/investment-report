@@ -252,7 +252,7 @@ export default function MonthlyReportDetail({ params }: PageProps) {
   // 포트폴리오 리포트 가져오기
   const fetchPortfolioReportByType = async (portfolioTypeId: string) => {
     try {
-      console.log('포트폴리오 리포트 가져오기:', portfolioTypeId);
+      console.log('포트폴리오 리포트 가져오기:', portfolioTypeId, '연도:', year, '월:', month);
       
       if (!portfolioTypeId) {
         console.error('포트폴리오 타입 ID가 제공되지 않았습니다.');
@@ -260,6 +260,81 @@ export default function MonthlyReportDetail({ params }: PageProps) {
         return;
       }
       
+      // 현재 연도와 월에 해당하는 year_month 형식 생성
+      const yearMonth = `${year}-${String(month).padStart(2, '0')}`;
+      console.log('조회할 year_month:', yearMonth);
+      
+      // 1. 먼저 특정 연도/월에 해당하는 리포트 조회 시도
+      const { data: yearMonthData, error: yearMonthError } = await supabase
+        .from('portfolio_reports')
+        .select('*')
+        .eq('portfolio_type_id', portfolioTypeId)
+        .eq('year_month', yearMonth)
+        .limit(1);
+      
+      if (yearMonthError) {
+        console.error('특정 연도/월 포트폴리오 리포트 조회 오류:', yearMonthError);
+      }
+      
+      // 특정 연도/월에 해당하는 리포트가 있으면 사용
+      if (yearMonthData && yearMonthData.length > 0) {
+        console.log(`${yearMonth}에 해당하는 포트폴리오 리포트 찾음:`, yearMonthData[0]);
+        setPortfolioReport(yearMonthData[0]);
+        return;
+      }
+      
+      console.log(`${yearMonth}에 해당하는 포트폴리오 리포트가 없습니다. 대체 방법 시도...`);
+      
+      // 2. 특정 연도/월에 해당하는 리포트가 없으면 report_date 필드로 조회 시도
+      // 해당 월의 첫날과 마지막 날 계산
+      const firstDayOfMonth = new Date(parseInt(year), parseInt(month) - 1, 1);
+      const lastDayOfMonth = new Date(parseInt(year), parseInt(month), 0);
+      
+      const { data: dateRangeData, error: dateRangeError } = await supabase
+        .from('portfolio_reports')
+        .select('*')
+        .eq('portfolio_type_id', portfolioTypeId)
+        .gte('report_date', firstDayOfMonth.toISOString().split('T')[0])
+        .lte('report_date', lastDayOfMonth.toISOString().split('T')[0])
+        .order('report_date', { ascending: false })
+        .limit(1);
+      
+      if (dateRangeError) {
+        console.error('날짜 범위 포트폴리오 리포트 조회 오류:', dateRangeError);
+      }
+      
+      // 해당 월 내의 리포트가 있으면 사용
+      if (dateRangeData && dateRangeData.length > 0) {
+        console.log(`${year}년 ${month}월 내의 포트폴리오 리포트 찾음:`, dateRangeData[0]);
+        setPortfolioReport(dateRangeData[0]);
+        return;
+      }
+      
+      console.log(`${year}년 ${month}월 내의 포트폴리오 리포트가 없습니다. 마지막 대체 방법 시도...`);
+      
+      // 3. 마지막 대체 방법: 파일명에 연도와 월이 포함된 리포트 찾기
+      const { data: fileNameData, error: fileNameError } = await supabase
+        .from('portfolio_reports')
+        .select('*')
+        .eq('portfolio_type_id', portfolioTypeId)
+        .or(`report_url.ilike.%${year}${String(month).padStart(2, '0')}%,report_url.ilike.%${year}_${month}%,report_url.ilike.%${year}-${String(month).padStart(2, '0')}%`)
+        .order('report_date', { ascending: false })
+        .limit(1);
+      
+      if (fileNameError) {
+        console.error('파일명 기반 포트폴리오 리포트 조회 오류:', fileNameError);
+      }
+      
+      // 파일명에 연도와 월이 포함된 리포트가 있으면 사용
+      if (fileNameData && fileNameData.length > 0) {
+        console.log(`파일명에 ${year}년 ${month}월이 포함된 포트폴리오 리포트 찾음:`, fileNameData[0]);
+        setPortfolioReport(fileNameData[0]);
+        return;
+      }
+      
+      console.log(`${year}년 ${month}월에 해당하는 포트폴리오 리포트를 찾을 수 없습니다. 최신 리포트 사용...`);
+      
+      // 4. 모든 방법이 실패하면 최신 리포트 사용 (기존 방식)
       const { data, error } = await supabase
         .from('portfolio_reports')
         .select('*')
@@ -268,13 +343,13 @@ export default function MonthlyReportDetail({ params }: PageProps) {
         .limit(1);
       
       if (error) {
-        console.error('포트폴리오 리포트 가져오기 오류:', error);
+        console.error('최신 포트폴리오 리포트 조회 오류:', error);
         setError('포트폴리오 리포트를 불러오는 중 오류가 발생했습니다.');
         return;
       }
       
       if (data && data.length > 0) {
-        console.log('포트폴리오 리포트 데이터:', data[0]);
+        console.log('최신 포트폴리오 리포트 사용:', data[0]);
         setPortfolioReport(data[0]);
       } else {
         console.log('포트폴리오 리포트가 없습니다.');
@@ -605,10 +680,10 @@ export default function MonthlyReportDetail({ params }: PageProps) {
               </div>
               
               {/* 이미지 표시 - 여러 방식 시도 */}
-              {/* 1. 일반 img 태그 - 캐시 방지를 위한 타임스탬프 추가 */}
+              {/* 1. 일반 img 태그 - 캐시 방지를 위한 타임스탬프와 연도/월 정보 추가 */}
               <img
-                src={`${portfolioReport.report_url}`}
-                alt={`${selectedAccount.portfolio?.name} 포트폴리오 리포트`}
+                src={`${portfolioReport.report_url}${portfolioReport.report_url.includes('?') ? '&' : '?'}year=${year}&month=${month}&t=${Date.now()}`}
+                alt={`${selectedAccount.portfolio?.name} 포트폴리오 리포트 (${year}년 ${month}월)`}
                 className="w-full h-full object-contain z-10 relative"
                 onLoad={(e) => {
                   // 이미지 로드 성공 시 z-index 조정
@@ -626,9 +701,9 @@ export default function MonthlyReportDetail({ params }: PageProps) {
                   const currentSrc = imgElement.src;
                   
                   // URL에 이미 타임스탬프가 있는지 확인
-                  if (currentSrc.includes('?t=')) {
+                  if (currentSrc.includes('?t=') || currentSrc.includes('&t=')) {
                     // 기존 타임스탬프 교체
-                    const newSrc = currentSrc.replace(/\?t=\d+/, `?t=${newTimestamp}`);
+                    const newSrc = currentSrc.replace(/[?&]t=\d+/, `&t=${newTimestamp}`);
                     console.log('새 타임스탬프로 이미지 다시 시도:', newSrc);
                     imgElement.src = newSrc;
                   } else {
@@ -659,8 +734,8 @@ export default function MonthlyReportDetail({ params }: PageProps) {
               {/* 2. iframe 방식 (img 태그 실패 시) */}
               <iframe
                 id="report-iframe"
-                src={`${portfolioReport.report_url}`}
-                title={`${selectedAccount.portfolio?.name} 포트폴리오 리포트`}
+                src={`${portfolioReport.report_url}${portfolioReport.report_url.includes('?') ? '&' : '?'}year=${year}&month=${month}&t=${Date.now()}`}
+                title={`${selectedAccount.portfolio?.name} 포트폴리오 리포트 (${year}년 ${month}월)`}
                 className="w-full h-full z-1 relative"
                 style={{ border: 'none', display: 'none' }}
                 onLoad={() => console.log('iframe 로드 성공')}
@@ -673,9 +748,9 @@ export default function MonthlyReportDetail({ params }: PageProps) {
                   const currentSrc = iframeElement.src;
                   
                   // URL에 이미 타임스탬프가 있는지 확인
-                  if (currentSrc.includes('?t=')) {
+                  if (currentSrc.includes('?t=') || currentSrc.includes('&t=')) {
                     // 기존 타임스탬프 교체
-                    const newSrc = currentSrc.replace(/\?t=\d+/, `?t=${newTimestamp}`);
+                    const newSrc = currentSrc.replace(/[?&]t=\d+/, `&t=${newTimestamp}`);
                     console.log('새 타임스탬프로 iframe 다시 시도:', newSrc);
                     iframeElement.src = newSrc;
                   } else {
@@ -692,7 +767,7 @@ export default function MonthlyReportDetail({ params }: PageProps) {
                 id="report-bg-div"
                 className="w-full h-full z-1 relative"
                 style={{
-                  backgroundImage: `url(${portfolioReport.report_url})`,
+                  backgroundImage: `url(${portfolioReport.report_url}${portfolioReport.report_url.includes('?') ? '&' : '?'}year=${year}&month=${month}&t=${Date.now()})`,
                   backgroundPosition: 'center',
                   backgroundSize: 'contain',
                   backgroundRepeat: 'no-repeat',
@@ -718,7 +793,7 @@ export default function MonthlyReportDetail({ params }: PageProps) {
             {/* 버튼 그룹 - 이미지 아래에 배치 */}
             <div className="flex justify-center space-x-4 mt-6 w-full">
               <a 
-                href={portfolioReport.report_url} 
+                href={`${portfolioReport.report_url}${portfolioReport.report_url.includes('?') ? '&' : '?'}year=${year}&month=${month}&t=${Date.now()}`}
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="flex items-center justify-center px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors shadow-sm"
@@ -734,8 +809,12 @@ export default function MonthlyReportDetail({ params }: PageProps) {
                     // 로딩 상태 표시 (실제 구현 시 상태 변수 추가)
                     console.log('파일 다운로드 시작...');
                     
+                    // 연도와 월 정보를 포함한 URL 생성
+                    const downloadUrl = `${portfolioReport.report_url}${portfolioReport.report_url.includes('?') ? '&' : '?'}year=${year}&month=${month}&t=${Date.now()}`;
+                    console.log('다운로드 URL:', downloadUrl);
+                    
                     // 파일 가져오기
-                    const response = await fetch(portfolioReport.report_url);
+                    const response = await fetch(downloadUrl);
                     
                     // 응답 확인
                     if (!response.ok) {

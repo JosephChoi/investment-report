@@ -150,6 +150,21 @@ export default function SignUp() {
       
       console.log('회원가입 성공:', result);
       
+      // 사용자 역할을 'customer'로 설정
+      try {
+        const roleResponse = await fetch(`/api/user/update-role?userId=${customerInfo.id}&role=customer`);
+        
+        const roleResult = await roleResponse.json();
+        
+        if (!roleResponse.ok) {
+          console.warn('사용자 역할 설정 실패:', roleResult.error);
+        } else {
+          console.log('사용자 역할 설정 성공:', roleResult);
+        }
+      } catch (roleError) {
+        console.warn('사용자 역할 설정 중 오류:', roleError);
+      }
+      
       setMessage('회원가입이 완료되었습니다. 로그인 페이지로 이동합니다.');
       
       // 3초 후 로그인 페이지로 이동

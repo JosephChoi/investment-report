@@ -1,6 +1,47 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServiceSupabase } from '@/lib/supabase';
 
+// 사용자 역할 조회 API
+export async function GET(request: NextRequest) {
+  try {
+    // URL에서 사용자 ID 또는 이메일 파라미터 가져오기
+    const { searchParams } = new URL(request.url);
+    const userId = searchParams.get('userId');
+    const email = searchParams.get('email');
+    
+    if (!userId && !email) {
+      return NextResponse.json({ error: '사용자 ID 또는 이메일이 필요합니다.' }, { status: 400 });
+    }
+    
+    // 서비스 역할 키를 사용하는 Supabase 클라이언트 가져오기
+    const serviceSupabase = getServiceSupabase();
+    
+    let query = serviceSupabase.from('users').select('id, email, role');
+    
+    if (userId) {
+      query = query.eq('id', userId);
+    } else if (email) {
+      query = query.ilike('email', email);
+    }
+    
+    const { data, error } = await query;
+    
+    if (error) {
+      console.error('사용자 역할 조회 오류:', error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+    
+    if (!data || data.length === 0) {
+      return NextResponse.json({ error: '사용자를 찾을 수 없습니다.' }, { status: 404 });
+    }
+    
+    return NextResponse.json({ data });
+  } catch (error) {
+    console.error('사용자 역할 조회 중 오류 발생:', error);
+    return NextResponse.json({ error: '서버 오류가 발생했습니다.' }, { status: 500 });
+  }
+}
+
 // 사용자 역할 업데이트 API
 export async function POST(request: NextRequest) {
   try {
@@ -17,8 +58,8 @@ export async function POST(request: NextRequest) {
     }
     
     // 역할 값 검증
-    if (role !== 'admin' && role !== 'user') {
-      return NextResponse.json({ error: '유효한 역할이 아닙니다. (admin 또는 user)' }, { status: 400 });
+    if (role !== 'admin' && role !== 'user' && role !== 'customer') {
+      return NextResponse.json({ error: '유효한 역할이 아닙니다. (admin, user 또는 customer)' }, { status: 400 });
     }
     
     console.log(`사용자 역할 업데이트 요청: 사용자 ID ${userId}, 역할 ${role}`);

@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase';
 import { AlertTriangle, FileText, Download, ArrowLeft } from 'lucide-react';
 import { formatFileSize } from '@/lib/utils';
 import Link from 'next/link';
+import React from 'react';
 
 // 공지사항 타입 정의
 interface Announcement {
@@ -30,7 +31,17 @@ interface AnnouncementWithDetails extends Announcement {
   }>;
 }
 
-export default function AnnouncementDetailPage({ params }: { params: { id: string } }) {
+interface PageProps {
+  params: Promise<{
+    id: string;
+  }>;
+}
+
+export default function AnnouncementDetailPage({ params }: PageProps) {
+  // Next.js 15에서는 params가 Promise이므로 React.use()를 사용하여 접근해야 합니다.
+  const resolvedParams = React.use(params);
+  const { id } = resolvedParams;
+  
   const [announcement, setAnnouncement] = useState<AnnouncementWithDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -43,19 +54,8 @@ export default function AnnouncementDetailPage({ params }: { params: { id: strin
         setLoading(true);
         setError(null);
         
-        // 현재 세션 가져오기
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (!session) {
-          throw new Error('인증 세션이 없습니다. 다시 로그인해주세요.');
-        }
-        
-        // 공지사항 상세 정보 API 호출
-        const response = await fetch(`/api/announcements/${params.id}`, {
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`
-          }
-        });
+        // 공지사항 상세 정보 API 호출 (인증 헤더 없이)
+        const response = await fetch(`/api/announcements/${id}`);
         
         if (!response.ok) {
           const errorData = await response.json();
@@ -79,7 +79,7 @@ export default function AnnouncementDetailPage({ params }: { params: { id: strin
     };
     
     fetchAnnouncementDetail();
-  }, [params.id]);
+  }, [id]);
 
   // 중요도에 따른 스타일 클래스
   const importanceTextClass = (level: number) => {
@@ -228,8 +228,12 @@ export default function AnnouncementDetailPage({ params }: { params: { id: strin
             </div>
           )}
           
-          <div className="prose max-w-none">
-            <div dangerouslySetInnerHTML={{ __html: announcement.content }} />
+          <div className="prose max-w-none text-gray-900">
+            <div 
+              dangerouslySetInnerHTML={{ __html: announcement.content }} 
+              className="text-gray-900 leading-relaxed"
+              style={{ color: '#1a202c' }}
+            />
           </div>
           
           {announcement.announcement_attachments && announcement.announcement_attachments.length > 0 && (

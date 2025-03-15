@@ -1,6 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServiceSupabase } from '@/lib/supabase';
 
+// 전화번호를 E.164 형식으로 변환하는 함수
+function formatPhoneToE164(phone: string): string {
+  if (!phone) return '';
+  
+  // 하이픈, 공백 등 특수문자 제거
+  const digits = phone.replace(/\D/g, '');
+  
+  // 한국 번호인 경우 (010으로 시작하는 경우)
+  if (digits.startsWith('010')) {
+    // 앞의 0을 제거하고 +82 추가
+    return `+82${digits.substring(1)}`;
+  }
+  
+  // 이미 +로 시작하는 경우 그대로 반환
+  if (phone.startsWith('+')) {
+    return digits;
+  }
+  
+  // 기타 경우 (국가 코드가 없는 경우) 한국 번호로 가정
+  return `+82${digits}`;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { id, email, password, name, phone } = await request.json();
@@ -11,7 +33,7 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
     
-    console.log('기존 UUID로 Auth 사용자 생성 요청:', { id, email, name });
+    console.log('기존 UUID로 Auth 사용자 생성 요청:', { id, email, name, phone });
     
     // 서비스 역할 키를 사용하는 Supabase 클라이언트 가져오기
     const serviceSupabase = getServiceSupabase();
@@ -38,10 +60,18 @@ export async function POST(request: NextRequest) {
         throw new Error('Supabase URL 또는 Service Role Key가 설정되지 않았습니다.');
       }
       
+      // 이름 기본값 설정
+      const displayName = name || email.split('@')[0];
+      
+      // 전화번호를 E.164 형식으로 변환
+      const formattedPhone = formatPhoneToE164(phone);
+      console.log('전화번호 변환:', phone, '->', formattedPhone);
+      
       // 사용자 메타데이터 준비
       const userMetadata = {
-        name: name || email.split('@')[0],
-        phone: phone || ''
+        name: displayName,
+        phone: phone || '',
+        full_name: displayName
       };
       
       // Supabase Auth API 직접 호출
@@ -57,7 +87,14 @@ export async function POST(request: NextRequest) {
           email,
           password,
           email_confirm: true,
-          user_metadata: userMetadata
+          phone: formattedPhone,
+          user_metadata: userMetadata,
+          app_metadata: {},
+          raw_user_meta_data: {
+            name: displayName,
+            full_name: displayName,
+            phone: phone || ''
+          }
         })
       });
       
@@ -68,7 +105,7 @@ export async function POST(request: NextRequest) {
         throw new Error(result.message || '사용자 생성 중 오류가 발생했습니다.');
       }
       
-      console.log('사용자 생성 성공:', { id, email });
+      console.log('사용자 생성 성공:', { id, email, phone: formattedPhone, displayName });
       
       // 생성된 사용자 정보 반환
       return NextResponse.json({ 

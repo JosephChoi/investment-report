@@ -100,7 +100,8 @@ export default function SignUp() {
       console.log('기존 고객 정보로 회원가입 시도:', {
         id: customerInfo.id,
         email: normalizedEmail,
-        name: customerInfo.name
+        name: customerInfo.name,
+        phone: customerInfo.phone || ''
       });
       
       // 기존 UUID로 Auth 사용자 생성 API 호출

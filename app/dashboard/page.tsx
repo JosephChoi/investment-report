@@ -31,6 +31,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [balance, setBalance] = useState<any>(null);
+  const [dbUser, setDbUser] = useState<any>(null); // 데이터베이스에서 가져온 사용자 정보
   const router = useRouter();
 
   // 인증 상태 확인
@@ -48,6 +49,11 @@ export default function Dashboard() {
         
         setUser(user);
         console.log('로그인한 사용자 정보:', user);
+        console.log('사용자 메타데이터:', user.user_metadata);
+        console.log('사용자 ID:', user.id);
+        
+        // 데이터베이스에서 사용자 정보 가져오기
+        await fetchUserFromDatabase(user.id);
         
         // 사용자 계좌 정보 가져오기
         await fetchUserAccounts(user);
@@ -61,6 +67,27 @@ export default function Dashboard() {
     
     checkAuth();
   }, [router]);
+
+  // 데이터베이스에서 사용자 정보 가져오기
+  const fetchUserFromDatabase = async (userId: string) => {
+    try {
+      console.log('데이터베이스에서 사용자 정보 가져오기 시작...', userId);
+      
+      // 서비스 역할 키를 사용하는 API를 통해 사용자 정보 가져오기
+      const response = await fetch(`/api/user/get?id=${userId}`);
+      const result = await response.json();
+      
+      if (response.ok && result.data) {
+        console.log('데이터베이스에서 가져온 사용자 정보:', result.data);
+        console.log('사용자 이름:', result.data.name);
+        setDbUser(result.data);
+      } else {
+        console.error('데이터베이스에서 사용자 정보를 가져오지 못했습니다:', result.error);
+      }
+    } catch (error) {
+      console.error('데이터베이스에서 사용자 정보 가져오기 오류:', error);
+    }
+  };
 
   // 사용자 계좌 정보 가져오기 함수
   const fetchUserAccounts = async (user: any) => {
@@ -199,7 +226,7 @@ export default function Dashboard() {
                 <User className="h-4 w-4 text-blue-600" />
               </div>
               <span className="text-sm font-medium text-gray-800">
-                {user?.user_metadata?.name || user?.email}
+                {dbUser?.name}
               </span>
               <button
                 onClick={handleLogout}
@@ -239,15 +266,15 @@ export default function Dashboard() {
               <div className="space-y-3">
                 <div className="flex items-center">
                   <span className="font-medium w-20 text-gray-700">이메일:</span> 
-                  <span className="text-gray-900">{user?.email}</span>
+                  <span className="text-gray-900">{dbUser?.email || user?.email}</span>
                 </div>
                 <div className="flex items-center">
                   <span className="font-medium w-20 text-gray-700">이름:</span> 
-                  <span className="text-gray-900">{user?.user_metadata?.name || '미설정'}</span>
+                  <span className="text-gray-900">{dbUser?.name}</span>
                 </div>
                 <div className="flex items-center">
                   <span className="font-medium w-20 text-gray-700">연락처:</span> 
-                  <span className="text-gray-900">{user?.user_metadata?.phone || '미설정'}</span>
+                  <span className="text-gray-900">{dbUser?.phone || user?.user_metadata?.phone || '미설정'}</span>
                 </div>
               </div>
             </CardContent>

@@ -28,6 +28,60 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
     
+    // 포트폴리오 타입 ID 조회
+    console.log('포트폴리오 타입 ID 조회 중:', portfolioType);
+    let portfolioTypeId = null;
+    
+    // 포트폴리오 타입 이름으로 ID 조회
+    const { data: portfolioTypeData, error: portfolioTypeError } = await serviceSupabase
+      .from('portfolio_types')
+      .select('id, name')
+      .eq('name', portfolioType)
+      .maybeSingle();
+      
+    if (portfolioTypeError) {
+      console.error('포트폴리오 타입 ID 조회 오류:', portfolioTypeError);
+      return NextResponse.json({ 
+        success: false, 
+        error: `포트폴리오 타입 ID 조회 오류: ${portfolioTypeError.message}` 
+      }, { status: 500 });
+    }
+    
+    if (!portfolioTypeData) {
+      console.log('포트폴리오 타입을 찾을 수 없어 새로 생성합니다:', portfolioType);
+      
+      // 포트폴리오 타입이 없는 경우 새로 생성
+      const { data: newPortfolioType, error: createError } = await serviceSupabase
+        .from('portfolio_types')
+        .insert({
+          name: portfolioType,
+          description: `${portfolioType} 포트폴리오`
+        })
+        .select('id');
+        
+      if (createError) {
+        console.error('포트폴리오 타입 생성 오류:', createError);
+        return NextResponse.json({ 
+          success: false, 
+          error: `포트폴리오 타입 생성 오류: ${createError.message}` 
+        }, { status: 500 });
+      }
+      
+      if (!newPortfolioType || newPortfolioType.length === 0) {
+        console.error('포트폴리오 타입 생성 후 ID를 가져올 수 없습니다.');
+        return NextResponse.json({ 
+          success: false, 
+          error: '포트폴리오 타입 생성 후 ID를 가져올 수 없습니다.' 
+        }, { status: 500 });
+      }
+      
+      portfolioTypeId = newPortfolioType[0].id;
+      console.log('새로운 포트폴리오 타입 생성 성공:', { id: portfolioTypeId, name: portfolioType });
+    } else {
+      portfolioTypeId = portfolioTypeData.id;
+      console.log('포트폴리오 타입 ID 조회 성공:', { id: portfolioTypeId, name: portfolioType });
+    }
+    
     // 포트폴리오 타입에 따라 영문 파일명 생성
     let englishFileName = '';
     const fileExt = fileName.split('.').pop()?.toLowerCase() || 'jpg';
@@ -292,7 +346,7 @@ export async function POST(request: NextRequest) {
       .from('portfolio_reports')
       .select('id')
       .eq('year_month', year_month)
-      .eq('portfolio_type', portfolioType)
+      .eq('portfolio_type_id', portfolioTypeId)
       .maybeSingle();
       
     let reportData;
@@ -317,7 +371,8 @@ export async function POST(request: NextRequest) {
         .from('portfolio_reports')
         .insert({
           year_month,
-          portfolio_type: portfolioType,
+          portfolio_type_id: portfolioTypeId,
+          portfolio_type: portfolioType, // 호환성을 위해 유지
           report_url: urlData.publicUrl,
           report_date: new Date().toISOString()
         })
@@ -341,7 +396,8 @@ export async function POST(request: NextRequest) {
         file: uploadResult.data,
         report: reportData,
         filePath: uploadResult.path || filePath,
-        englishFileName: englishFileName
+        englishFileName: englishFileName,
+        portfolioTypeId: portfolioTypeId
       }
     });
     

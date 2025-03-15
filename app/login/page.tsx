@@ -25,8 +25,13 @@ export default function Login() {
     setError(null);
     
     try {
+      // 이메일을 소문자로 변환
+      const normalizedEmail = email.toLowerCase();
+      console.log('로그인 이메일 정규화:', email, '->', normalizedEmail);
+      
+      // Supabase 로그인
       const { data, error } = await supabase.auth.signInWithPassword({
-        email,
+        email: normalizedEmail,
         password,
       });
       
@@ -76,21 +81,10 @@ export default function Login() {
     } catch (error: any) {
       console.error('로그인 오류:', error);
       
-      // 사용자가 등록되지 않은 경우 회원가입 안내
       if (error.message.includes('Invalid login credentials')) {
-        // 이메일이 고객 데이터에 있는지 확인
-        try {
-          const response = await fetch(`/api/customer/check-email?email=${encodeURIComponent(email)}`);
-          const data = await response.json();
-          
-          if (data.exists && !data.isRegistered) {
-            setError('아직 회원가입하지 않은 이메일입니다. 회원가입을 진행해주세요.');
-          } else {
-            setError('이메일 또는 비밀번호가 올바르지 않습니다.');
-          }
-        } catch (checkError) {
-          setError('이메일 또는 비밀번호가 올바르지 않습니다.');
-        }
+        setError('이메일 또는 비밀번호가 올바르지 않습니다.');
+      } else if (error.message.includes('Email not confirmed')) {
+        setError('이메일 인증이 완료되지 않았습니다. 이메일을 확인해주세요.');
       } else {
         setError(error.message || '로그인 중 오류가 발생했습니다.');
       }

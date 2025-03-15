@@ -123,10 +123,12 @@ export async function POST(request: NextRequest) {
           }
           
           // 날짜 유효성 검사
-          const testDate = new Date(formattedContractDate);
-          if (isNaN(testDate.getTime())) {
-            console.warn('유효하지 않은 날짜 형식:', contractDate);
-            formattedContractDate = null;
+          if (formattedContractDate) {
+            const testDate = new Date(formattedContractDate);
+            if (isNaN(testDate.getTime())) {
+              console.warn('유효하지 않은 날짜 형식:', contractDate);
+              formattedContractDate = null;
+            }
           }
         } catch (dateError) {
           console.warn('계약일 형식 변환 오류:', dateError);
@@ -159,12 +161,57 @@ export async function POST(request: NextRequest) {
         
         let userId;
         
-        // 이메일이 있는 경우 이메일로 사용자 찾기
-        if (email) {
+        // 이름과 전화번호로 사용자 찾기 (이메일보다 우선)
+        if (name && phone) {
+          console.log('이름과 전화번호로 사용자 검색:', { name, phone });
+          
+          const { data: userByNamePhone, error: namePhoneError } = await serviceSupabase
+            .from('users')
+            .select('id, email, name, phone')
+            .eq('name', name)
+            .eq('phone', phone);
+            
+          if (!namePhoneError && userByNamePhone && userByNamePhone.length > 0) {
+            // 이름과 전화번호가 일치하는 사용자 발견
+            userId = userByNamePhone[0].id;
+            console.log('이름과 전화번호로 사용자 찾음:', { 
+              userId, 
+              기존이메일: userByNamePhone[0].email, 
+              새이메일: email 
+            });
+            
+            // 이메일 업데이트 (새 이메일이 있는 경우)
+            if (email && email !== userByNamePhone[0].email) {
+              console.log('동일 인물의 이메일 업데이트:', { 
+                기존이메일: userByNamePhone[0].email, 
+                새이메일: email 
+              });
+              
+              const { error: updateError } = await serviceSupabase
+                .from('users')
+                .update({
+                  email: email.toLowerCase(), // 이메일 소문자 변환
+                  updated_at: new Date().toISOString()
+                })
+                .eq('id', userId);
+                
+              if (updateError) {
+                console.error('사용자 이메일 업데이트 오류:', updateError);
+              } else {
+                console.log('사용자 이메일 업데이트 성공:', { userId, 새이메일: email.toLowerCase() });
+              }
+            }
+            
+            // 이미 사용자를 찾았으므로 다음 단계로 진행
+          }
+        }
+        
+        // 이름과 전화번호로 사용자를 찾지 못한 경우, 이메일로 검색
+        if (!userId && email) {
           const { data: userData, error: userError } = await serviceSupabase
             .from('users')
             .upsert({
-              email: email,
+              email: email.toLowerCase(), // 이메일 소문자 변환
               name: name || 'Unknown',
               phone: phone || null,
               updated_at: new Date().toISOString()
@@ -184,7 +231,7 @@ export async function POST(request: NextRequest) {
             const { data: fetchedUser, error: fetchError } = await serviceSupabase
               .from('users')
               .select('id')
-              .eq('email', email)
+              .eq('email', email.toLowerCase())
               .single();
               
             if (fetchError) {
@@ -203,8 +250,8 @@ export async function POST(request: NextRequest) {
           } else {
             userId = userData[0].id;
           }
-        } else {
-          // 이메일이 없는 경우 임시 사용자 생성
+        } else if (!userId) {
+          // 이름과 전화번호로도 찾지 못하고 이메일도 없는 경우 임시 사용자 생성
           const { data: tempUser, error: tempUserError } = await serviceSupabase
             .from('users')
             .insert({

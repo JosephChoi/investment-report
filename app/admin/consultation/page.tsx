@@ -272,26 +272,38 @@ export default function ConsultationAdmin() {
     };
   }, []);
 
-  // 고객 선택 핸들러
+  // 고객 선택 처리
   const handleSelectCustomer = (customer: Customer) => {
-    console.log('Selected customer:', customer);
-    setFormData(prev => {
-      const updated = {
-        ...prev,
-        user_id: customer.id,
-        customer: {
-          name: customer.name,
-          email: customer.email || '',
-          account_number: customer.account_number || '',
-          phone: customer.phone || ''
-        }
-      };
-      console.log('Updated form data with selected customer:', updated);
-      return updated;
-    });
+    console.log('선택된 고객:', customer);
     
-    setCustomerSearchTerm('');
-    setShowCustomerSearch(false);
+    // 고객 ID 유효성 검증
+    fetch(`/api/user/check?id=${customer.id}`)
+      .then(response => response.json())
+      .then(data => {
+        if (data.exists) {
+          console.log('유효한 사용자 ID:', customer.id);
+          setFormData(prev => ({
+            ...prev,
+            user_id: customer.id,
+            customer: {
+              name: customer.name || '',
+              email: customer.email || '',
+              account_number: customer.account_number || '',
+              phone: customer.phone || ''
+            }
+          }));
+          setShowCustomerSearch(false);
+          setCustomerSearchTerm('');
+          toast.success(`${customer.name} 고객이 선택되었습니다.`);
+        } else {
+          console.error('유효하지 않은 사용자 ID:', customer.id, data);
+          toast.error('선택한 고객 정보가 유효하지 않습니다. 다른 고객을 선택해주세요.');
+        }
+      })
+      .catch(error => {
+        console.error('고객 ID 검증 오류:', error);
+        toast.error('고객 정보 확인 중 오류가 발생했습니다.');
+      });
   };
 
   // 선택된 고객 초기화 함수
@@ -337,6 +349,25 @@ export default function ConsultationAdmin() {
     
     if (!formData.user_id) {
       toast.error('고객을 선택해주세요.');
+      return;
+    }
+
+    // 사용자 ID 유효성 검증 추가
+    try {
+      console.log('사용자 ID 유효성 검증 시작:', formData.user_id);
+      const userCheckResponse = await fetch(`/api/user/check?id=${formData.user_id}`);
+      const userCheckResult = await userCheckResponse.json();
+      
+      if (!userCheckResponse.ok || !userCheckResult.exists) {
+        console.error('사용자 ID 유효성 검증 실패:', userCheckResult);
+        toast.error('선택한 사용자가 데이터베이스에 존재하지 않습니다. 다른 사용자를 선택해주세요.');
+        return;
+      }
+      
+      console.log('사용자 ID 유효성 검증 성공:', userCheckResult);
+    } catch (error) {
+      console.error('사용자 ID 검증 중 오류:', error);
+      toast.error('사용자 정보 확인 중 오류가 발생했습니다.');
       return;
     }
 

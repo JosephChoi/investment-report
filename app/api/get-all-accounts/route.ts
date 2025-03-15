@@ -6,7 +6,7 @@ export async function GET(request: NextRequest) {
     // 서비스 역할 키를 사용하는 Supabase 클라이언트 가져오기
     const serviceSupabase = getServiceSupabase();
     
-    // 모든 계좌 정보 가져오기 (사용자 정보 포함)
+    // 모든 계좌 정보 가져오기 (사용자 정보 및 포트폴리오 타입 정보 포함)
     const { data: accounts, error: accountsError } = await serviceSupabase
       .from('accounts')
       .select(`
@@ -16,6 +16,13 @@ export async function GET(request: NextRequest) {
           email,
           name,
           phone
+        ),
+        portfolio:portfolio_type_id (
+          id,
+          name,
+          description,
+          category,
+          risk_level
         )
       `);
       

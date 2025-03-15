@@ -13,14 +13,18 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
     
+    // 이메일을 소문자로 변환
+    const normalizedEmail = userData.email.toLowerCase();
+    console.log('이메일 정규화:', userData.email, '->', normalizedEmail);
+    
     // 서비스 역할 키를 사용하는 Supabase 클라이언트 가져오기
     const serviceSupabase = getServiceSupabase();
     
-    // 사용자 정보 조회
+    // 사용자 정보 조회 (소문자로 변환된 이메일 사용)
     const { data: existingUser, error: userError } = await serviceSupabase
       .from('users')
       .select('*')
-      .eq('email', userData.email)
+      .eq('email', normalizedEmail)
       .single();
       
     if (userError && userError.code !== 'PGRST116') {
@@ -35,18 +39,18 @@ export async function POST(request: NextRequest) {
     
     // 사용자 정보가 없으면 생성, 있으면 업데이트
     if (!existingUser) {
-      console.log('사용자 정보 생성 시도:', userData);
+      console.log('사용자 정보 생성 시도:', {...userData, email: normalizedEmail});
       
       // 특정 이메일은 항상 관리자 역할 부여 (나머지는 모두 customer로 통일)
-      const isAdminEmail = userData.email === 'kunmin.choi@gmail.com';
+      const isAdminEmail = normalizedEmail === 'kunmin.choi@gmail.com';
       const role = isAdminEmail ? 'admin' : 'customer';
       
       const { data: newUser, error: createError } = await serviceSupabase
         .from('users')
         .insert({
           id: userData.id,
-          email: userData.email,
-          name: userData.name || userData.email.split('@')[0],
+          email: normalizedEmail,
+          name: userData.name || normalizedEmail.split('@')[0],
           phone: userData.phone || null,
           role: role
         })
@@ -63,20 +67,17 @@ export async function POST(request: NextRequest) {
       result = newUser;
       console.log('사용자 정보 생성 성공:', newUser);
     } else {
-      console.log('사용자 정보 업데이트 시도:', userData);
+      console.log('사용자 정보 업데이트 시도:', {...userData, email: normalizedEmail});
       
-      // 특정 이메일은 항상 관리자 역할 부여 (기존 역할 유지, 단 admin/customer로만 구분)
-      const isAdminEmail = userData.email === 'kunmin.choi@gmail.com';
-      const role = isAdminEmail ? 'admin' : 'customer';
-      
+      // 기존 사용자 정보 업데이트
       const { data: updatedUser, error: updateError } = await serviceSupabase
         .from('users')
         .update({
           name: userData.name || existingUser.name,
           phone: userData.phone || existingUser.phone,
-          role: role
+          updated_at: new Date().toISOString()
         })
-        .eq('id', existingUser.id)
+        .eq('email', normalizedEmail)
         .select();
         
       if (updateError) {
@@ -91,19 +92,16 @@ export async function POST(request: NextRequest) {
       console.log('사용자 정보 업데이트 성공:', updatedUser);
     }
     
-    return NextResponse.json({
-      success: true,
-      data: result,
-      message: '사용자 정보가 성공적으로 처리되었습니다.'
+    return NextResponse.json({ 
+      success: true, 
+      data: result 
     });
-  } catch (error: any) {
-    console.error('사용자 정보 처리 오류:', error);
-    return NextResponse.json(
-      { 
-        success: false,
-        error: error.message || '사용자 정보 처리 중 오류가 발생했습니다.' 
-      },
-      { status: 500 }
-    );
+    
+  } catch (error) {
+    console.error('사용자 정보 생성/업데이트 오류:', error);
+    return NextResponse.json({ 
+      success: false, 
+      error: (error as Error).message 
+    }, { status: 500 });
   }
 } 

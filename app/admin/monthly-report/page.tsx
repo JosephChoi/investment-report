@@ -41,7 +41,13 @@ export default function MonthlyReportAdmin() {
       const result = await response.json();
       
       if (result.success && result.data) {
-        setPortfolioTypes(result.data);
+        // 포트폴리오 타입 객체 배열에서 name 속성만 추출
+        const typeNames = result.data.map((type: any) => 
+          typeof type === 'string' ? type : type.name
+        ).filter(Boolean);
+        
+        console.log('포트폴리오 타입 목록:', typeNames);
+        setPortfolioTypes(typeNames);
       } else {
         console.error('포트폴리오 타입 목록 가져오기 오류:', result.error);
       }

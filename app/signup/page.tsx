@@ -25,8 +25,11 @@ export default function SignUp() {
         setLoading(true);
         setError(null);
         
+        // 이메일을 소문자로 변환
+        const normalizedEmail = email.toLowerCase();
+        
         // 서비스 역할 키를 사용하는 API 호출
-        const response = await fetch(`/api/customer/check-email?email=${encodeURIComponent(email)}`);
+        const response = await fetch(`/api/customer/check-email?email=${encodeURIComponent(normalizedEmail)}`);
         const data = await response.json();
         
         if (!response.ok) {
@@ -85,51 +88,69 @@ export default function SignUp() {
     setMessage(null);
     
     try {
-      // Supabase 회원가입
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            name: customerInfo?.name || '',
-            phone: customerInfo?.phone || '',
-            role: 'customer'
-          }
-        }
-      });
+      // 이메일을 소문자로 변환
+      const normalizedEmail = email.toLowerCase();
+      console.log('회원가입 이메일 정규화:', email, '->', normalizedEmail);
       
-      if (error) throw error;
-      
-      // 사용자 정보 생성 - API 호출
-      try {
-        if (data.user) {
-          const response = await fetch('/api/user/create-or-update', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              id: data.user.id,
-              email: data.user.email,
-              name: customerInfo?.name || data.user.email?.split('@')[0] || '',
-              phone: customerInfo?.phone || '',
-              role: 'customer'
-            }),
-          });
-          
-          const result = await response.json();
-          
-          if (!response.ok) {
-            console.error('사용자 정보 생성 오류:', result.error);
-          } else {
-            console.log('사용자 정보 생성 성공:', result.data);
-          }
-        }
-      } catch (userInfoError) {
-        console.error('사용자 정보 생성 오류:', userInfoError);
+      // 고객 정보가 없는 경우 오류 처리
+      if (!customerInfo || !customerInfo.id) {
+        throw new Error('고객 정보를 찾을 수 없습니다. 관리자에게 문의하세요.');
       }
       
-      setMessage('회원가입이 완료되었습니다. 이메일 인증 후 로그인해주세요.');
+      console.log('기존 고객 정보로 회원가입 시도:', {
+        id: customerInfo.id,
+        email: normalizedEmail,
+        name: customerInfo.name
+      });
+      
+      // 기존 UUID로 Auth 사용자 생성 API 호출
+      const response = await fetch('/api/auth/create-user-with-id', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id: customerInfo.id,
+          email: normalizedEmail,
+          password,
+          name: customerInfo.name || normalizedEmail.split('@')[0],
+          phone: customerInfo.phone || ''
+        }),
+      });
+      
+      const result = await response.json();
+      
+      if (!response.ok) {
+        console.error('회원가입 API 응답 오류:', { status: response.status, result });
+        
+        // 오류 메시지 처리
+        let errorMessage = result.error || '회원가입 중 오류가 발생했습니다.';
+        
+        // 특정 오류에 대한 사용자 친화적인 메시지
+        if (errorMessage.includes('이미 가입된 이메일')) {
+          errorMessage = '이미 가입된 이메일입니다. 로그인 페이지로 이동하여 로그인해주세요.';
+          
+          // 3초 후 로그인 페이지로 이동
+          setTimeout(() => {
+            router.push('/login');
+          }, 3000);
+        } else if (errorMessage.includes('duplicate key')) {
+          errorMessage = '이미 가입된 계정입니다. 로그인 페이지로 이동하여 로그인해주세요.';
+          
+          // 3초 후 로그인 페이지로 이동
+          setTimeout(() => {
+            router.push('/login');
+          }, 3000);
+        } else if (errorMessage.includes('permission denied')) {
+          errorMessage = '권한이 없습니다. 관리자에게 문의하세요.';
+        }
+        
+        throw new Error(errorMessage);
+      }
+      
+      console.log('회원가입 성공:', result);
+      
+      setMessage('회원가입이 완료되었습니다. 로그인 페이지로 이동합니다.');
       
       // 3초 후 로그인 페이지로 이동
       setTimeout(() => {
@@ -220,7 +241,15 @@ export default function SignUp() {
           
           {error && (
             <div className="p-3 bg-red-100 text-red-700 rounded-md text-sm">
-              {error}
+              <p className="font-bold">오류 발생:</p>
+              <p>{error}</p>
+              {error.includes('데이터베이스 오류') && (
+                <p className="mt-2">
+                  <strong>해결 방법:</strong> 관리자에게 다음 정보를 제공해주세요:
+                  <br />- 이메일: {email}
+                  <br />- 오류 시간: {new Date().toLocaleString()}
+                </p>
+              )}
             </div>
           )}
           

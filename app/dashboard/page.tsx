@@ -15,6 +15,7 @@ import {
   CardFooter 
 } from '@/components/ui/card';
 import DashboardAnnouncements from '@/components/dashboard-announcements';
+import DashboardOverduePayments from '@/components/dashboard-overdue-payments';
 
 // 공지사항 타입 정의
 interface Announcement {
@@ -368,22 +369,24 @@ export default function Dashboard() {
           </Link>
           
           {/* 연체 정보 카드 */}
-          <Card className="h-full border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden group">
-            <div className="absolute h-1 w-full bg-red-500 top-0 left-0 transform origin-left transition-transform duration-300 group-hover:scale-x-110"></div>
-            <CardContent className="p-6">
-              <div className="flex items-center mb-4">
-                <div className="bg-red-100 p-3 rounded-full mr-4 group-hover:bg-red-200 transition-colors duration-300">
-                  <AlertTriangle className="h-6 w-6 text-red-600" />
+          <Link href="/admin/overdue-payments" className="block group">
+            <Card className="h-full border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden group">
+              <div className="absolute h-1 w-full bg-red-500 top-0 left-0 transform origin-left transition-transform duration-300 group-hover:scale-x-110"></div>
+              <CardContent className="p-6">
+                <div className="flex items-center mb-4">
+                  <div className="bg-red-100 p-3 rounded-full mr-4 group-hover:bg-red-200 transition-colors duration-300">
+                    <AlertTriangle className="h-6 w-6 text-red-600" />
+                  </div>
+                  <CardTitle className="text-xl text-gray-900">연체 정보</CardTitle>
                 </div>
-                <CardTitle className="text-xl text-gray-900">연체 정보</CardTitle>
-              </div>
-              <p className="text-gray-600 mb-4">현재 연체 상태 및 납부 예정 금액을 확인하세요.</p>
-              <div className="text-red-600 font-medium flex items-center">
-                <span>정보 보기</span>
-                <ChevronRight className="h-4 w-4 ml-1 transform transition-transform duration-300 group-hover:translate-x-1" />
-              </div>
-            </CardContent>
-          </Card>
+                <p className="text-gray-600 mb-4">현재 연체 상태 및 납부 예정 금액을 확인하세요.</p>
+                <div className="text-red-600 font-medium flex items-center">
+                  <span>정보 보기</span>
+                  <ChevronRight className="h-4 w-4 ml-1 transform transition-transform duration-300 group-hover:translate-x-1" />
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
           
           {/* 리밸런싱 히스토리 카드 */}
           <Card className="h-full border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden group">
@@ -445,6 +448,9 @@ export default function Dashboard() {
             <DashboardAnnouncements />
           </CardContent>
         </Card>
+        
+        {/* 연체정보 섹션 */}
+        <DashboardOverduePayments />
       </div>
     </div>
   );

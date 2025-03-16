@@ -181,7 +181,7 @@ investment-report/
 │   │   ├── monthly-report/   # 월간 코멘트 관리
 │   │   ├── consultation/     # 상담 내역 관리
 │   │   ├── notifications/    # 알림 관리
-│   │   ├── delinquency/      # 연체정보 관리 (예정)
+│   │   ├── overdue-payments/ # 연체정보 관리
 │   │   └── rebalancing/      # 리밸런싱 관리 (예정)
 │   ├── api/                  # API 라우트 디렉토리
 │   │   ├── admin/            # 관리자 API

@@ -116,7 +116,7 @@ export default function AdminDashboard() {
           </Link>
           
           {/* 연체 정보 관리 카드 */}
-          <Link href="/admin/delinquency" className="block group">
+          <Link href="/admin/overdue-payments" className="block group">
             <Card className="h-full border-gray-200 shadow-sm group-hover:shadow-md transition-all duration-300 overflow-hidden">
               <div className="absolute h-1 w-full bg-red-500 top-0 left-0 transform origin-left transition-transform duration-300 group-hover:scale-x-110"></div>
               <CardContent className="p-6">

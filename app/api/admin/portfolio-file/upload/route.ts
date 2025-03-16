@@ -1,12 +1,49 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServiceSupabase } from '@/lib/supabase';
+import { createClient } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 
 export async function POST(request: NextRequest) {
   try {
-    // 서비스 역할 키를 사용하는 Supabase 클라이언트 가져오기
-    const serviceSupabase = getServiceSupabase();
+    // 사용자 인증 확인
+    const supabase = createClient();
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
     
-    // FormData 파싱
+    console.log('세션 정보:', session ? '세션 있음' : '세션 없음', sessionError ? `오류: ${sessionError.message}` : '오류 없음');
+    
+    if (sessionError || !session) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: '인증되지 않은 사용자입니다. 다시 로그인해주세요.',
+        },
+        { status: 401 }
+      );
+    }
+    
+    // 관리자 권한 확인
+    const { data: userData, error: userError } = await supabaseAdmin
+      .from('users')
+      .select('role')
+      .eq('id', session.user.id)
+      .single();
+    
+    console.log('사용자 정보:', userData, userError ? `오류: ${userError.message}` : '오류 없음');
+    
+    if (userError) {
+      throw userError;
+    }
+    
+    if (!userData || userData.role !== 'admin') {
+      return NextResponse.json(
+        {
+          success: false,
+          error: '관리자만 포트폴리오 파일을 업로드할 수 있습니다.',
+        },
+        { status: 403 }
+      );
+    }
+    
+    // 폼 데이터 파싱
     const formData = await request.formData();
     const file = formData.get('file') as File;
     const fileName = formData.get('fileName') as string;
@@ -33,7 +70,7 @@ export async function POST(request: NextRequest) {
     let portfolioTypeId = null;
     
     // 포트폴리오 타입 이름으로 ID 조회
-    const { data: portfolioTypeData, error: portfolioTypeError } = await serviceSupabase
+    const { data: portfolioTypeData, error: portfolioTypeError } = await supabaseAdmin
       .from('portfolio_types')
       .select('id, name')
       .eq('name', portfolioType)
@@ -51,7 +88,7 @@ export async function POST(request: NextRequest) {
       console.log('포트폴리오 타입을 찾을 수 없어 새로 생성합니다:', portfolioType);
       
       // 포트폴리오 타입이 없는 경우 새로 생성
-      const { data: newPortfolioType, error: createError } = await serviceSupabase
+      const { data: newPortfolioType, error: createError } = await supabaseAdmin
         .from('portfolio_types')
         .insert({
           name: portfolioType,
@@ -135,12 +172,12 @@ export async function POST(request: NextRequest) {
         console.log('기존 파일 확인 중...');
         
         // 첫 번째 경로 확인 (year/month/...)
-        const { data: existingFiles1, error: listError1 } = await serviceSupabase.storage
+        const { data: existingFiles1, error: listError1 } = await supabaseAdmin.storage
           .from('portfolio-reports')
           .list(`${year}/${month}`);
           
         // 두 번째 경로 확인 (portfolio-reports/year/month/...) - 이전 중첩 구조
-        const { data: existingFiles2, error: listError2 } = await serviceSupabase.storage
+        const { data: existingFiles2, error: listError2 } = await supabaseAdmin.storage
           .from('portfolio-reports')
           .list(`portfolio-reports/${year}/${month}`);
           
@@ -172,7 +209,7 @@ export async function POST(request: NextRequest) {
             const path = `${year}/${month}/${file.name}`;
             console.log(`파일 삭제 시도 (첫 번째 경로): ${path}`);
             
-            const { error: removeError } = await serviceSupabase.storage
+            const { error: removeError } = await supabaseAdmin.storage
               .from('portfolio-reports')
               .remove([path]);
               
@@ -192,7 +229,7 @@ export async function POST(request: NextRequest) {
             const path = `portfolio-reports/${year}/${month}/${file.name}`;
             console.log(`파일 삭제 시도 (두 번째 경로): ${path}`);
             
-            const { error: removeError } = await serviceSupabase.storage
+            const { error: removeError } = await supabaseAdmin.storage
               .from('portfolio-reports')
               .remove([path]);
               
@@ -237,7 +274,7 @@ export async function POST(request: NextRequest) {
           console.log(`업로드 시도 ${uploadAttempt}/${maxAttempts}...`);
           
           try {
-            const { data: uploadData, error: uploadError } = await serviceSupabase.storage
+            const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
               .from('portfolio-reports')
               .upload(filePath, file, {
                 upsert: true,
@@ -329,7 +366,7 @@ export async function POST(request: NextRequest) {
     }
     
     // 공개 URL 생성 (업로드된 경로 사용)
-    const { data: urlData } = serviceSupabase.storage
+    const { data: urlData } = supabaseAdmin.storage
       .from('portfolio-reports')
       .getPublicUrl(uploadResult.path || filePath);
       
@@ -342,7 +379,7 @@ export async function POST(request: NextRequest) {
     
     // 포트폴리오 리포트 정보 저장
     // 먼저 기존 데이터가 있는지 확인
-    const { data: existingData, error: checkError } = await serviceSupabase
+    const { data: existingData, error: checkError } = await supabaseAdmin
       .from('portfolio_reports')
       .select('id')
       .eq('year_month', year_month)
@@ -354,7 +391,7 @@ export async function POST(request: NextRequest) {
     
     if (existingData) {
       // 기존 데이터가 있으면 업데이트
-      const result = await serviceSupabase
+      const result = await supabaseAdmin
         .from('portfolio_reports')
         .update({
           report_url: urlData.publicUrl,
@@ -367,7 +404,7 @@ export async function POST(request: NextRequest) {
       reportError = result.error;
     } else {
       // 기존 데이터가 없으면 새로 삽입
-      const result = await serviceSupabase
+      const result = await supabaseAdmin
         .from('portfolio_reports')
         .insert({
           year_month,

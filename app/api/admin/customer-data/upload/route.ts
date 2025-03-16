@@ -1,499 +1,212 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase, getServiceSupabase } from '@/lib/supabase';
-import * as XLSX from 'xlsx';
+import * as xlsx from 'xlsx';
+import { createClient } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 
 export async function POST(request: NextRequest) {
   try {
-    // 서비스 역할 키를 사용하는 Supabase 클라이언트 가져오기
-    const serviceSupabase = getServiceSupabase();
+    // 사용자 인증 확인
+    const supabase = createClient();
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
     
+    console.log('세션 정보:', session ? '세션 있음' : '세션 없음', sessionError ? `오류: ${sessionError.message}` : '오류 없음');
+    
+    if (sessionError || !session) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: '인증되지 않은 사용자입니다. 다시 로그인해주세요.',
+        },
+        { status: 401 }
+      );
+    }
+    
+    // 관리자 권한 확인
+    const { data: userData, error: userError } = await supabaseAdmin
+      .from('users')
+      .select('role')
+      .eq('id', session.user.id)
+      .single();
+    
+    console.log('사용자 정보:', userData, userError ? `오류: ${userError.message}` : '오류 없음');
+    
+    if (userError) {
+      throw userError;
+    }
+    
+    if (!userData || userData.role !== 'admin') {
+      return NextResponse.json(
+        {
+          success: false,
+          error: '관리자만 고객 데이터를 업로드할 수 있습니다.',
+        },
+        { status: 403 }
+      );
+    }
+    
+    // 폼 데이터 파싱
     const formData = await request.formData();
     const file = formData.get('file') as File;
     const year = formData.get('year') as string;
     const month = formData.get('month') as string;
     
-    console.log('API 호출 받음:', { year, month, fileName: file?.name });
-    
     if (!file || !year || !month) {
-      return NextResponse.json({ error: '파일, 연도, 월 정보가 필요합니다.' }, { status: 400 });
+      return NextResponse.json(
+        {
+          success: false,
+          error: '파일, 연도, 월은 필수 입력 항목입니다.',
+        },
+        { status: 400 }
+      );
     }
     
-    // 파일 데이터를 ArrayBuffer로 변환
-    const buffer = await file.arrayBuffer();
+    console.log('고객 데이터 업로드:', { year, month, fileName: file.name, fileSize: file.size });
     
-    // XLSX 파일 파싱
-    const workbook = XLSX.read(buffer, { type: 'array' });
-    const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-    
-    // 엑셀 파일의 첫 번째 행 확인 (헤더)
-    const headers = XLSX.utils.sheet_to_json(worksheet, { header: 1 })[0] as string[];
-    console.log('엑셀 파일 헤더:', headers);
-    
-    // A열 헤더 확인
-    const aColumnHeader = headers[0] || '';
-    console.log('A열 헤더:', aColumnHeader);
-    
-    // 데이터를 JSON으로 변환
-    const jsonData = XLSX.utils.sheet_to_json(worksheet);
-    
-    // 엑셀 데이터 구조 로깅
-    if (jsonData.length > 0) {
-      console.log('엑셀 파일 첫 번째 행 데이터:', jsonData[0]);
-      console.log('엑셀 파일 컬럼명:', Object.keys(jsonData[0] as object));
-    } else {
-      console.log('엑셀 파일에 데이터가 없습니다.');
-      return NextResponse.json({ error: '엑셀 파일에 데이터가 없습니다.' }, { status: 400 });
+    // 파일 확장자 확인
+    const fileExt = file.name.split('.').pop()?.toLowerCase();
+    if (!fileExt || !['xlsx', 'xls'].includes(fileExt)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: '지원되지 않는 파일 형식입니다. Excel 파일(.xlsx, .xls)만 업로드 가능합니다.',
+        },
+        { status: 400 }
+      );
     }
     
-    // 계약일 컬럼 확인
-    let contractDateColumnName = '';
-    const possibleContractDateColumns = [
-      '최초계약일', '최초 계약일', '계약일', '계약일자', '가입일', '가입일자',
-      'contract_date', 'Contract Date', aColumnHeader
-    ];
+    // 파일 내용 읽기
+    const arrayBuffer = await file.arrayBuffer();
+    const workbook = xlsx.read(arrayBuffer, { type: 'buffer' });
+    const sheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[sheetName];
+    const jsonData = xlsx.utils.sheet_to_json(worksheet, { header: 1 });
     
-    for (const colName of possibleContractDateColumns) {
-      if (headers.includes(colName) || Object.keys(jsonData[0] as object).includes(colName)) {
-        contractDateColumnName = colName;
-        console.log('계약일 컬럼 발견:', contractDateColumnName);
-        break;
-      }
+    if (jsonData.length < 2) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: '데이터가 없거나 형식이 올바르지 않습니다. 최소한 헤더 행과 데이터 행이 필요합니다.',
+        },
+        { status: 400 }
+      );
     }
     
-    // A열이 계약일인지 확인
-    if (!contractDateColumnName && aColumnHeader) {
-      // A열의 첫 번째 값이 날짜 형식인지 확인
-      const firstRowAValue = Object.values(jsonData[0] as object)[0];
-      if (firstRowAValue && (typeof firstRowAValue === 'string' || typeof firstRowAValue === 'number')) {
-        try {
-          const testDate = new Date(firstRowAValue);
-          if (!isNaN(testDate.getTime())) {
-            contractDateColumnName = aColumnHeader;
-            console.log('A열이 날짜 형식으로 판단됨:', aColumnHeader);
-          }
-        } catch (e) {
-          console.log('A열 값이 날짜 형식이 아님');
-        }
-      }
+    // 헤더 행과 첫 번째 데이터 행 로깅
+    console.log('헤더 행:', jsonData[0]);
+    console.log('첫 번째 데이터 행:', jsonData[1]);
+    
+    // 필수 열 확인 (이메일, 이름, 계좌번호, 잔액)
+    const headers = jsonData[0] as string[];
+    const emailIndex = headers.findIndex(h => typeof h === 'string' && h.includes('이메일'));
+    const nameIndex = headers.findIndex(h => typeof h === 'string' && (h.includes('이름') || h.includes('성명')));
+    const accountIndex = headers.findIndex(h => typeof h === 'string' && h.includes('계좌'));
+    const balanceIndex = headers.findIndex(h => typeof h === 'string' && (h.includes('잔액') || h.includes('금액')));
+    
+    if (emailIndex === -1 || nameIndex === -1 || accountIndex === -1 || balanceIndex === -1) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: '필수 열(이메일, 이름, 계좌번호, 잔액)을 찾을 수 없습니다.',
+        },
+        { status: 400 }
+      );
     }
     
-    console.log('사용할 계약일 컬럼:', contractDateColumnName || '없음');
+    // 데이터 처리
+    const processedData = [];
+    const yearMonth = `${year}-${month.padStart(2, '0')}`;
     
-    // 데이터 처리 및 Supabase에 저장
-    const results = [];
-    let successCount = 0;
-    let errorCount = 0;
-    
-    for (const row of jsonData) {
-      const data = row as any;
+    for (let i = 1; i < jsonData.length; i++) {
+      const row = jsonData[i] as any[];
       
-      // 필수 필드 확인 및 데이터 매핑
-      // 다양한 컬럼명 형식 지원
-      const email = data.이메일 || data['이메일'] || data.email || data.Email || data['E-mail'] || data['이 메일'];
-      const name = data.고객명 || data['고객명'] || data.계약자명 || data['계약자명'] || data.name || data.Name || data['성명'];
-      const accountNumber = data.계좌번호 || data['계좌번호'] || data.account_number || data['Account Number'] || data['계약번호'] || data['증권번호'];
-      const portfolioType = data.대표MP || data['대표MP'] || data.포트폴리오유형 || data['포트폴리오 유형'] || data.portfolio_type || data['Portfolio Type'] || data['상품명'] || data['펀드명'];
-      const balance = data.전일잔고 || data['전일잔고'] || data.잔고 || data['잔고'] || data.balance || data.Balance || data['금액'] || data['평가금액'] || data['평가액'];
-      const phone = data.연락처 || data['연락처'] || data.전화번호 || data['전화번호'] || data.phone || data.Phone || data['휴대폰'];
-      
-      // 계약일 데이터 추출
-      let contractDate = null;
-      if (contractDateColumnName) {
-        contractDate = data[contractDateColumnName];
-        
-        // A열 값이 계약일인 경우 (헤더가 없는 경우)
-        if (!contractDate && contractDateColumnName === aColumnHeader) {
-          contractDate = Object.values(data)[0];
-        }
+      if (!row[emailIndex] || !row[nameIndex] || !row[accountIndex]) {
+        console.log(`행 ${i+1} 건너뜀: 필수 데이터 누락`);
+        continue;
       }
       
-      // 계약일 형식 변환
-      let formattedContractDate = null;
-      if (contractDate) {
-        try {
-          // 날짜 형식이 다양할 수 있으므로 여러 형식 시도
-          if (typeof contractDate === 'string') {
-            // 문자열 형식의 날짜 처리
-            formattedContractDate = new Date(contractDate).toISOString();
-          } else if (typeof contractDate === 'number') {
-            // 엑셀의 날짜 형식(시리얼 번호) 처리
-            const excelEpoch = new Date(1899, 11, 30);
-            const millisecondsPerDay = 24 * 60 * 60 * 1000;
-            formattedContractDate = new Date(excelEpoch.getTime() + contractDate * millisecondsPerDay).toISOString();
-          }
-          
-          // 날짜 유효성 검사
-          if (formattedContractDate) {
-            const testDate = new Date(formattedContractDate);
-            if (isNaN(testDate.getTime())) {
-              console.warn('유효하지 않은 날짜 형식:', contractDate);
-              formattedContractDate = null;
-            }
-          }
-        } catch (dateError) {
-          console.warn('계약일 형식 변환 오류:', dateError);
-          formattedContractDate = null;
-        }
-      }
+      const email = String(row[emailIndex]).trim();
+      const name = String(row[nameIndex]).trim();
+      const accountNumber = String(row[accountIndex]).trim();
+      const balance = parseFloat(String(row[balanceIndex]).replace(/,/g, '')) || 0;
       
-      console.log('추출된 계약일:', { 
-        원본: contractDate, 
-        변환됨: formattedContractDate,
-        컬럼명: contractDateColumnName
+      processedData.push({
+        email,
+        name,
+        account_number: accountNumber,
+        balance,
+        year_month: yearMonth,
+        created_by: session.user.id,
+        updated_by: session.user.id,
       });
-      
-      // 필수 데이터 확인
-      if (!email && !accountNumber) {
-        console.warn('이메일 또는 계좌번호가 없는 데이터:', data);
-        errorCount++;
-        continue;
-      }
-      
-      if (!balance) {
-        console.warn('잔고 정보가 없는 데이터:', data);
-        errorCount++;
-        continue;
-      }
-      
-      try {
-        // 1. 사용자 정보 저장/업데이트
-        console.log('사용자 정보 저장 시도:', { email: email || 'unknown', name: name || 'unknown', phone });
-        
-        let userId;
-        
-        // 이름과 전화번호로 사용자 찾기 (이메일보다 우선)
-        if (name && phone) {
-          console.log('이름과 전화번호로 사용자 검색:', { name, phone });
-          
-          const { data: userByNamePhone, error: namePhoneError } = await serviceSupabase
-            .from('users')
-            .select('id, email, name, phone')
-            .eq('name', name)
-            .eq('phone', phone);
-            
-          if (!namePhoneError && userByNamePhone && userByNamePhone.length > 0) {
-            // 이름과 전화번호가 일치하는 사용자 발견
-            userId = userByNamePhone[0].id;
-            console.log('이름과 전화번호로 사용자 찾음:', { 
-              userId, 
-              기존이메일: userByNamePhone[0].email, 
-              새이메일: email 
-            });
-            
-            // 이메일 업데이트 (새 이메일이 있는 경우)
-            if (email && email !== userByNamePhone[0].email) {
-              console.log('동일 인물의 이메일 업데이트:', { 
-                기존이메일: userByNamePhone[0].email, 
-                새이메일: email 
-              });
-              
-              const { error: updateError } = await serviceSupabase
-                .from('users')
-                .update({
-                  email: email.toLowerCase(), // 이메일 소문자 변환
-                  updated_at: new Date().toISOString()
-                })
-                .eq('id', userId);
-                
-              if (updateError) {
-                console.error('사용자 이메일 업데이트 오류:', updateError);
-              } else {
-                console.log('사용자 이메일 업데이트 성공:', { userId, 새이메일: email.toLowerCase() });
-              }
-            }
-            
-            // 이미 사용자를 찾았으므로 다음 단계로 진행
-          }
-        }
-        
-        // 이름과 전화번호로 사용자를 찾지 못한 경우, 이메일로 검색
-        if (!userId && email) {
-          const { data: userData, error: userError } = await serviceSupabase
-            .from('users')
-            .upsert({
-              email: email.toLowerCase(), // 이메일 소문자 변환
-              name: name || 'Unknown',
-              phone: phone || null,
-              updated_at: new Date().toISOString()
-            }, {
-              onConflict: 'email'
-            })
-            .select('id');
-            
-          if (userError) {
-            console.error('사용자 정보 저장 오류:', userError);
-            errorCount++;
-            continue;
-          }
-          
-          if (!userData || userData.length === 0) {
-            // 사용자 ID를 가져오지 못한 경우 직접 조회
-            const { data: fetchedUser, error: fetchError } = await serviceSupabase
-              .from('users')
-              .select('id')
-              .eq('email', email.toLowerCase())
-              .single();
-              
-            if (fetchError) {
-              console.error('사용자 정보 조회 오류:', fetchError);
-              errorCount++;
-              continue;
-            }
-              
-            if (fetchedUser) {
-              userId = fetchedUser.id;
-            } else {
-              console.error('사용자 정보를 찾을 수 없습니다:', email);
-              errorCount++;
-              continue;
-            }
-          } else {
-            userId = userData[0].id;
-          }
-        } else if (!userId) {
-          // 이름과 전화번호로도 찾지 못하고 이메일도 없는 경우 임시 사용자 생성
-          const { data: tempUser, error: tempUserError } = await serviceSupabase
-            .from('users')
-            .insert({
-              email: `temp_${accountNumber}@example.com`,
-              name: name || 'Unknown',
-              phone: phone || null
-            })
-            .select('id');
-            
-          if (tempUserError) {
-            console.error('임시 사용자 생성 오류:', tempUserError);
-            errorCount++;
-            continue;
-          }
-          
-          if (!tempUser || tempUser.length === 0) {
-            console.error('임시 사용자가 생성되었지만 ID를 반환받지 못했습니다.');
-            errorCount++;
-            continue;
-          }
-          
-          userId = tempUser[0].id;
-        }
-        
-        console.log('사용자 정보 저장 성공:', { userId, email: email || 'unknown' });
-        
-        // 2. 계좌 정보 저장/업데이트
-        console.log('계좌 정보 저장 시도:', { 
-          userId, 
-          accountNumber, 
-          portfolioType: portfolioType || 'Unknown', 
-          contractDate: formattedContractDate 
-        });
-        
-        // portfolio_types 테이블이 있는지 확인
-        let hasPortfolioTypesTable = true;
-        try {
-          const { data: tableCheck, error: tableCheckError } = await serviceSupabase
-            .from('portfolio_types')
-            .select('id')
-            .limit(1);
-            
-          if (tableCheckError) {
-            console.warn('portfolio_types 테이블 확인 오류:', tableCheckError);
-            hasPortfolioTypesTable = false;
-          }
-        } catch (e) {
-          console.warn('portfolio_types 테이블이 존재하지 않을 수 있습니다:', e);
-          hasPortfolioTypesTable = false;
-        }
-        
-        // 포트폴리오 타입 ID 조회
-        let portfolioTypeId = null;
-        if (portfolioType && hasPortfolioTypesTable) {
-          try {
-            const { data: portfolioTypeData, error: portfolioTypeError } = await serviceSupabase
-              .from('portfolio_types')
-              .select('id')
-              .eq('name', portfolioType)
-              .single();
-              
-            if (portfolioTypeError) {
-              console.warn('포트폴리오 타입 ID 조회 오류:', portfolioTypeError);
-              console.log('포트폴리오 타입 이름으로 새로운 항목 생성 시도:', portfolioType);
-              
-              // 포트폴리오 타입이 없는 경우 새로 생성
-              const { data: newPortfolioType, error: createError } = await serviceSupabase
-                .from('portfolio_types')
-                .insert({
-                  name: portfolioType,
-                  description: `${portfolioType} 포트폴리오`
-                })
-                .select('id');
-                
-              if (createError) {
-                console.error('포트폴리오 타입 생성 오류:', createError);
-              } else if (newPortfolioType && newPortfolioType.length > 0) {
-                portfolioTypeId = newPortfolioType[0].id;
-                console.log('새로운 포트폴리오 타입 생성 성공:', { id: portfolioTypeId, name: portfolioType });
-              }
-            } else if (portfolioTypeData) {
-              portfolioTypeId = portfolioTypeData.id;
-              console.log('포트폴리오 타입 ID 조회 성공:', { id: portfolioTypeId, name: portfolioType });
-            }
-          } catch (e) {
-            console.error('포트폴리오 타입 처리 중 오류:', e);
-          }
-        }
-        
-        // 계좌 정보 객체 생성
-        const accountData = {
-          user_id: userId,
-          account_number: accountNumber,
-          updated_at: new Date().toISOString()
-        };
-        
-        // 포트폴리오 타입 정보 추가
-        if (hasPortfolioTypesTable && portfolioTypeId) {
-          // @ts-ignore - 동적 필드 추가
-          accountData.portfolio_type_id = portfolioTypeId;
-        } else if (portfolioType) {
-          // 이전 방식 호환성 유지 (portfolio_type 컬럼이 아직 존재하는 경우)
-          try {
-            // @ts-ignore - 동적 필드 추가
-            accountData.portfolio_type = portfolioType || 'Unknown';
-          } catch (e) {
-            console.warn('portfolio_type 컬럼이 존재하지 않습니다:', e);
-          }
-        }
-        
-        // 계약일 정보가 있으면 추가
-        if (formattedContractDate) {
-          // @ts-ignore - 동적 필드 추가
-          accountData.contract_date = formattedContractDate;
-        }
-        
-        // 계좌 정보 저장
-        const { data: savedAccount, error: accountError } = await serviceSupabase
-          .from('accounts')
-          .upsert(accountData, {
-            onConflict: 'account_number'
-          })
-          .select('id');
-          
-        if (accountError) {
-          console.error('계좌 정보 저장 오류:', accountError);
-          errorCount++;
-          continue;
-        }
-        
-        let accountId;
-        
-        if (!savedAccount || savedAccount.length === 0) {
-          // 계좌 ID를 가져오지 못한 경우 직접 조회
-          const { data: fetchedAccount, error: fetchError } = await serviceSupabase
-            .from('accounts')
-            .select('id')
-            .eq('account_number', accountNumber)
-            .single();
-            
-          if (fetchError) {
-            console.error('계좌 정보 조회 오류:', fetchError);
-            errorCount++;
-            continue;
-          }
-            
-          if (fetchedAccount) {
-            accountId = fetchedAccount.id;
-          } else {
-            console.error('계좌 정보를 찾을 수 없습니다:', accountNumber);
-            errorCount++;
-            continue;
-          }
-        } else {
-          accountId = savedAccount[0].id;
-        }
-        
-        // 계약일 정보가 있지만 upsert에서 누락된 경우 직접 업데이트
-        if (formattedContractDate) {
-          const { error: updateError } = await serviceSupabase
-            .from('accounts')
-            .update({ contract_date: formattedContractDate })
-            .eq('id', accountId);
-            
-          if (updateError) {
-            console.error('계약일 업데이트 오류:', updateError);
-          } else {
-            console.log('계약일 업데이트 성공:', { accountId, contractDate: formattedContractDate });
-          }
-        }
-        
-        console.log('계좌 정보 저장 성공:', { accountId, accountNumber });
-        
-        // 3. 잔고 정보 저장
-        const year_month = `${year}-${month}`;
-        const balanceValue = typeof balance === 'string' ? parseFloat(balance.replace(/,/g, '')) : parseFloat(balance);
-        
-        console.log('잔고 정보 저장 시도:', { accountId, year_month, balance: balanceValue });
-        
-        const { data: balanceData, error: balanceError } = await serviceSupabase
-          .from('balance_records')
-          .upsert({
-            account_id: accountId,
-            year_month: year_month,
-            balance: balanceValue,
-            record_date: new Date().toISOString()
-          }, {
-            onConflict: 'account_id, year_month'
-          });
-          
-        if (balanceError) {
-          console.error('잔고 정보 저장 오류 상세:', balanceError);
-          errorCount++;
-          continue;
-        }
-        
-        console.log('잔고 정보 저장 성공:', { accountId, year_month, balance: balanceValue });
-        successCount++;
-        
-        // 결과 추가
-        results.push({
-          user: { id: userId, name: name || 'Unknown', email: email || 'unknown' },
-          account: { 
-            id: accountId, 
-            account_number: accountNumber, 
-            portfolio_type: portfolioType || 'Unknown',
-            contract_date: formattedContractDate
-          },
-          balance: { balance: balanceValue }
-        });
-      } catch (rowError: any) {
-        console.error('행 처리 중 오류:', rowError);
-        errorCount++;
-      }
+    }
+    
+    if (processedData.length === 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: '처리할 수 있는 유효한 데이터가 없습니다.',
+        },
+        { status: 400 }
+      );
+    }
+    
+    console.log(`처리된 데이터 수: ${processedData.length}`);
+    
+    // 기존 데이터 삭제
+    const { error: deleteError } = await supabaseAdmin
+      .from('customer_data')
+      .delete()
+      .eq('year_month', yearMonth);
+    
+    if (deleteError) {
+      console.error('기존 데이터 삭제 오류:', deleteError);
+      throw deleteError;
+    }
+    
+    // 새 데이터 삽입
+    const { data: insertData, error: insertError } = await supabaseAdmin
+      .from('customer_data')
+      .insert(processedData)
+      .select();
+    
+    if (insertError) {
+      console.error('데이터 삽입 오류:', insertError);
+      throw insertError;
     }
     
     // 업로드 기록 저장
-    try {
-      await serviceSupabase
-        .from('customer_uploads')
-        .insert({
-          file_name: file.name,
-          year: year,
-          month: month,
-          record_count: successCount,
-          uploaded_at: new Date().toISOString()
-        });
-    } catch (uploadLogError) {
-      console.error('업로드 기록 저장 오류:', uploadLogError);
+    const { data: uploadRecord, error: uploadRecordError } = await supabaseAdmin
+      .from('customer_data_uploads')
+      .insert({
+        year_month: yearMonth,
+        file_name: file.name,
+        record_count: processedData.length,
+        uploaded_by: session.user.id,
+      })
+      .select()
+      .single();
+    
+    if (uploadRecordError) {
+      console.error('업로드 기록 저장 오류:', uploadRecordError);
+      throw uploadRecordError;
     }
     
     return NextResponse.json({
       success: true,
-      message: `${successCount}개의 고객 데이터가 성공적으로 처리되었습니다. ${errorCount}개의 데이터에서 오류가 발생했습니다.`,
-      data: results
+      data: {
+        inserted_count: insertData?.length || 0,
+        upload_record: uploadRecord,
+      },
     });
-    
-  } catch (error: any) {
+  } catch (error) {
     console.error('고객 데이터 업로드 오류:', error);
-    return NextResponse.json({
-      error: '고객 데이터 처리 중 오류가 발생했습니다.',
-      details: error.message
-    }, { status: 500 });
+    
+    return NextResponse.json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : '고객 데이터 업로드 중 오류가 발생했습니다.',
+      },
+      { status: 500 }
+    );
   }
 } 

@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient as supabaseCreateClient } from '@supabase/supabase-js';
 
 // Supabase 환경 변수 확인
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -9,8 +9,39 @@ if (!supabaseUrl || !supabaseKey) {
   throw new Error('Supabase URL과 Anon Key가 환경 변수에 설정되어 있지 않습니다.');
 }
 
+// createClient 함수 export
+export const createClient = () => {
+  // 서버 사이드에서는 쿠키를 직접 전달하지 않음
+  if (typeof window === 'undefined') {
+    return supabaseCreateClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        auth: {
+          persistSession: false,
+          autoRefreshToken: false
+        }
+      }
+    );
+  }
+  
+  // 클라이언트 사이드에서는 기존 방식 사용
+  return supabaseCreateClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+        flowType: 'pkce'
+      }
+    }
+  );
+};
+
 // Supabase 클라이언트 생성
-export const supabase = createClient(
+export const supabase = supabaseCreateClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
   {
@@ -34,7 +65,7 @@ export const getServiceSupabase = () => {
     return supabase;
   }
   
-  return createClient(supabaseUrl, serviceRoleKey, {
+  return supabaseCreateClient(supabaseUrl, serviceRoleKey, {
     auth: {
       persistSession: false,
       autoRefreshToken: false

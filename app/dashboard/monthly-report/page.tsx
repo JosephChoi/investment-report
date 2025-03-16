@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, FileText } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { formatCurrency } from '@/lib/utils';
@@ -244,7 +244,10 @@ export default function MonthlyReport() {
         </Link>
       </div>
       
-      <h1 className="text-3xl font-bold mb-6 text-gray-900">월간 투자 리포트</h1>
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold mb-2 text-gray-900">월간 투자 리포트</h1>
+        <p className="text-gray-600">매월 업데이트되는 투자 현황 및 포트폴리오 분석 리포트입니다.</p>
+      </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {reports.length > 0 ? (
@@ -259,8 +262,11 @@ export default function MonthlyReport() {
             />
           ))
         ) : (
-          <div className="col-span-full text-center py-12">
-            <p className="text-gray-600 text-lg">아직 등록된 월간 리포트가 없습니다.</p>
+          <div className="col-span-full bg-white p-8 rounded-xl shadow-sm border border-gray-100 text-center">
+            <div className="flex flex-col items-center justify-center space-y-4">
+              <FileText className="w-12 h-12 text-gray-300" />
+              <p className="text-gray-600 text-lg">아직 등록된 월간 리포트가 없습니다.</p>
+            </div>
           </div>
         )}
       </div>

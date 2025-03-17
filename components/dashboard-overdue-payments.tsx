@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ChevronRight, AlertCircle, CheckCircle } from 'lucide-react';
-import { CustomerOverdueInfo } from '@/lib/overdue-types';
+import { ChevronRight, AlertCircle, CheckCircle, Clock } from 'lucide-react';
+import { CustomerOverdueInfo, OverduePayment } from '@/lib/overdue-types';
 import { supabase } from '@/lib/supabase';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 
@@ -12,6 +12,7 @@ export default function DashboardOverduePayments() {
   const [overdueInfo, setOverdueInfo] = useState<CustomerOverdueInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
+  const [hasLongOverdue, setHasLongOverdue] = useState(false);
 
   // 사용자 ID 가져오기
   useEffect(() => {
@@ -51,6 +52,14 @@ export default function DashboardOverduePayments() {
         }
         
         setOverdueInfo(data.data);
+        
+        // 3개월 이상 연체 계좌가 있는지 확인
+        if (data.data && data.data.overduePayments) {
+          const longOverdue = data.data.overduePayments.some(
+            (payment: OverduePayment) => payment.overdue_status === '3달'
+          );
+          setHasLongOverdue(longOverdue);
+        }
       } catch (err) {
         console.error('연체정보 조회 오류:', err);
         setError(err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다.');
@@ -98,14 +107,22 @@ export default function DashboardOverduePayments() {
         ) : (
           <Link href="/dashboard/overdue-details" className="block">
             {overdueInfo.hasOverdue ? (
-              <div className="p-4 bg-red-50 border-l-4 border-l-red-500 rounded-md hover:bg-red-100 transition-colors duration-300">
+              <div className={`p-4 ${hasLongOverdue ? 'bg-red-100' : 'bg-red-50'} border-l-4 border-l-red-500 rounded-md hover:bg-red-100 transition-colors duration-300`}>
                 <div className="flex items-start">
                   <AlertCircle className="h-5 w-5 text-red-500 mr-2 mt-0.5 flex-shrink-0" />
                   <div>
-                    <p className="font-medium text-red-700">
-                      {overdueInfo.overduePayments.length}건의 연체정보가 있습니다
+                    <p className="font-bold text-red-700 text-lg">
+                      <span className="text-red-600 font-bold">{overdueInfo.overduePayments.length}건</span>의 연체정보가 있습니다
                     </p>
-                    <p className="text-sm text-red-600 mt-1">
+                    {hasLongOverdue && (
+                      <div className="flex items-center mt-2 bg-red-200 p-2 rounded">
+                        <Clock className="h-4 w-4 text-red-600 mr-1 flex-shrink-0" />
+                        <p className="text-sm text-red-700 font-bold">
+                          3개월 이상 연체중인 계좌가 있습니다
+                        </p>
+                      </div>
+                    )}
+                    <p className="text-sm text-red-600 mt-2">
                       자세한 내용을 확인하려면 클릭하세요
                     </p>
                   </div>

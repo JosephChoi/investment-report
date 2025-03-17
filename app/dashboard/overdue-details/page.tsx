@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, AlertCircle } from 'lucide-react';
+import { ArrowLeft, AlertCircle, Info } from 'lucide-react';
 import { CustomerOverdueInfo, OverduePayment, OverduePaymentNotice } from '@/lib/overdue-types';
 import { formatCurrency } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
@@ -97,6 +97,17 @@ export default function OverdueDetailsPage() {
     fetchLatestNotice();
   }, []);
 
+  // 연체상태 표시 함수
+  const renderOverdueStatus = (status: string | null) => {
+    if (!status) {
+      return <span className="font-bold text-gray-800">당월연체</span>;
+    } else if (status === '3달') {
+      return <span className="font-bold text-red-600">3개월이상 연체중인 계좌입니다</span>;
+    } else {
+      return <span className="font-bold">{status}</span>;
+    }
+  };
+
   return (
     <div className="bg-white min-h-screen">
       <div className="container mx-auto px-4 py-8 max-w-4xl">
@@ -154,33 +165,51 @@ export default function OverdueDetailsPage() {
                 <h2 className="text-xl font-bold mb-4 text-gray-800">계좌 {index + 1}: {payment.mp_name || '인모스트 연금'}</h2>
                 <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden hover:shadow-md transition-shadow duration-300">
                   <div className="p-5 border-b border-gray-200 bg-blue-50">
-                    <h3 className="text-lg font-medium text-gray-800">계좌 정보</h3>
+                    <h3 className="text-xl font-bold text-gray-900 flex items-center">
+                      <span className="bg-blue-100 p-1 rounded-full mr-2">
+                        <svg className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </span>
+                      계좌 정보
+                    </h3>
                   </div>
                   
                   <div className="divide-y divide-gray-200">
                     <div className="flex border-b">
-                      <div className="w-1/3 py-4 px-5 bg-gray-50 font-medium text-gray-800">계좌번호</div>
-                      <div className="w-2/3 py-4 px-5 text-gray-800">{payment.account_number}</div>
+                      <div className="w-1/4 py-4 px-5 bg-gray-50 font-medium text-gray-800">계좌번호</div>
+                      <div className="w-3/4 py-4 px-5 text-gray-800 font-bold">{payment.account_number}</div>
                     </div>
                     
                     <div className="flex border-b">
-                      <div className="w-1/3 py-4 px-5 bg-gray-50 font-medium text-gray-800">출금계좌</div>
-                      <div className="w-2/3 py-4 px-5 text-gray-800">{payment.withdrawal_account || '-'}</div>
+                      <div className="w-1/4 py-4 px-5 bg-gray-50 font-medium text-gray-800">출금계좌</div>
+                      <div className="w-3/4 py-4 px-5 text-gray-800 font-bold">{payment.withdrawal_account || '-'}</div>
+                    </div>
+                    
+                    {/* 계좌번호와 출금계좌가 다를 경우 비고란 추가 */}
+                    {payment.withdrawal_account && payment.withdrawal_account !== payment.account_number && (
+                      <div className="flex border-b bg-yellow-50">
+                        <div className="w-1/4 py-4 px-5 bg-yellow-100 font-medium text-yellow-800">비고</div>
+                        <div className="w-3/4 py-4 px-5 text-yellow-800 font-bold flex items-start">
+                          <Info className="h-5 w-5 mr-2 flex-shrink-0 mt-0.5" />
+                          <span>수수료 출금계좌가 자문계좌와 다릅니다.</span>
+                        </div>
+                      </div>
+                    )}
+                    
+                    <div className="flex border-b">
+                      <div className="w-1/4 py-4 px-5 bg-gray-50 font-medium text-gray-800">포트폴리오</div>
+                      <div className="w-3/4 py-4 px-5 text-gray-800 font-bold">{payment.mp_name || '-'}</div>
                     </div>
                     
                     <div className="flex border-b">
-                      <div className="w-1/3 py-4 px-5 bg-gray-50 font-medium text-gray-800">대표MP명</div>
-                      <div className="w-2/3 py-4 px-5 text-gray-800">{payment.mp_name || '-'}</div>
-                    </div>
-                    
-                    <div className="flex border-b">
-                      <div className="w-1/3 py-4 px-5 bg-gray-50 font-medium text-gray-800">미납금액</div>
-                      <div className="w-2/3 py-4 px-5 text-red-600 font-bold">{formatCurrency(payment.unpaid_amount || 0)}</div>
+                      <div className="w-1/4 py-4 px-5 bg-gray-50 font-medium text-gray-800">미납금액</div>
+                      <div className="w-3/4 py-4 px-5 text-red-600 font-bold">{formatCurrency(payment.unpaid_amount || 0)}</div>
                     </div>
                     
                     <div className="flex">
-                      <div className="w-1/3 py-4 px-5 bg-gray-50 font-medium text-gray-800">연체상태</div>
-                      <div className="w-2/3 py-4 px-5 text-gray-800">{payment.overdue_status || '단일연체'}</div>
+                      <div className="w-1/4 py-4 px-5 bg-gray-50 font-medium text-gray-800">연체상태</div>
+                      <div className="w-3/4 py-4 px-5">{renderOverdueStatus(payment.overdue_status)}</div>
                     </div>
                   </div>
                 </div>
@@ -200,10 +229,17 @@ export default function OverdueDetailsPage() {
             ) : notice ? (
               <div className="mt-8 bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden transform transition-all duration-300 hover:shadow-md animate-fade-in">
                 <div className="p-5 border-b border-gray-200 bg-blue-50">
-                  <h2 className="text-lg font-medium text-gray-800">안내 사항</h2>
+                  <h2 className="text-xl font-bold text-gray-900 flex items-center">
+                    <span className="bg-blue-100 p-1 rounded-full mr-2">
+                      <svg className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </span>
+                    안내 사항
+                  </h2>
                 </div>
                 <div 
-                  className="prose prose-sm max-w-none p-5 text-gray-800"
+                  className="prose prose-sm max-w-none p-5 text-gray-800 font-bold"
                   dangerouslySetInnerHTML={{ __html: notice.content }}
                 />
               </div>

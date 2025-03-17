@@ -2,6 +2,7 @@
 
 import { OverduePayment } from '@/lib/overdue-types';
 import { formatCurrency } from '@/lib/utils';
+import { Info } from 'lucide-react';
 
 interface OverduePaymentCardProps {
   overduePayment: OverduePayment;
@@ -24,6 +25,9 @@ export default function OverduePaymentCard({ overduePayment }: OverduePaymentCar
   const statusColor = isLongOverdue
     ? 'bg-red-100 text-red-800 border-red-300'
     : 'bg-amber-100 text-amber-800 border-amber-300';
+    
+  // 계좌번호와 출금계좌가 다른지 확인
+  const hasDifferentAccount = withdrawal_account && withdrawal_account !== account_number;
 
   return (
     <div className="p-4 mb-4 border rounded-lg border-l-4 border-l-red-500">
@@ -49,7 +53,7 @@ export default function OverduePaymentCard({ overduePayment }: OverduePaymentCar
           )}
           
           <div>
-            <p className="text-gray-500">대표MP명</p>
+            <p className="text-gray-500">포트폴리오</p>
             <p className="font-medium">{mp_name || '-'}</p>
           </div>
           
@@ -66,6 +70,16 @@ export default function OverduePaymentCard({ overduePayment }: OverduePaymentCar
             <span className="font-medium">연체 상태:</span> {overdue_status || '연체중'}
           </p>
         </div>
+        
+        {/* 계좌번호와 출금계좌가 다를 경우 비고란 추가 */}
+        {hasDifferentAccount && (
+          <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-md flex items-start">
+            <Info className="h-4 w-4 text-yellow-600 mr-2 flex-shrink-0 mt-0.5" />
+            <p className="text-xs text-yellow-700 font-medium">
+              수수료 출금계좌가 자문계좌와 다릅니다.
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

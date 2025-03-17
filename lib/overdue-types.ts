@@ -83,4 +83,4 @@ export interface CustomerOverdueInfo {
   hasOverdue: boolean;
   overduePayments: OverduePayment[];
   notice: OverduePaymentNotice | null;
-} 
+}

@@ -2,240 +2,214 @@
 
 import { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { UploadIcon, FileIcon, XIcon, CheckIcon } from 'lucide-react';
+import { Upload, X, AlertTriangle, CheckCircle, FileSpreadsheet, Loader2 } from 'lucide-react';
 import * as XLSX from 'xlsx';
-import { ExcelOverdueData, OverduePaymentUploadResponse } from '@/lib/overdue-types';
 
 interface ExcelUploaderProps {
-  onUploadSuccess?: (response: OverduePaymentUploadResponse) => void;
-  onUploadError?: (error: string) => void;
+  onUpload: (data: any[], fileName: string) => Promise<void>;
+  acceptedFileTypes?: string[];
+  maxFileSize?: number;
+  title?: string;
+  description?: string;
+  successMessage?: string;
+  errorMessage?: string;
 }
 
-export default function ExcelUploader({ onUploadSuccess, onUploadError }: ExcelUploaderProps) {
+export default function ExcelUploader({
+  onUpload,
+  acceptedFileTypes = ['.xlsx', '.xls', '.csv'],
+  maxFileSize = 5 * 1024 * 1024, // 5MB
+  title = '엑셀 파일 업로드',
+  description = '파일을 드래그하여 업로드하거나 클릭하여 파일을 선택하세요.',
+  successMessage = '파일이 성공적으로 업로드되었습니다.',
+  errorMessage = '파일 업로드 중 오류가 발생했습니다.',
+}: ExcelUploaderProps) {
   const [file, setFile] = useState<File | null>(null);
-  const [uploading, setUploading] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [errorDetails, setErrorDetails] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
-  const [previewData, setPreviewData] = useState<ExcelOverdueData[] | null>(null);
 
-  const onDrop = useCallback((acceptedFiles: File[]) => {
-    const selectedFile = acceptedFiles[0];
-    if (selectedFile) {
+  const onDrop = useCallback(
+    async (acceptedFiles: File[]) => {
+      const selectedFile = acceptedFiles[0];
+      
+      if (!selectedFile) return;
+      
+      // 파일 크기 검증
+      if (selectedFile.size > maxFileSize) {
+        setErrorDetails(`파일 크기가 너무 큽니다. 최대 ${maxFileSize / 1024 / 1024}MB까지 업로드 가능합니다.`);
+        setUploadStatus('error');
+        return;
+      }
+      
+      // 파일 형식 검증
+      const fileExtension = `.${selectedFile.name.split('.').pop()?.toLowerCase()}`;
+      if (!acceptedFileTypes.includes(fileExtension)) {
+        setErrorDetails(`지원하지 않는 파일 형식입니다. ${acceptedFileTypes.join(', ')} 형식만 업로드 가능합니다.`);
+        setUploadStatus('error');
+        return;
+      }
+      
       setFile(selectedFile);
-      parseExcel(selectedFile);
-    }
-  }, []);
+      setUploadStatus('idle');
+      setErrorDetails(null);
+      
+      try {
+        setIsUploading(true);
+        setProgress(10);
+        
+        // 파일 읽기
+        const data = await readExcelFile(selectedFile);
+        setProgress(50);
+        
+        // 데이터 업로드
+        await onUpload(data, selectedFile.name);
+        setProgress(100);
+        
+        setUploadStatus('success');
+      } catch (error) {
+        console.error('파일 업로드 오류:', error);
+        setErrorDetails(error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.');
+        setUploadStatus('error');
+      } finally {
+        setIsUploading(false);
+      }
+    },
+    [acceptedFileTypes, maxFileSize, onUpload]
+  );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
-      'application/vnd.ms-excel': ['.xls'],
+      'application/vnd.ms-excel': acceptedFileTypes,
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': acceptedFileTypes,
+      'text/csv': ['.csv'],
     },
     maxFiles: 1,
-    multiple: false,
+    disabled: isUploading,
   });
 
-  const parseExcel = async (file: File) => {
-    try {
-      const data = await file.arrayBuffer();
-      const workbook = XLSX.read(data);
-      const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-      const jsonData = XLSX.utils.sheet_to_json<ExcelOverdueData>(worksheet);
+  const readExcelFile = (file: File): Promise<any[]> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
       
-      // 미리보기 데이터는 최대 5개만 표시
-      setPreviewData(jsonData.slice(0, 5));
-    } catch (error) {
-      console.error('엑셀 파일 파싱 오류:', error);
-      alert('엑셀 파일 파싱 오류: 파일 형식이 올바르지 않습니다.');
-      setFile(null);
-      setPreviewData(null);
-    }
+      reader.onload = (e) => {
+        try {
+          const data = e.target?.result;
+          const workbook = XLSX.read(data, { type: 'binary' });
+          const sheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[sheetName];
+          const json = XLSX.utils.sheet_to_json(worksheet);
+          resolve(json);
+        } catch (error) {
+          reject(new Error('엑셀 파일을 읽는 중 오류가 발생했습니다.'));
+        }
+      };
+      
+      reader.onerror = () => {
+        reject(new Error('파일을 읽는 중 오류가 발생했습니다.'));
+      };
+      
+      reader.readAsBinaryString(file);
+    });
   };
 
-  const uploadFile = async () => {
-    if (!file) return;
-
-    try {
-      setUploading(true);
-      setProgress(10);
-
-      // FormData 생성
-      const formData = new FormData();
-      formData.append('file', file);
-
-      // 업로드 요청
-      const response = await fetch('/api/overdue-payments/upload', {
-        method: 'POST',
-        body: formData,
-        credentials: 'include',
-      });
-
-      setProgress(90);
-
-      const result: OverduePaymentUploadResponse = await response.json();
-
-      if (result.error) {
-        throw new Error(result.error);
-      }
-
-      setProgress(100);
-      alert(`업로드 성공: ${result.data?.recordCount}개의 연체정보가 업로드되었습니다.`);
-
-      // 성공 콜백 호출
-      if (onUploadSuccess) {
-        onUploadSuccess(result);
-      }
-
-      // 상태 초기화
-      setTimeout(() => {
-        setFile(null);
-        setPreviewData(null);
-        setUploading(false);
-        setProgress(0);
-      }, 1000);
-    } catch (error) {
-      console.error('업로드 오류:', error);
-      alert(`업로드 실패: ${error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.'}`);
-
-      // 오류 콜백 호출
-      if (onUploadError) {
-        onUploadError(error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.');
-      }
-
-      setUploading(false);
-      setProgress(0);
-    }
-  };
-
-  const removeFile = () => {
+  const resetUploader = () => {
     setFile(null);
-    setPreviewData(null);
+    setUploadStatus('idle');
+    setErrorDetails(null);
+    setProgress(0);
   };
 
   return (
-    <div className="w-full space-y-4">
-      <div className="border rounded-lg p-6">
-        <div
-          {...getRootProps()}
-          className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
-            isDragActive
-              ? 'border-blue-500 bg-blue-50'
-              : 'border-gray-300 hover:border-blue-500 hover:bg-blue-50'
-          }`}
-        >
-          <input {...getInputProps()} />
-          <div className="flex flex-col items-center justify-center space-y-2">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-            </svg>
-            <p className="text-lg font-medium">
-              {isDragActive
-                ? '파일을 여기에 놓으세요'
-                : '연체정보 엑셀 파일을 드래그하거나 클릭하여 업로드하세요'}
-            </p>
-            <p className="text-sm text-gray-500">
-              지원 형식: .xlsx, .xls (최대 10MB)
-            </p>
-          </div>
-        </div>
-
-        {file && (
-          <div className="mt-4 p-4 border rounded-lg">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                <span className="font-medium">{file.name}</span>
-                <span className="text-sm text-gray-500">
-                  ({(file.size / 1024 / 1024).toFixed(2)} MB)
-                </span>
-              </div>
-              {!uploading && (
-                <button
-                  onClick={removeFile}
-                  className="text-gray-500 hover:text-red-500"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              )}
+    <div className="w-full">
+      <div
+        {...getRootProps()}
+        className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
+          isDragActive
+            ? 'border-blue-400 bg-blue-50'
+            : uploadStatus === 'error'
+            ? 'border-red-300 bg-red-50'
+            : uploadStatus === 'success'
+            ? 'border-green-300 bg-green-50'
+            : 'border-gray-300 hover:border-blue-400 hover:bg-blue-50'
+        } ${isUploading ? 'opacity-75 cursor-not-allowed' : ''}`}
+      >
+        <input {...getInputProps()} disabled={isUploading} />
+        
+        {isUploading ? (
+          <div className="flex flex-col items-center justify-center py-4">
+            <Loader2 className="h-12 w-12 text-blue-500 animate-spin mb-4" />
+            <p className="text-lg font-medium text-gray-700">파일 업로드 중...</p>
+            <div className="w-full max-w-xs bg-gray-200 rounded-full h-2.5 mt-4">
+              <div
+                className="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
+                style={{ width: `${progress}%` }}
+              ></div>
             </div>
-
-            {uploading && (
-              <div className="mt-2">
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div className="bg-blue-600 h-2 rounded-full" style={{ width: `${progress}%` }}></div>
-                </div>
-                <p className="text-sm text-gray-500 mt-1">
-                  {progress < 100
-                    ? '업로드 중...'
-                    : '업로드 완료'}
+          </div>
+        ) : uploadStatus === 'success' ? (
+          <div className="flex flex-col items-center justify-center py-4">
+            <CheckCircle className="h-12 w-12 text-green-500 mb-4" />
+            <p className="text-lg font-medium text-gray-700">{successMessage}</p>
+            <p className="text-sm text-gray-500 mt-2">{file?.name}</p>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                resetUploader();
+              }}
+              className="mt-4 px-4 py-2 bg-white border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50"
+            >
+              다른 파일 업로드
+            </button>
+          </div>
+        ) : uploadStatus === 'error' ? (
+          <div className="flex flex-col items-center justify-center py-4">
+            <AlertTriangle className="h-12 w-12 text-red-500 mb-4" />
+            <p className="text-lg font-medium text-gray-700">{errorMessage}</p>
+            {errorDetails && <p className="text-sm text-red-600 mt-2">{errorDetails}</p>}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                resetUploader();
+              }}
+              className="mt-4 px-4 py-2 bg-white border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50"
+            >
+              다시 시도
+            </button>
+          </div>
+        ) : file ? (
+          <div className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-md">
+            <div className="flex items-center">
+              <FileSpreadsheet className="h-8 w-8 text-green-600 mr-3" />
+              <div className="text-left">
+                <p className="font-medium text-gray-900">{file.name}</p>
+                <p className="text-sm text-gray-500">
+                  {(file.size / 1024).toFixed(1)} KB
                 </p>
               </div>
-            )}
-          </div>
-        )}
-
-        {previewData && previewData.length > 0 && (
-          <div className="mt-4">
-            <h3 className="text-sm font-medium mb-2">미리보기 (최대 5개)</h3>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200 text-sm">
-                <thead className="bg-gray-50">
-                  <tr>
-                    {Object.keys(previewData[0]).map((key) => (
-                      <th
-                        key={key}
-                        className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                      >
-                        {key}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {previewData.map((row, index) => (
-                    <tr key={index}>
-                      {Object.values(row).map((value, i) => (
-                        <td key={i} className="px-3 py-2 whitespace-nowrap">
-                          {value?.toString() || '-'}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
             </div>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                resetUploader();
+              }}
+              className="p-1 rounded-full hover:bg-gray-100"
+            >
+              <X className="h-5 w-5 text-gray-500" />
+            </button>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-8">
+            <Upload className="h-12 w-12 text-gray-400 mb-4" />
+            <p className="text-lg font-medium text-gray-700">{title}</p>
+            <p className="text-sm text-gray-500 mt-2">{description}</p>
+            <p className="text-xs text-gray-400 mt-1">
+              지원 형식: {acceptedFileTypes.join(', ')} / 최대 {maxFileSize / 1024 / 1024}MB
+            </p>
           </div>
         )}
-
-        <div className="mt-4 flex justify-end">
-          <button
-            onClick={uploadFile}
-            disabled={!file || uploading}
-            className={`px-4 py-2 rounded-md flex items-center space-x-1 ${
-              !file || uploading
-                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                : 'bg-blue-600 text-white hover:bg-blue-700'
-            }`}
-          >
-            {uploading ? (
-              <>
-                <span className="animate-spin">⏳</span>
-                <span>업로드 중...</span>
-              </>
-            ) : (
-              <>
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span>업로드</span>
-              </>
-            )}
-          </button>
-        </div>
       </div>
     </div>
   );

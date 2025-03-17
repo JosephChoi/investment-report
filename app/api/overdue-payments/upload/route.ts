@@ -39,19 +39,19 @@ export async function POST(request: NextRequest) {
     
     // 엑셀 파일 파싱 (원본 데이터 유지)
     const arrayBuffer = await file.arrayBuffer();
-    const workbook = XLSX.read(arrayBuffer, { cellDates: true }); // cellDates: true로 설정하여 날짜를 자동 변환
+    const workbook = XLSX.read(arrayBuffer, { raw: true });
     const worksheet = workbook.Sheets[workbook.SheetNames[0]];
     
     // 원본 데이터 형식 확인을 위해 raw 옵션 사용
-    const rawData = XLSX.utils.sheet_to_json(worksheet, { raw: true });
+    const rawData = XLSX.utils.sheet_to_json(worksheet, { raw: true, header: 'A' });
     console.log('원본 데이터 샘플:', rawData.length > 0 ? rawData[0] : '데이터 없음');
     
     // 헤더 확인
     const headers = XLSX.utils.sheet_to_json(worksheet, { header: 1 })[0] as string[];
     console.log('엑셀 헤더:', headers);
     
-    // 미납 열 인덱스 찾기
-    const unpaidColumnIndex = headers.findIndex(h => h === '미납');
+    // 미납 열 인덱스 찾기 (L열 = 11번 인덱스)
+    const unpaidColumnIndex = 11; // 0부터 시작하는 인덱스에서 L열은 11
     console.log('미납 열 인덱스:', unpaidColumnIndex);
     
     const jsonData = XLSX.utils.sheet_to_json<ExcelOverdueData>(worksheet);
@@ -73,17 +73,12 @@ export async function POST(request: NextRequest) {
     const batchId = crypto.randomUUID();
     console.log('생성된 배치 ID:', batchId);
     
-    // 엑셀 날짜 처리 함수
+    // 날짜 형식 변환 함수
     const formatDate = (date: any): string | null => {
       if (!date) return null;
       
       try {
-        // Date 객체인 경우
-        if (date instanceof Date) {
-          return date.toISOString();
-        }
-        
-        // 숫자인 경우 (엑셀 시리얼 날짜)
+        // 날짜가 숫자인 경우 (엑셀 시리얼 날짜)
         if (typeof date === 'number' || !isNaN(Number(date))) {
           // 엑셀 날짜는 1900년 1월 1일부터의 일수 (1900년 시스템)
           const excelDate = Number(date);
@@ -93,7 +88,9 @@ export async function POST(request: NextRequest) {
           // 엑셀의 1900년 2월 29일 버그 처리 (1900년은 실제로 윤년이 아님)
           const daysToAdd = excelDate > 60 ? excelDate - 1 : excelDate;
           const resultDate = new Date(baseDate.getTime() + daysToAdd * millisecondsPerDay);
-          return resultDate.toISOString();
+          
+          // YYYY-MM-DD 형식으로 반환
+          return resultDate.toISOString().split('T')[0];
         }
         
         // 문자열인 경우
@@ -107,18 +104,21 @@ export async function POST(request: NextRequest) {
             
             if (!isNaN(year) && !isNaN(month) && !isNaN(day)) {
               const parsedDate = new Date(year, month, day);
-              return parsedDate.toISOString();
+              return parsedDate.toISOString().split('T')[0]; // YYYY-MM-DD 형식으로 반환
             }
           }
           
           // 다른 형식의 날짜 문자열 처리 시도
           const parsedDate = new Date(date);
           if (!isNaN(parsedDate.getTime())) {
-            return parsedDate.toISOString();
+            return parsedDate.toISOString().split('T')[0]; // YYYY-MM-DD 형식으로 반환
           }
+          
+          // 변환할 수 없는 경우 원본 반환
+          return date;
         }
         
-        // 변환 실패 시 null 반환
+        // 기타 경우 null 반환
         return null;
       } catch (e) {
         console.error('날짜 변환 오류:', e, '원본 값:', date);
@@ -128,9 +128,11 @@ export async function POST(request: NextRequest) {
     
     // 데이터 변환
     const overduePayments: OverduePaymentInsert[] = jsonData.map((row, index) => {
-      // 원본 데이터에서 미납 열 값 가져오기 (overdue_status로 사용)
-      const rawRow = rawData[index] as any;
-      const overdueStatus = rawRow['미납'] || null;
+      // 원본 데이터에서 미납 열(L열) 값 가져오기 (overdue_status로 사용)
+      const rawRow = rawData[index + 1] as any; // 헤더 행을 건너뛰기 위해 +1
+      const overdueStatus = rawRow['L'] || null; // L열의 값을 직접 가져옴
+      
+      console.log(`행 ${index + 1}의 미납 값:`, overdueStatus);
       
       return {
         account_name: row.계좌명,
@@ -144,7 +146,7 @@ export async function POST(request: NextRequest) {
         unpaid_amount: row.미납금액,
         manager: row.유치자,
         contact_number: row.연락처,
-        overdue_status: overdueStatus, // 미납 열의 값을 overdue_status로 사용
+        overdue_status: overdueStatus, // L열의 값을 overdue_status로 사용
         batch_id: batchId,
       };
     });

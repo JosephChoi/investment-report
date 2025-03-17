@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
     
     // 페이지네이션 적용
     const { data, error, count } = await query
-      .order('created_at', { ascending: false })
+      .order('updated_at', { ascending: false })
       .range(offset, offset + limit - 1);
     
     if (error) {
@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
     
     const totalPages = Math.ceil((count || 0) / limit);
     
-    return NextResponse.json({
+    const response = NextResponse.json({
       data: data as OverduePayment[],
       meta: {
         currentPage: page,
@@ -47,15 +47,23 @@ export async function GET(request: NextRequest) {
       },
       error: null,
     });
+    
+    // 캐시 제어 헤더 추가
+    response.headers.set('Cache-Control', 'no-store, max-age=0');
+    return response;
   } catch (error) {
     console.error('연체정보 조회 오류:', error);
     
-    return NextResponse.json(
+    const response = NextResponse.json(
       {
         data: null,
         error: error instanceof Error ? error.message : '연체정보 조회 중 오류가 발생했습니다.',
       },
       { status: 500 }
     );
+    
+    // 캐시 제어 헤더 추가
+    response.headers.set('Cache-Control', 'no-store, max-age=0');
+    return response;
   }
 } 

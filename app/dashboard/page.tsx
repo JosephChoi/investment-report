@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { FileText, AlertTriangle, RefreshCw, MessageSquare, Bell, LogOut, User, ChevronRight, Info } from 'lucide-react';
+import { FileText, AlertTriangle, RefreshCw, MessageSquare, Bell, LogOut, User, ChevronRight, Info, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { formatDate } from '@/lib/utils';
@@ -33,6 +33,7 @@ export default function Dashboard() {
   const [error, setError] = useState<string | null>(null);
   const [balance, setBalance] = useState<any>(null);
   const [dbUser, setDbUser] = useState<any>(null); // 데이터베이스에서 가져온 사용자 정보
+  const [showAccountsModal, setShowAccountsModal] = useState(false);
   const router = useRouter();
 
   // 인증 상태 확인
@@ -297,19 +298,74 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent>
               {accounts && accounts.length > 0 ? (
-                <ul className="space-y-4">
-                  {accounts.map((account, index) => (
-                    <li key={account.id || `account-${index}`} className="p-4 bg-white rounded-lg border border-gray-200 hover:border-green-300 transition-colors duration-300 shadow-sm">
-                      <div className="space-y-2">
-                        <p className="font-medium text-gray-900">{account.portfolio?.name || '포트폴리오 정보 없음'}</p>
-                        <div className="flex">
-                          <span className="text-gray-600 w-24 text-sm">계좌번호:</span>
-                          <span className="text-gray-900 text-sm">{account.account_number || '정보 없음'}</span>
+                <>
+                  <ul className="space-y-4">
+                    {accounts.slice(0, 2).map((account, index) => (
+                      <li key={account.id || `account-${index}`} className="p-4 bg-white rounded-lg border border-gray-200 hover:border-green-300 transition-colors duration-300 shadow-sm">
+                        <div className="space-y-2">
+                          <p className="font-medium text-gray-900">{account.portfolio?.name || '포트폴리오 정보 없음'}</p>
+                          <div className="flex">
+                            <span className="text-gray-600 w-24 text-sm">계좌번호:</span>
+                            <span className="text-gray-900 text-sm">{account.account_number || '정보 없음'}</span>
+                          </div>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                  
+                  {accounts.length > 2 && (
+                    <div className="mt-4 text-center">
+                      <button 
+                        onClick={() => setShowAccountsModal(true)}
+                        className="px-4 py-2 bg-green-50 text-green-600 rounded-md hover:bg-green-100 transition-colors duration-300 text-sm font-medium"
+                      >
+                        모든 계좌 보기 ({accounts.length}개)
+                      </button>
+                    </div>
+                  )}
+                  
+                  {/* 계좌 정보 모달 */}
+                  {showAccountsModal && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-auto">
+                        <div className="p-6">
+                          <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-xl font-semibold text-gray-900">모든 계좌 정보</h3>
+                            <button 
+                              onClick={() => setShowAccountsModal(false)}
+                              className="text-gray-500 hover:text-gray-900"
+                            >
+                              <X className="h-5 w-5" />
+                            </button>
+                          </div>
+                          
+                          <ul className="space-y-4 mt-4">
+                            {accounts.map((account, index) => (
+                              <li key={account.id || `modal-account-${index}`} className="p-4 bg-white rounded-lg border border-gray-200 hover:border-green-300 transition-colors duration-300 shadow-sm">
+                                <div className="space-y-2">
+                                  <p className="font-medium text-gray-900">{account.portfolio?.name || '포트폴리오 정보 없음'}</p>
+                                  <div className="flex">
+                                    <span className="text-gray-600 w-24 text-sm">계좌번호:</span>
+                                    <span className="text-gray-900 text-sm">{account.account_number || '정보 없음'}</span>
+                                  </div>
+                                </div>
+                              </li>
+                            ))}
+                          </ul>
+                          
+                          <div className="mt-6 flex justify-end">
+                            <button
+                              onClick={() => setShowAccountsModal(false)}
+                              className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-md text-gray-800 transition-colors duration-300"
+                            >
+                              닫기
+                            </button>
+                          </div>
                         </div>
                       </div>
-                    </li>
-                  ))}
-                </ul>
+                    </div>
+                  )}
+                </>
               ) : (
                 <div className="p-4 bg-white text-gray-700 rounded-lg border border-gray-200">
                   <p>등록된 계좌 정보가 없습니다.</p>
@@ -369,7 +425,7 @@ export default function Dashboard() {
           </Link>
           
           {/* 연체 정보 카드 */}
-          <Link href="/admin/overdue-payments" className="block group">
+          <Link href="/dashboard/overdue-details" className="block group">
             <Card className="h-full border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden group">
               <div className="absolute h-1 w-full bg-red-500 top-0 left-0 transform origin-left transition-transform duration-300 group-hover:scale-x-110"></div>
               <CardContent className="p-6">

@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { OverduePaymentNoticeResponse } from '@/lib/overdue-types';
 
 export async function GET(request: NextRequest) {
   try {
-    // 최신 연체정보 안내문 조회 (서비스 역할 키 사용)
+    // 최신 안내사항 조회 (인증 검사 없이 관리자 권한으로 직접 조회)
     const { data, error } = await supabaseAdmin
       .from('overdue_payment_notices')
       .select('*')
@@ -16,19 +15,27 @@ export async function GET(request: NextRequest) {
       throw error;
     }
     
-    return NextResponse.json({
-      data: data as OverduePaymentNoticeResponse | null,
+    const response = NextResponse.json({
+      data: data || null,
       error: null,
     });
-  } catch (error) {
-    console.error('최신 연체정보 안내문 조회 오류:', error);
     
-    return NextResponse.json(
+    // 캐시 제어 헤더 추가
+    response.headers.set('Cache-Control', 'no-store, max-age=0');
+    return response;
+  } catch (error) {
+    console.error('최신 안내사항 조회 오류:', error);
+    
+    const response = NextResponse.json(
       {
         data: null,
-        error: error instanceof Error ? error.message : '최신 연체정보 안내문 조회 중 오류가 발생했습니다.',
+        error: error instanceof Error ? error.message : '최신 안내사항 조회 중 오류가 발생했습니다.',
       },
       { status: 500 }
     );
+    
+    // 캐시 제어 헤더 추가
+    response.headers.set('Cache-Control', 'no-store, max-age=0');
+    return response;
   }
 } 

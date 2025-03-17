@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Upload, Save, AlertTriangle, FileText, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Upload, Save, AlertTriangle, FileText, CheckCircle, RefreshCw } from 'lucide-react';
 import ExcelUploader from '@/components/excel-uploader';
 import OverduePaymentList from '@/components/overdue-payment-list';
 import OverduePaymentNoticeComponent from '@/components/overdue-payment-notice';
@@ -19,11 +19,49 @@ export default function OverduePaymentsPage() {
     const fetchInitialData = async () => {
       try {
         setLoading(true);
+        setError(null);
+        
+        // 최신 배치 ID 가져오기
+        try {
+          const batchResponse = await fetch('/api/overdue-payments/batch/latest', {
+            credentials: 'include',
+            cache: 'no-store',
+            headers: {
+              'Cache-Control': 'no-cache, no-store, must-revalidate',
+              'Pragma': 'no-cache',
+              'Expires': '0'
+            }
+          });
+          
+          if (batchResponse.ok) {
+            const batchData = await batchResponse.json();
+            
+            if (batchData.success && batchData.data && batchData.data.batchId) {
+              console.log('최신 배치 ID 로드됨:', batchData.data.batchId);
+              setSelectedBatchId(batchData.data.batchId);
+            } else {
+              console.log('최신 배치 ID가 없습니다.');
+            }
+          } else {
+            const errorData = await batchResponse.json();
+            console.error('배치 ID 로딩 실패:', errorData);
+            throw new Error(errorData.error || '배치 ID를 불러오는데 실패했습니다.');
+          }
+        } catch (batchErr) {
+          console.error('배치 ID 로딩 오류:', batchErr);
+          throw batchErr;
+        }
         
         // 최신 안내사항 가져오기
         try {
           const noticeResponse = await fetch('/api/overdue-payment-notices/latest', {
             credentials: 'include',
+            cache: 'no-store',
+            headers: {
+              'Cache-Control': 'no-cache, no-store, must-revalidate',
+              'Pragma': 'no-cache',
+              'Expires': '0'
+            }
           });
           
           if (noticeResponse.ok) {
@@ -114,8 +152,46 @@ export default function OverduePaymentsPage() {
     }
   };
 
+  const handleRefresh = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // 최신 배치 ID 가져오기
+      const batchResponse = await fetch('/api/overdue-payments/batch/latest', {
+        credentials: 'include',
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      });
+      
+      if (batchResponse.ok) {
+        const batchData = await batchResponse.json();
+        
+        if (batchData.success && batchData.data && batchData.data.batchId) {
+          console.log('최신 배치 ID 로드됨:', batchData.data.batchId);
+          setSelectedBatchId(batchData.data.batchId);
+        } else {
+          console.log('최신 배치 ID가 없습니다.');
+          setSelectedBatchId(null);
+        }
+      } else {
+        const errorData = await batchResponse.json();
+        throw new Error(errorData.error || '배치 ID 로딩 실패');
+      }
+    } catch (err) {
+      console.error('새로고침 오류:', err);
+      setError(err instanceof Error ? err.message : '데이터를 새로고침하는 중 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+    <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8 bg-white min-h-screen">
       {/* 헤더 */}
       <div className="mb-8">
         <div className="flex items-center mb-4">
@@ -129,7 +205,7 @@ export default function OverduePaymentsPage() {
       
       {/* 알림 메시지 */}
       {error && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 flex items-start">
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 flex items-start animate-fadeIn">
           <AlertTriangle className="w-5 h-5 mr-2 flex-shrink-0 mt-0.5" />
           <div>
             <p className="font-medium">오류가 발생했습니다</p>
@@ -139,7 +215,7 @@ export default function OverduePaymentsPage() {
       )}
       
       {success && (
-        <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg text-green-700 flex items-start">
+        <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg text-green-700 flex items-start animate-fadeIn">
           <CheckCircle className="w-5 h-5 mr-2 flex-shrink-0 mt-0.5" />
           <div>
             <p className="font-medium">성공</p>
@@ -150,7 +226,7 @@ export default function OverduePaymentsPage() {
       
       <div className="space-y-6">
         {/* 연체정보 업로드 */}
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-all duration-300 transform hover:-translate-y-1">
           <h2 className="text-xl font-semibold mb-4 text-gray-900">연체정보 업로드</h2>
           <p className="text-gray-600 text-sm mb-4">연체가 있는 계좌 정보만 포함된 엑셀 파일을 업로드하세요. 기존 데이터는 모두 삭제되고 새 데이터로 대체됩니다.</p>
           
@@ -164,17 +240,49 @@ export default function OverduePaymentsPage() {
         </div>
         
         {/* 연체정보 목록 */}
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-          <h2 className="text-xl font-semibold mb-4 text-gray-900">연체정보 목록</h2>
-          <p className="text-gray-600 text-sm mb-4">업로드된 연체정보 목록입니다. 가장 최근에 업로드된 데이터가 표시됩니다.</p>
+        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-all duration-300 transform hover:-translate-y-1">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold text-gray-900">연체정보 목록</h2>
+            
+            {selectedBatchId && !loading && (
+              <button
+                onClick={handleRefresh}
+                className="inline-flex items-center px-3 py-1.5 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 text-sm transition-colors duration-300"
+              >
+                <RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin-slow" />
+                새로고침
+              </button>
+            )}
+          </div>
           
-          {selectedBatchId ? (
+          <p className="text-gray-600 text-sm mb-4">
+            업로드된 연체정보 목록입니다. 가장 최근에 업로드된 데이터가 표시됩니다.
+            <br />
+            연체가 해결된 고객의 정보는 체크박스로 선택한 후 삭제할 수 있습니다. 삭제된 정보는 고객 대시보드에 표시되지 않습니다.
+          </p>
+          
+          {loading ? (
+            <div className="p-8 text-center bg-gray-50 rounded-lg border border-gray-200">
+              <div className="flex flex-col items-center justify-center">
+                <div className="w-12 h-12 border-t-4 border-b-4 border-blue-600 rounded-full animate-spin mb-4"></div>
+                <p className="text-gray-500">연체정보를 불러오는 중...</p>
+              </div>
+            </div>
+          ) : selectedBatchId ? (
             <OverduePaymentList batchId={selectedBatchId} />
           ) : (
             <div className="p-8 text-center bg-gray-50 rounded-lg border border-gray-200">
               <FileText className="w-12 h-12 text-gray-400 mx-auto mb-3" />
               <p className="text-gray-500 mb-2">업로드된 연체정보가 없습니다</p>
-              <p className="text-sm text-gray-400">위의 업로드 섹션에서 엑셀 파일을 업로드하세요.</p>
+              <p className="text-sm text-gray-400 mb-4">위의 업로드 섹션에서 엑셀 파일을 업로드하세요.</p>
+              
+              <button
+                onClick={handleRefresh}
+                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <RefreshCw className="w-4 h-4 mr-2" />
+                새로고침
+              </button>
             </div>
           )}
         </div>
@@ -185,6 +293,7 @@ export default function OverduePaymentsPage() {
             initialNotice={notice}
             isEditable={true}
             onSave={handleSaveNotice}
+            className="hover:shadow-md transition-all duration-300 transform hover:-translate-y-1"
           />
         </div>
       </div>

@@ -15,18 +15,21 @@ interface OverduePaymentNoticeProps {
   initialNotice?: OverduePaymentNotice | null;
   isEditable?: boolean;
   onSave?: (content: string) => Promise<void>;
+  className?: string;
 }
 
 export default function OverduePaymentNoticeComponent({
   initialNotice = null,
   isEditable = false,
   onSave,
+  className = '',
 }: OverduePaymentNoticeProps) {
   const [notice, setNotice] = useState<OverduePaymentNotice | null>(initialNotice);
   const [content, setContent] = useState<string>(initialNotice?.content || (isEditable ? '<p>연체정보 관련 안내사항을 입력하세요.</p>' : ''));
   const [loading, setLoading] = useState<boolean>(!initialNotice && !isEditable);
   const [saving, setSaving] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<boolean>(false);
 
   useEffect(() => {
     if (!initialNotice && !isEditable) {
@@ -36,8 +39,9 @@ export default function OverduePaymentNoticeComponent({
 
   useEffect(() => {
     if (initialNotice) {
-      setContent(initialNotice.content);
       setNotice(initialNotice);
+      setContent(initialNotice.content || '');
+      setLoading(false);
     }
   }, [initialNotice]);
 
@@ -75,6 +79,7 @@ export default function OverduePaymentNoticeComponent({
       setSaving(true);
       await onSave(content);
       setError(null);
+      setSuccess(true);
     } catch (err) {
       console.error('안내사항 저장 오류:', err);
       setError(err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다.');
@@ -83,12 +88,9 @@ export default function OverduePaymentNoticeComponent({
     }
   };
 
-  // 카드 컨테이너 스타일
-  const cardContainerStyle = "bg-white rounded-xl shadow-sm p-6 border border-gray-100";
-
   if (loading) {
     return (
-      <div className={cardContainerStyle}>
+      <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
         <h2 className="text-xl font-semibold mb-4 text-gray-900">연체정보 안내사항</h2>
         <div className="animate-pulse space-y-4">
           <div className="h-6 bg-gray-200 rounded w-1/4"></div>
@@ -99,9 +101,15 @@ export default function OverduePaymentNoticeComponent({
   }
 
   return (
-    <div className={cardContainerStyle}>
+    <div className={`bg-white rounded-xl shadow-sm p-6 border border-gray-100 ${className}`}>
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-xl font-semibold text-gray-900 flex items-center">
+          <Info className="w-5 h-5 mr-2 text-blue-600" />
+          연체정보 안내사항
+        </h2>
+      </div>
+
       <div className="mb-4">
-        <h2 className="text-xl font-semibold mb-2 text-gray-900">연체정보 안내사항</h2>
         <p className="text-gray-600 text-sm">
           {isEditable
             ? '고객에게 표시될 연체정보 관련 안내사항을 작성하세요.'

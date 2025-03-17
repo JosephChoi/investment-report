@@ -4,9 +4,10 @@ import { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Upload, X, AlertTriangle, CheckCircle, FileSpreadsheet, Loader2 } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { ExcelOverdueData, OverduePaymentUploadResponse } from '@/lib/overdue-types';
 
 interface ExcelUploaderProps {
-  onUpload: (data: any[], fileName: string) => Promise<void>;
+  onUploadSuccess?: (response: OverduePaymentUploadResponse) => void;
   acceptedFileTypes?: string[];
   maxFileSize?: number;
   title?: string;
@@ -16,7 +17,7 @@ interface ExcelUploaderProps {
 }
 
 export default function ExcelUploader({
-  onUpload,
+  onUploadSuccess,
   acceptedFileTypes = ['.xlsx', '.xls', '.csv'],
   maxFileSize = 5 * 1024 * 1024, // 5MB
   title = '엑셀 파일 업로드',
@@ -59,15 +60,44 @@ export default function ExcelUploader({
         setIsUploading(true);
         setProgress(10);
         
-        // 파일 읽기
-        const data = await readExcelFile(selectedFile);
-        setProgress(50);
+        // FormData 생성
+        const formData = new FormData();
+        formData.append('file', selectedFile);
         
-        // 데이터 업로드
-        await onUpload(data, selectedFile.name);
+        // 업로드 요청
+        setProgress(30);
+        
+        // 세션 쿠키가 포함되도록 설정
+        const response = await fetch('/api/overdue-payments/upload', {
+          method: 'POST',
+          body: formData,
+          credentials: 'include',
+          headers: {
+            // Content-Type은 FormData를 사용할 때 자동으로 설정됨
+            // 'Content-Type': 'multipart/form-data',
+          },
+        });
+        
+        setProgress(80);
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || '파일 업로드에 실패했습니다.');
+        }
+        
+        const result: OverduePaymentUploadResponse = await response.json();
+        
+        if (result.error) {
+          throw new Error(result.error);
+        }
+        
         setProgress(100);
-        
         setUploadStatus('success');
+        
+        // 성공 콜백 호출
+        if (onUploadSuccess) {
+          onUploadSuccess(result);
+        }
       } catch (error) {
         console.error('파일 업로드 오류:', error);
         setErrorDetails(error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.');
@@ -76,7 +106,7 @@ export default function ExcelUploader({
         setIsUploading(false);
       }
     },
-    [acceptedFileTypes, maxFileSize, onUpload]
+    [acceptedFileTypes, maxFileSize, onUploadSuccess]
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -89,31 +119,6 @@ export default function ExcelUploader({
     maxFiles: 1,
     disabled: isUploading,
   });
-
-  const readExcelFile = (file: File): Promise<any[]> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      
-      reader.onload = (e) => {
-        try {
-          const data = e.target?.result;
-          const workbook = XLSX.read(data, { type: 'binary' });
-          const sheetName = workbook.SheetNames[0];
-          const worksheet = workbook.Sheets[sheetName];
-          const json = XLSX.utils.sheet_to_json(worksheet);
-          resolve(json);
-        } catch (error) {
-          reject(new Error('엑셀 파일을 읽는 중 오류가 발생했습니다.'));
-        }
-      };
-      
-      reader.onerror = () => {
-        reject(new Error('파일을 읽는 중 오류가 발생했습니다.'));
-      };
-      
-      reader.readAsBinaryString(file);
-    });
-  };
 
   const resetUploader = () => {
     setFile(null);

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient, getServiceSupabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import { OverduePaymentNoticeResponse } from '@/lib/overdue-types';
 
 export async function GET(
@@ -7,25 +7,6 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    // 사용자 인증 확인
-    const supabase = createClient();
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    
-    console.log('세션 정보:', session ? '세션 있음' : '세션 없음', sessionError ? `오류: ${sessionError.message}` : '오류 없음');
-    
-    if (sessionError || !session) {
-      return NextResponse.json(
-        {
-          data: null,
-          error: '인증되지 않은 사용자입니다. 다시 로그인해주세요.',
-        },
-        { status: 401 }
-      );
-    }
-    
-    // 서비스 역할 키를 사용하는 Supabase 클라이언트 가져오기
-    const serviceSupabase = getServiceSupabase();
-    
     // 안내문 ID 확인
     const noticeId = params.id;
     
@@ -40,7 +21,7 @@ export async function GET(
     }
     
     // 연체정보 안내문 조회 (서비스 역할 키 사용)
-    const { data, error } = await serviceSupabase
+    const { data, error } = await supabaseAdmin
       .from('overdue_payment_notices')
       .select('*')
       .eq('id', noticeId)
@@ -82,48 +63,6 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    // 사용자 인증 확인
-    const supabase = createClient();
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    
-    console.log('세션 정보:', session ? '세션 있음' : '세션 없음', sessionError ? `오류: ${sessionError.message}` : '오류 없음');
-    
-    if (sessionError || !session) {
-      return NextResponse.json(
-        {
-          data: null,
-          error: '인증되지 않은 사용자입니다. 다시 로그인해주세요.',
-        },
-        { status: 401 }
-      );
-    }
-    
-    // 서비스 역할 키를 사용하는 Supabase 클라이언트 가져오기
-    const serviceSupabase = getServiceSupabase();
-    
-    // 관리자 권한 확인
-    const { data: userData, error: userError } = await serviceSupabase
-      .from('users')
-      .select('role')
-      .eq('id', session.user.id)
-      .single();
-    
-    console.log('사용자 정보:', userData, userError ? `오류: ${userError.message}` : '오류 없음');
-    
-    if (userError) {
-      throw userError;
-    }
-    
-    if (!userData || userData.role !== 'admin') {
-      return NextResponse.json(
-        {
-          data: null,
-          error: '관리자만 연체정보 안내문을 수정할 수 있습니다.',
-        },
-        { status: 403 }
-      );
-    }
-    
     // 요청 본문 파싱
     const body = await request.json();
     
@@ -138,11 +77,10 @@ export async function PUT(
     }
     
     // 연체정보 안내문 수정 (서비스 역할 키 사용)
-    const { data, error } = await serviceSupabase
+    const { data, error } = await supabaseAdmin
       .from('overdue_payment_notices')
       .update({
         content: body.content,
-        updated_by: session.user.id,
         updated_at: new Date().toISOString(),
       })
       .eq('id', params.id)

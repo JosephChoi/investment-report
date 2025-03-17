@@ -11,7 +11,6 @@ import { OverduePayment, OverduePaymentNotice, OverduePaymentUploadResponse } fr
 export default function OverduePaymentsPage() {
   const [selectedBatchId, setSelectedBatchId] = useState<string | null>(null);
   const [notice, setNotice] = useState<OverduePaymentNotice | null>(null);
-  const [uploadHistory, setUploadHistory] = useState<{ id: string; file_name: string; record_count: number; uploaded_at: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -21,43 +20,23 @@ export default function OverduePaymentsPage() {
       try {
         setLoading(true);
         
-        // 최신 업로드 이력 가져오기
-        const historyResponse = await fetch('/api/overdue-payment-uploads', {
-          credentials: 'include',
-        });
-        
-        if (!historyResponse.ok) {
-          throw new Error('업로드 이력을 불러오는데 실패했습니다.');
-        }
-        
-        const historyData = await historyResponse.json();
-        
-        if (historyData.error) {
-          throw new Error(historyData.error);
-        }
-        
-        setUploadHistory(historyData.data || []);
-        
-        if (historyData.data && historyData.data.length > 0) {
-          setSelectedBatchId(historyData.data[0].id);
-        }
-        
         // 최신 안내사항 가져오기
-        const noticeResponse = await fetch('/api/overdue-payment-notices/latest', {
-          credentials: 'include',
-        });
-        
-        if (!noticeResponse.ok) {
-          throw new Error('안내사항을 불러오는데 실패했습니다.');
+        try {
+          const noticeResponse = await fetch('/api/overdue-payment-notices/latest', {
+            credentials: 'include',
+          });
+          
+          if (noticeResponse.ok) {
+            const noticeData = await noticeResponse.json();
+            
+            if (!noticeData.error) {
+              setNotice(noticeData.data);
+            }
+          }
+        } catch (noticeErr) {
+          console.error('안내사항 로딩 오류:', noticeErr);
+          // 안내사항 로딩 실패는 치명적이지 않으므로 전체 오류로 처리하지 않음
         }
-        
-        const noticeData = await noticeResponse.json();
-        
-        if (noticeData.error && noticeData.error !== 'Results contain 0 rows') {
-          throw new Error(noticeData.error);
-        }
-        
-        setNotice(noticeData.data);
       } catch (err) {
         console.error('초기 데이터 로딩 오류:', err);
         setError(err instanceof Error ? err.message : '데이터를 불러오는데 문제가 발생했습니다.');
@@ -71,33 +50,13 @@ export default function OverduePaymentsPage() {
 
   const handleUploadSuccess = async (response: OverduePaymentUploadResponse) => {
     if (response.data) {
-      // 업로드 이력 다시 가져오기
-      try {
-        const historyResponse = await fetch('/api/overdue-payment-uploads', {
-          credentials: 'include',
-        });
-        
-        if (!historyResponse.ok) {
-          throw new Error('업로드 이력을 불러오는데 실패했습니다.');
-        }
-        
-        const historyData = await historyResponse.json();
-        
-        if (historyData.error) {
-          throw new Error(historyData.error);
-        }
-        
-        setUploadHistory(historyData.data || []);
-        setSelectedBatchId(response.data.batchId);
-        setSuccess(`${response.data.recordCount}개의 연체정보가 성공적으로 업로드되었습니다.`);
-        
-        // 3초 후 성공 메시지 제거
-        setTimeout(() => {
-          setSuccess(null);
-        }, 3000);
-      } catch (err) {
-        console.error('업로드 이력 갱신 오류:', err);
-      }
+      setSelectedBatchId(response.data.batchId);
+      setSuccess(`${response.data.recordCount}개의 연체정보가 성공적으로 업로드되었습니다.`);
+      
+      // 3초 후 성공 메시지 제거
+      setTimeout(() => {
+        setSuccess(null);
+      }, 3000);
     }
   };
 
@@ -125,11 +84,12 @@ export default function OverduePaymentsPage() {
         credentials: 'include',
       });
       
-      const result = await response.json();
-      
       if (!response.ok) {
-        throw new Error(result.error || '안내사항 저장 중 오류가 발생했습니다.');
+        const errorData = await response.json();
+        throw new Error(errorData.error || '안내사항 저장 중 오류가 발생했습니다.');
       }
+      
+      const result = await response.json();
       
       if (result.error) {
         throw new Error(result.error);
@@ -139,7 +99,7 @@ export default function OverduePaymentsPage() {
         setNotice(result.data);
       }
       
-      setError('');
+      setError(null);
       setSuccess('안내사항이 성공적으로 저장되었습니다.');
       
       // 3초 후 성공 메시지 제거
@@ -219,57 +179,13 @@ export default function OverduePaymentsPage() {
           )}
         </div>
         
-        {/* 업로드 이력 및 안내사항 */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* 업로드 이력 */}
-          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-            <h2 className="text-xl font-semibold mb-4 text-gray-900">업로드 이력</h2>
-            <p className="text-gray-600 text-sm mb-4">연체정보 업로드 이력입니다. 항목을 클릭하면 해당 데이터를 조회할 수 있습니다.</p>
-            
-            {uploadHistory.length > 0 ? (
-              <div className="space-y-2">
-                {uploadHistory.map((history) => (
-                  <div
-                    key={history.id}
-                    onClick={() => setSelectedBatchId(history.id)}
-                    className={`p-4 rounded-md cursor-pointer transition-all ${
-                      selectedBatchId === history.id
-                        ? 'bg-blue-50 border border-blue-200 shadow-sm'
-                        : 'hover:bg-gray-50 border border-gray-200'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <p className="font-medium text-gray-900">{history.file_name}</p>
-                      <span className="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded-full">{history.record_count}개 항목</span>
-                    </div>
-                    <p className="text-sm text-gray-500">
-                      {new Date(history.uploaded_at).toLocaleString('ko-KR', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="p-8 text-center bg-gray-50 rounded-lg border border-gray-200">
-                <FileText className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-                <p className="text-gray-500">업로드 이력이 없습니다</p>
-              </div>
-            )}
-          </div>
-          
-          {/* 연체정보 안내사항 */}
-          <div>
-            <OverduePaymentNoticeComponent
-              notice={notice}
-              isEditable={true}
-              onSave={handleSaveNotice}
-            />
-          </div>
+        {/* 연체정보 안내사항 */}
+        <div className="mt-6">
+          <OverduePaymentNoticeComponent
+            initialNotice={notice}
+            isEditable={true}
+            onSave={handleSaveNotice}
+          />
         </div>
       </div>
     </div>

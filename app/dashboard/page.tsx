@@ -427,30 +427,33 @@ export default function Dashboard() {
           </Link>
         </div>
         
-        {/* 공지사항 섹션 */}
-        <Card className="mb-8 border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden">
-          <div className="absolute h-1 w-full bg-amber-500 top-0 left-0"></div>
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <div className="bg-amber-100 p-1.5 rounded-full mr-2">
-                  <Bell className="w-4 h-4 text-amber-600" />
+        {/* 공지사항과 연체정보 섹션 - 나란히 배치 */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          {/* 공지사항 섹션 */}
+          <Card className="border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden h-full">
+            <div className="absolute h-1 w-full bg-amber-500 top-0 left-0"></div>
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <div className="bg-amber-100 p-1.5 rounded-full mr-2">
+                    <Bell className="w-4 h-4 text-amber-600" />
+                  </div>
+                  <CardTitle className="text-xl text-gray-900">공지사항</CardTitle>
                 </div>
-                <CardTitle className="text-xl text-gray-900">공지사항</CardTitle>
+                <Link href="/dashboard/announcements" className="text-sm text-blue-600 hover:text-blue-800 flex items-center">
+                  <span>모든 공지 보기</span>
+                  <ChevronRight className="h-4 w-4 ml-1" />
+                </Link>
               </div>
-              <Link href="/dashboard/announcements" className="text-sm text-blue-600 hover:text-blue-800 flex items-center">
-                <span>모든 공지 보기</span>
-                <ChevronRight className="h-4 w-4 ml-1" />
-              </Link>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <DashboardAnnouncements />
-          </CardContent>
-        </Card>
-        
-        {/* 연체정보 섹션 */}
-        <DashboardOverduePayments />
+            </CardHeader>
+            <CardContent>
+              <DashboardAnnouncements />
+            </CardContent>
+          </Card>
+          
+          {/* 연체정보 섹션 */}
+          <DashboardOverduePayments />
+        </div>
       </div>
     </div>
   );

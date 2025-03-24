@@ -49,7 +49,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     if (authError || !user) {
       console.error('사용자 검증 실패:', authError || '사용자 정보 없음');
       return NextResponse.json({
-        success: false,
+          success: false,
         error: '인증에 실패했습니다. 다시 로그인해주세요.'
       }, { status: 401 });
     }
@@ -74,7 +74,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     if (!userData || userData.role !== 'admin') {
       console.error('관리자 권한이 없는 사용자:', userData?.role);
       return NextResponse.json({
-        success: false,
+          success: false,
         error: '관리자 권한이 필요합니다.'
       }, { status: 403 });
     }
@@ -97,8 +97,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     });
     
     if (!file || !fileName || !portfolioType || !year_month || !year || !month) {
-      return NextResponse.json({
-        success: false,
+      return NextResponse.json({ 
+        success: false, 
         error: '필수 정보가 누락되었습니다.'
       }, { status: 400 });
     }
@@ -255,7 +255,7 @@ async function savePortfolioReportData(
       .select('id')
       .eq('name', portfolioType)
       .maybeSingle();
-    
+      
     if (portfolioTypeError) {
       console.error('포트폴리오 타입 ID 조회 오류:', portfolioTypeError);
       return;
@@ -273,7 +273,7 @@ async function savePortfolioReportData(
         })
         .select('id')
         .single();
-      
+        
       if (createError) {
         console.error('포트폴리오 타입 생성 오류:', createError);
         return;
@@ -330,10 +330,10 @@ async function savePortfolioReportData(
         
         if (updateError) {
           console.error('포트폴리오 리포트 업데이트 오류:', updateError);
-        } else {
+            } else {
           console.log('포트폴리오 리포트 업데이트 성공');
         }
-      } else {
+            } else {
         // 새 데이터 삽입
         console.log('새 포트폴리오 리포트 생성');
         

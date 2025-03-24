@@ -287,12 +287,27 @@ export default function MonthlyReportAdmin() {
             comment_date: new Date().toISOString()
           });
           
+          // 세션 토큰 유효성 확인
+          if (!sessionToken) {
+            // 다시 한번 토큰 가져오기 시도
+            try {
+              const { data: { session } } = await supabase.auth.getSession();
+              if (session?.access_token) {
+                setSessionToken(session.access_token);
+              } else {
+                throw new Error('세션 토큰이 없습니다. 다시 로그인해주세요.');
+              }
+            } catch (tokenError) {
+              throw new Error('인증 토큰을 가져올 수 없습니다. 다시 로그인해주세요.');
+            }
+          }
+          
           // API를 통해 월간 코멘트 저장
           const response = await fetch('/api/admin/monthly-comment/save', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${session.access_token}`
+              'Authorization': `Bearer ${sessionToken}`
             },
             body: JSON.stringify({
               year_month: selectedMonth,
@@ -334,16 +349,35 @@ export default function MonthlyReportAdmin() {
             month
           });
           
+          // 세션 토큰 유효성 확인
+          if (!sessionToken) {
+            // 다시 한번 토큰 가져오기 시도
+            try {
+              const { data: { session } } = await supabase.auth.getSession();
+              if (session?.access_token) {
+                setSessionToken(session.access_token);
+              } else {
+                throw new Error('세션 토큰이 없습니다. 다시 로그인해주세요.');
+              }
+            } catch (tokenError) {
+              throw new Error('인증 토큰을 가져올 수 없습니다. 다시 로그인해주세요.');
+            }
+          }
+          
           const response = await fetch('/api/admin/customer-data/upload', {
             method: 'POST',
             headers: {
-              'Authorization': `Bearer ${session.access_token}`
+              'Authorization': `Bearer ${sessionToken}`
             },
             body: formData
           });
           
+          // 응답 상태 확인 및 로깅
+          console.log('고객 데이터 API 응답 상태:', response.status, response.statusText);
+          console.log('고객 데이터 API 응답 헤더:', Object.fromEntries([...response.headers.entries()]));
+          
           const responseText = await response.text();
-          console.log('API 응답 텍스트:', responseText);
+          console.log('고객 데이터 API 응답 텍스트:', responseText.substring(0, 200));
           
           let result;
           try {

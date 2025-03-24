@@ -41,6 +41,21 @@ export default function Login() {
       const user = data.user;
       console.log('로그인 성공:', user);
       
+      // 세션 확인
+      const { data: sessionData } = await supabase.auth.getSession();
+      console.log('세션 정보:', sessionData.session ? '세션 있음' : '세션 없음');
+      
+      if (!sessionData.session) {
+        console.warn('로그인은 성공했지만 세션이 생성되지 않았습니다. 세션을 직접 설정합니다.');
+        
+        // 세션 유지를 위한 추가 처리
+        localStorage.setItem('supabase.auth.token', JSON.stringify({
+          access_token: data.session?.access_token,
+          refresh_token: data.session?.refresh_token,
+          expires_at: Math.floor(Date.now() / 1000) + 3600
+        }));
+      }
+      
       // 사용자 정보 확인 및 업데이트 - API 호출 방식으로 변경
       try {
         if (user && user.email) {

@@ -279,6 +279,7 @@ export default function MonthlyReportDetail({ params }: PageProps) {
       // 특정 연도/월에 해당하는 리포트가 있으면 사용
       if (yearMonthData && yearMonthData.length > 0) {
         console.log(`${yearMonth}에 해당하는 포트폴리오 리포트 찾음:`, yearMonthData[0]);
+        console.log(`리포트 URL:`, yearMonthData[0].report_url);
         setPortfolioReport(yearMonthData[0]);
         return;
       }
@@ -306,6 +307,7 @@ export default function MonthlyReportDetail({ params }: PageProps) {
       // 해당 월 내의 리포트가 있으면 사용
       if (dateRangeData && dateRangeData.length > 0) {
         console.log(`${year}년 ${month}월 내의 포트폴리오 리포트 찾음:`, dateRangeData[0]);
+        console.log(`리포트 URL:`, dateRangeData[0].report_url);
         setPortfolioReport(dateRangeData[0]);
         return;
       }
@@ -313,21 +315,43 @@ export default function MonthlyReportDetail({ params }: PageProps) {
       console.log(`${year}년 ${month}월 내의 포트폴리오 리포트가 없습니다. 마지막 대체 방법 시도...`);
       
       // 3. 마지막 대체 방법: 파일명에 연도와 월이 포함된 리포트 찾기
+      // 파일명 패턴 검색 조건 개선 및 로깅 추가
+      const monthStr = String(month).padStart(2, '0');
+      const searchPatterns = [
+        `%${year}${monthStr}%`,
+        `%${year}_${month}%`,
+        `%${year}-${monthStr}%`,
+        `%${year}년${month}월%`,
+        `%${month}_${year}%`,
+        `%global_${monthStr}%`,
+        `%global_${monthStr}.jpg%`,
+        `%global_${year}_${month}%`,
+        `%global_${year}_${month}.jpg%`
+      ];
+      
+      console.log('파일명 검색 패턴:', searchPatterns);
+      
+      // ILIKE 검색을 위한 조건 생성
+      const searchCondition = searchPatterns.map(pattern => `report_url.ilike.${pattern}`).join(',');
+      
       const { data: fileNameData, error: fileNameError } = await supabase
         .from('portfolio_reports')
         .select('*')
         .eq('portfolio_type_id', portfolioTypeId)
-        .or(`report_url.ilike.%${year}${String(month).padStart(2, '0')}%,report_url.ilike.%${year}_${month}%,report_url.ilike.%${year}-${String(month).padStart(2, '0')}%`)
+        .or(searchCondition)
         .order('report_date', { ascending: false })
         .limit(1);
       
       if (fileNameError) {
         console.error('파일명 기반 포트폴리오 리포트 조회 오류:', fileNameError);
+        console.error('검색 조건:', searchCondition);
       }
       
       // 파일명에 연도와 월이 포함된 리포트가 있으면 사용
       if (fileNameData && fileNameData.length > 0) {
         console.log(`파일명에 ${year}년 ${month}월이 포함된 포트폴리오 리포트 찾음:`, fileNameData[0]);
+        console.log(`리포트 URL:`, fileNameData[0].report_url);
+        console.log(`파일명:`, fileNameData[0].report_url.split('/').pop());
         setPortfolioReport(fileNameData[0]);
         return;
       }
@@ -350,6 +374,8 @@ export default function MonthlyReportDetail({ params }: PageProps) {
       
       if (data && data.length > 0) {
         console.log('최신 포트폴리오 리포트 사용:', data[0]);
+        console.log(`리포트 URL:`, data[0].report_url);
+        console.log(`파일명:`, data[0].report_url.split('/').pop());
         setPortfolioReport(data[0]);
       } else {
         console.log('포트폴리오 리포트가 없습니다.');
@@ -688,11 +714,16 @@ export default function MonthlyReportDetail({ params }: PageProps) {
                 onLoad={(e) => {
                   // 이미지 로드 성공 시 z-index 조정
                   console.log('이미지 로드 성공:', portfolioReport.report_url);
+                  console.log('실제 로드된 URL:', (e.target as HTMLImageElement).src);
+                  console.log('이미지 자연 크기:', (e.target as HTMLImageElement).naturalWidth, 'x', (e.target as HTMLImageElement).naturalHeight);
+                  console.log('이미지 표시 크기:', (e.target as HTMLImageElement).width, 'x', (e.target as HTMLImageElement).height);
                   (e.target as HTMLElement).style.zIndex = '10';
                 }}
                 onError={(e) => {
                   // 이미지 로드 실패 시 숨김
                   console.error('이미지 로드 실패:', portfolioReport.report_url);
+                  console.error('실패한 URL:', (e.target as HTMLImageElement).src);
+                  console.error('이미지 로드 오류 이벤트:', e);
                   (e.target as HTMLElement).style.display = 'none';
                   
                   // 새로운 타임스탬프로 다시 시도
@@ -716,13 +747,23 @@ export default function MonthlyReportDetail({ params }: PageProps) {
                   // 두 번째 시도 후에도 실패하면 iframe 시도
                   imgElement.onerror = () => {
                     console.error('이미지 두 번째 로드 시도 실패');
+                    console.error('실패한 URL (두 번째 시도):', imgElement.src);
                     imgElement.style.display = 'none';
                     
                     // iframe 시도
                     const iframe = document.getElementById('report-iframe');
                     if (iframe) {
                       console.log('iframe으로 대체 시도');
+                      console.log('iframe URL:', iframe.getAttribute('src'));
                       (iframe as HTMLElement).style.display = 'block';
+                    }
+                    
+                    // background-image 방식도 시도
+                    const bgDiv = document.getElementById('report-bg-div');
+                    if (bgDiv) {
+                      console.log('background-image 방식으로 대체 시도');
+                      console.log('background-image URL:', bgDiv.style.backgroundImage);
+                      bgDiv.style.display = 'block';
                     }
                   };
                 }}

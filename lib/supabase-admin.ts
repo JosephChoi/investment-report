@@ -2,6 +2,11 @@ import { createClient as supabaseCreateClient } from '@supabase/supabase-js';
 
 // 서비스 역할 키를 사용하는 Supabase 클라이언트 생성
 // 이 클라이언트는 RLS 정책을 우회할 수 있습니다.
+
+// 환경 변수 로깅 (디버깅용)
+console.log('Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL);
+console.log('Service Role Key length:', process.env.SUPABASE_SERVICE_ROLE_KEY ? process.env.SUPABASE_SERVICE_ROLE_KEY.length : 'undefined');
+
 export const supabaseAdmin = supabaseCreateClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL || '',
   process.env.SUPABASE_SERVICE_ROLE_KEY || '',

@@ -8,6 +8,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { ko } from 'date-fns/locale';
+import { useRouter } from 'next/navigation';
 
 export default function MonthlyReportAdmin() {
   const [customerFile, setCustomerFile] = useState<File | null>(null);
@@ -23,6 +24,8 @@ export default function MonthlyReportAdmin() {
   const [portfolioTypes, setPortfolioTypes] = useState<string[]>([]);
   const [portfolioTypeMappings, setPortfolioTypeMappings] = useState<{[key: string]: string}>({});
   const [loadingPortfolioTypes, setLoadingPortfolioTypes] = useState(false);
+  const [sessionToken, setSessionToken] = useState<string | null>(null);
+  const router = useRouter();
   
   // 현재 날짜 기준으로 초기 선택 날짜 설정
   useEffect(() => {
@@ -31,7 +34,28 @@ export default function MonthlyReportAdmin() {
     
     // 포트폴리오 타입 목록 가져오기
     fetchPortfolioTypes();
+    
+    // 세션 토큰 가져오기
+    getSessionToken();
   }, []);
+  
+  // 세션 토큰 가져오기
+  const getSessionToken = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session?.access_token) {
+        console.log('세션 토큰 가져오기 성공 (길이):', session.access_token.length);
+        setSessionToken(session.access_token);
+      } else {
+        console.error('세션 토큰이 없습니다.');
+        // 토큰이 없으면 로그인 페이지로 리다이렉트
+        router.push('/admin/login?redirect=/admin/monthly-report');
+      }
+    } catch (error) {
+      console.error('세션 토큰 가져오기 오류:', error);
+    }
+  };
 
   // 포트폴리오 타입 목록 가져오기
   const fetchPortfolioTypes = async () => {
@@ -202,53 +226,53 @@ export default function MonthlyReportAdmin() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // 월 선택 확인
-    if (!selectedMonth) {
-      setError('월을 선택해주세요.');
-      return;
-    }
-    
-    // 파일명 유효성 검사
-    if (customerFile) {
-      const date = extractDateFromFilename(customerFile.name);
-      if (!date) {
-        setError('고객 데이터 파일명에 YYYY-MM-DD 형식의 날짜가 포함되어 있지 않습니다. 파일명을 수정하고 다시 시도해주세요.');
-        return;
-      }
-    }
-    
-    // 포트폴리오 파일 매핑 유효성 검사
-    if (portfolioFiles.length > 0) {
-      const unmappedFiles = portfolioFiles.filter(file => !portfolioTypeMappings[file.name]);
-      
-      if (unmappedFiles.length > 0) {
-        // 자동으로 매핑 설정
-        const newMappings = {...portfolioTypeMappings};
-        
-        unmappedFiles.forEach(file => {
-          if (portfolioTypes.length > 0) {
-            // 첫 번째 포트폴리오 타입으로 기본 설정
-            newMappings[file.name] = portfolioTypes[0];
-          }
-        });
-        
-        setPortfolioTypeMappings(newMappings);
-      }
-    }
-    
     setLoading(true);
     setError(null);
     setSuccess(null);
     
     try {
-      // Supabase 테이블 구조 확인
-      console.log('Supabase 테이블 구조 확인 중...');
+      // 폼 제출 시 세션 재확인
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error('세션이 만료되었습니다. 다시 로그인해주세요.');
+      }
+
+      // 최신 세션 토큰으로 업데이트
+      setSessionToken(session.access_token);
       
-      // 각 테이블의 구조 확인
-      try {
-        console.log('데이터 저장을 시작합니다.');
-      } catch (error) {
-        console.error('테이블 구조 확인 중 오류:', error);
+      // 월 선택 확인
+      if (!selectedMonth) {
+        setError('월을 선택해주세요.');
+        setLoading(false);
+        return;
+      }
+      
+      // 파일명 유효성 검사
+      if (customerFile) {
+        const date = extractDateFromFilename(customerFile.name);
+        if (!date) {
+          setError('고객 데이터 파일명에 YYYY-MM-DD 형식의 날짜가 포함되어 있지 않습니다. 파일명을 수정하고 다시 시도해주세요.');
+          return;
+        }
+      }
+      
+      // 포트폴리오 파일 매핑 유효성 검사
+      if (portfolioFiles.length > 0) {
+        const unmappedFiles = portfolioFiles.filter(file => !portfolioTypeMappings[file.name]);
+        
+        if (unmappedFiles.length > 0) {
+          // 자동으로 매핑 설정
+          const newMappings = {...portfolioTypeMappings};
+          
+          unmappedFiles.forEach(file => {
+            if (portfolioTypes.length > 0) {
+              // 첫 번째 포트폴리오 타입으로 기본 설정
+              newMappings[file.name] = portfolioTypes[0];
+            }
+          });
+          
+          setPortfolioTypeMappings(newMappings);
+        }
       }
       
       // 선택한 월에서 연도와 월 추출
@@ -268,6 +292,7 @@ export default function MonthlyReportAdmin() {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session.access_token}`
             },
             body: JSON.stringify({
               year_month: selectedMonth,
@@ -311,6 +336,9 @@ export default function MonthlyReportAdmin() {
           
           const response = await fetch('/api/admin/customer-data/upload', {
             method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${session.access_token}`
+            },
             body: formData
           });
           
@@ -381,26 +409,26 @@ export default function MonthlyReportAdmin() {
             
             // 더 구체적인 타입을 먼저 확인 (순서 중요)
             if (portfolioTypeLower.includes('국내') && portfolioTypeLower.includes('적립식') && portfolioTypeLower.includes('etf')) {
-              englishFileName = `domestic_savings_etf_${month}.${fileExt}`;
+              englishFileName = `domestic_savings_etf_${year}_${month}.${fileExt}`;
             } else if (portfolioTypeLower.includes('국내') && portfolioTypeLower.includes('etf')) {
-              englishFileName = `domestic_etf_${month}.${fileExt}`;
+              englishFileName = `domestic_etf_${year}_${month}.${fileExt}`;
             } else if (portfolioTypeLower.includes('연금') && portfolioTypeLower.includes('적립식')) {
-              englishFileName = `pension_savings_${month}.${fileExt}`;
+              englishFileName = `pension_savings_${year}_${month}.${fileExt}`;
             } else if (portfolioTypeLower.includes('연금') || portfolioTypeLower.includes('irp')) {
-              englishFileName = `pension_${month}.${fileExt}`;
+              englishFileName = `pension_${year}_${month}.${fileExt}`;
             } else if (portfolioTypeLower.includes('적립식')) {
-              englishFileName = `savings_${month}.${fileExt}`;
+              englishFileName = `savings_${year}_${month}.${fileExt}`;
             } else if (portfolioTypeLower.includes('isa')) {
-              englishFileName = `isa_${month}.${fileExt}`;
+              englishFileName = `isa_${year}_${month}.${fileExt}`;
             } else if (portfolioTypeLower.includes('bdc') || portfolioTypeLower.includes('배당')) {
-              englishFileName = `dividend_${month}.${fileExt}`;
+              englishFileName = `dividend_${year}_${month}.${fileExt}`;
             } else if (portfolioTypeLower.includes('채권')) {
-              englishFileName = `bond_${month}.${fileExt}`;
+              englishFileName = `bond_${year}_${month}.${fileExt}`;
             } else if (portfolioTypeLower.includes('글로벌') || portfolioTypeLower.includes('해외')) {
-              englishFileName = `global_${month}.${fileExt}`;
+              englishFileName = `global_${year}_${month}.${fileExt}`;
             } else {
               // 기본값: 포트폴리오 타입을 영문화하여 사용
-              englishFileName = `portfolio_${sanitizeFileName(portfolioType)}_${month}.${fileExt}`;
+              englishFileName = `portfolio_${sanitizeFileName(portfolioType)}_${year}_${month}.${fileExt}`;
             }
             
             // 최종 파일명 정리 (안전한 파일명으로 변환)
@@ -423,12 +451,58 @@ export default function MonthlyReportAdmin() {
             formData.append('month', month);
             
             // API를 통해 포트폴리오 파일 업로드
+            console.log('API 호출 시작:', '/api/admin/portfolio-file/upload');
+            
+            // 세션 토큰 유효성 확인
+            if (!sessionToken) {
+              // 다시 한번 토큰 가져오기 시도
+              try {
+                const { data: { session } } = await supabase.auth.getSession();
+                if (session?.access_token) {
+                  setSessionToken(session.access_token);
+                } else {
+                  throw new Error('세션 토큰이 없습니다. 다시 로그인해주세요.');
+                }
+              } catch (tokenError) {
+                throw new Error('인증 토큰을 가져올 수 없습니다. 다시 로그인해주세요.');
+              }
+            }
+            
             const response = await fetch('/api/admin/portfolio-file/upload', {
               method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${sessionToken}`
+              },
               body: formData
             });
             
-            const result = await response.json();
+            // 응답 상태 확인 및 로깅
+            console.log('API 응답 상태:', response.status, response.statusText);
+            console.log('API 응답 헤더:', Object.fromEntries([...response.headers.entries()]));
+            
+            let result;
+            let responseText;
+            
+            try {
+              responseText = await response.text();
+              console.log('API 응답 텍스트 (처음 200자):', responseText.substring(0, 200));
+              
+              // HTML 응답인지 확인 (오류 가능성)
+              if (responseText.trim().startsWith('<')) {
+                console.error('HTML 응답이 감지됨 - 서버 오류');
+                throw new Error('서버가 HTML 응답을 반환했습니다. 관리자에게 문의하세요.');
+              }
+              
+              try {
+                result = JSON.parse(responseText);
+              } catch (parseError) {
+                console.error('JSON 파싱 오류:', parseError);
+                throw new Error(`API 응답을 파싱할 수 없습니다: ${responseText.substring(0, 100)}...`);
+              }
+            } catch (readError) {
+              console.error('응답 읽기 오류:', readError);
+              throw new Error('API 응답을 읽을 수 없습니다.');
+            }
             
             if (!response.ok) {
               console.error('포트폴리오 파일 업로드 응답:', result);
@@ -436,17 +510,21 @@ export default function MonthlyReportAdmin() {
               // 오류 메시지 상세화
               let errorMessage = `파일 '${file.name}' 처리 중 오류`;
               
-              if (result.error) {
-                errorMessage += `: ${result.error}`;
-              } else if (result.message) {
-                errorMessage += `: ${result.message}`;
+              if (result && typeof result === 'object') {
+                if (result.error) {
+                  errorMessage += `: ${result.error}`;
+                } else if (result.message) {
+                  errorMessage += `: ${result.message}`;
+                } else {
+                  errorMessage += ': 알 수 없는 오류';
+                }
+                
+                // 원본 오류 정보가 있으면 콘솔에 로깅
+                if (result.originalError) {
+                  console.error('원본 오류 정보:', result.originalError);
+                }
               } else {
-                errorMessage += ': 알 수 없는 오류';
-              }
-              
-              // 원본 오류 정보가 있으면 콘솔에 로깅
-              if (result.originalError) {
-                console.error('원본 오류 정보:', result.originalError);
+                errorMessage += ': 서버 응답이 유효하지 않습니다';
               }
               
               throw new Error(errorMessage);
@@ -455,6 +533,20 @@ export default function MonthlyReportAdmin() {
             console.log('포트폴리오 파일 업로드 성공:', result);
           } catch (fileError: any) {
             console.error('파일 처리 중 오류:', fileError);
+            
+            // 인증 오류 감지 및 처리
+            if (fileError.message && fileError.message.includes('인증')) {
+              setError('인증이 만료되었습니다. 다시 로그인해주세요.');
+              setLoading(false);
+              
+              // 1초 후 로그인 페이지로 리다이렉트
+              setTimeout(() => {
+                router.push('/admin/login?redirect=/admin/monthly-report');
+              }, 1000);
+              
+              return;
+            }
+            
             setError(`파일 '${file.name}' 처리 중 오류: ${fileError.message}`);
             // 오류 발생 시 성공 메시지를 표시하지 않고 함수 종료
             setLoading(false);
@@ -471,11 +563,27 @@ export default function MonthlyReportAdmin() {
           description: '월간 투자 현황 및 포트폴리오 리포트입니다.'
         });
         
+        // 세션 토큰 확인
+        if (!sessionToken) {
+          // 다시 한번 토큰 가져오기 시도
+          try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session?.access_token) {
+              setSessionToken(session.access_token);
+            } else {
+              throw new Error('세션 토큰이 없습니다. 다시 로그인해주세요.');
+            }
+          } catch (tokenError) {
+            throw new Error('인증 토큰을 가져올 수 없습니다. 다시 로그인해주세요.');
+          }
+        }
+        
         // API를 통해 월간 리포트 정보 저장
         const response = await fetch('/api/admin/monthly-report/save', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${sessionToken}`
           },
           body: JSON.stringify({
             year_month: selectedMonth,

@@ -1,42 +1,105 @@
+'use client';
+
 import Link from 'next/link';
+import Image from 'next/image';
 import { ChevronRight, TrendingUp, BarChart, PieChart, FileText, Bell, AlertCircle, CreditCard, MessageSquare, Mail } from 'lucide-react';
 
 export default function Home() {
   return (
     <div className="flex flex-col min-h-screen">
       {/* 히어로 섹션 */}
-      <section className="relative bg-gradient-to-r from-blue-600 to-indigo-700 py-20 text-white">
-        <div className="container mx-auto px-6 md:px-12 py-12 flex flex-col md:flex-row items-center gap-12">
-          <div className="md:w-1/2 flex flex-col gap-6">
-            <h1 className="text-4xl md:text-5xl font-bold leading-tight">
-              자문서비스 정보를 스마트하게 관리하세요
-            </h1>
-            <p className="text-xl text-blue-100">
+      <section className="relative bg-gradient-to-br from-blue-600 via-blue-500 to-indigo-600 py-16 md:py-20 text-white">
+        <div className="container mx-auto px-6 md:px-12 py-8 md:py-12 flex flex-col md:flex-row items-center gap-8 md:gap-12">
+          <div className="md:w-1/2 flex flex-col gap-4 md:gap-6">
+            <div className="flex flex-col items-start mb-4 md:mb-6">
+              <h1 className="text-5xl md:text-6xl font-bold tracking-tight bg-gradient-to-r from-white to-blue-200 bg-clip-text text-transparent drop-shadow-sm">
+                Advisor Report
+              </h1>
+              <div className="w-24 h-1 bg-yellow-400 mt-3 mb-6 rounded-full"></div>
+            </div>
+            <h2 className="text-xl md:text-2xl font-medium leading-tight text-white drop-shadow">
+              자문서비스 정보를 <span className="bg-blue-500 px-2 py-1 rounded">스마트하게</span> 관리하세요
+            </h2>
+            <p className="text-base md:text-lg text-blue-100 border-l-4 border-blue-400 pl-3 my-4">
               다양한 정보를 안내하고, 기록하며, 확인하실 수 있습니다.
             </p>
             <div className="flex gap-4 mt-4">
               <Link 
                 href="/login" 
-                className="bg-white text-blue-700 hover:bg-blue-50 px-6 py-3 rounded-lg font-medium transition-colors duration-200 text-center"
+                className="group relative bg-white text-blue-700 hover:bg-blue-50 px-6 py-3 rounded-md font-medium transition-all duration-300 text-center shadow-md hover:shadow-lg hover:translate-y-[-2px] active:translate-y-[1px]"
               >
-                회원전용 로그인
+                <span className="relative z-10">회원전용 로그인</span>
+                <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-blue-500 group-hover:w-full transition-all duration-300"></span>
               </Link>
             </div>
           </div>
           <div className="md:w-1/2 relative">
-            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20 shadow-xl">
+            <div className="bg-blue-500/30 backdrop-blur-sm rounded-lg p-6 border border-blue-400/20 shadow-xl overflow-hidden">
+              {/* 대시보드 시각화 */}
               <div className="flex flex-col gap-4">
-                <div className="h-14 bg-gradient-to-r from-blue-400/30 to-indigo-400/30 rounded-lg"></div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="h-32 bg-gradient-to-r from-blue-400/30 to-indigo-400/30 rounded-lg"></div>
-                  <div className="h-32 bg-gradient-to-r from-blue-400/30 to-indigo-400/30 rounded-lg"></div>
+                {/* 상단 네비게이션 바 */}
+                <div className="h-10 bg-white/90 rounded-md flex items-center px-3">
+                  <div className="w-3 h-3 rounded-full bg-red-500 mr-2"></div>
+                  <div className="w-3 h-3 rounded-full bg-yellow-500 mr-2"></div>
+                  <div className="w-3 h-3 rounded-full bg-green-500 mr-2"></div>
+                  <div className="flex-1"></div>
+                  <div className="w-6 h-6 rounded-full bg-blue-100"></div>
                 </div>
-                <div className="h-40 bg-gradient-to-r from-blue-400/30 to-indigo-400/30 rounded-lg"></div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  {/* 차트 1: 원형 차트 */}
+                  <div className="h-32 bg-white/90 rounded-md p-3 flex flex-col">
+                    <div className="text-xs text-gray-500 mb-1 font-medium">투자 비중</div>
+                    <div className="flex-1 flex justify-center items-center">
+                      <div className="w-16 h-16 rounded-full border-4 border-blue-500 relative overflow-hidden">
+                        <div className="absolute top-0 left-0 w-1/2 h-full bg-indigo-500"></div>
+                        <div className="absolute top-0 right-0 w-1/2 h-1/2 bg-green-500"></div>
+                        <div className="absolute bottom-0 right-0 w-1/2 h-1/2 bg-yellow-500"></div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* 차트 2: 막대 차트 */}
+                  <div className="h-32 bg-white/90 rounded-md p-3 flex flex-col">
+                    <div className="text-xs text-gray-500 mb-1 font-medium">월별 수익률</div>
+                    <div className="flex-1 flex items-end justify-around">
+                      <div className="w-3 bg-blue-500 rounded-t-sm" style={{ height: '30%' }}></div>
+                      <div className="w-3 bg-blue-500 rounded-t-sm" style={{ height: '50%' }}></div>
+                      <div className="w-3 bg-blue-500 rounded-t-sm" style={{ height: '20%' }}></div>
+                      <div className="w-3 bg-blue-500 rounded-t-sm" style={{ height: '60%' }}></div>
+                      <div className="w-3 bg-blue-500 rounded-t-sm" style={{ height: '40%' }}></div>
+                      <div className="w-3 bg-blue-500 rounded-t-sm" style={{ height: '70%' }}></div>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* 테이블 */}
+                <div className="h-40 bg-white/90 rounded-md p-3 flex flex-col">
+                  <div className="text-xs text-gray-500 mb-2 font-medium">자산 현황</div>
+                  <div className="flex-1 flex flex-col gap-2">
+                    <div className="flex justify-between items-center border-b pb-1">
+                      <div className="text-xs font-medium">국내 주식</div>
+                      <div className="text-xs text-blue-600">32,560,000원</div>
+                    </div>
+                    <div className="flex justify-between items-center border-b pb-1">
+                      <div className="text-xs font-medium">해외 주식</div>
+                      <div className="text-xs text-blue-600">15,270,000원</div>
+                    </div>
+                    <div className="flex justify-between items-center border-b pb-1">
+                      <div className="text-xs font-medium">채권</div>
+                      <div className="text-xs text-blue-600">8,720,000원</div>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <div className="text-xs font-medium">현금성 자산</div>
+                      <div className="text-xs text-blue-600">3,450,000원</div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
             {/* 장식 요소 */}
-            <div className="absolute -top-4 -right-4 h-16 w-16 bg-yellow-400 rounded-full opacity-70 blur-sm"></div>
-            <div className="absolute -bottom-4 -left-4 h-20 w-20 bg-green-400 rounded-full opacity-70 blur-sm"></div>
+            <div className="absolute top-4 right-4 h-12 w-12 md:h-16 md:w-16 bg-yellow-400 rounded-full opacity-50 blur-sm"></div>
+            <div className="absolute -bottom-3 -left-3 md:-bottom-4 md:-left-4 h-16 w-16 md:h-20 md:w-20 bg-green-400 rounded-full opacity-50 blur-sm"></div>
           </div>
         </div>
       </section>
@@ -147,7 +210,9 @@ export default function Home() {
         <div className="container mx-auto px-6 md:px-12">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div>
-              <h3 className="text-white text-lg font-bold mb-4">투자자문 고객관리 서비스</h3>
+              <div className="flex items-center mb-4">
+                <h3 className="text-white text-xl md:text-2xl font-bold">Advisor Report</h3>
+              </div>
               <p className="mb-4">
                 최고의 투자 포트폴리오 관리 서비스를 제공합니다.
               </p>
@@ -185,7 +250,7 @@ export default function Home() {
           </div>
           
           <div className="border-t border-gray-800 mt-12 pt-8 text-center">
-            <p>&copy; 2024 투자자문 고객관리 서비스. All rights reserved.</p>
+            <p>&copy; 2024 Advisor Report. All rights reserved.</p>
           </div>
         </div>
       </footer>

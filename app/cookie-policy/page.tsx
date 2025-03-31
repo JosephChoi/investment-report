@@ -134,7 +134,7 @@ export default function CookiePolicy() {
           </p>
           <p className="mb-6 text-gray-700">
             이메일: kunmin.choi@gmail.com<br />
-            전화번호: 02-123-4567
+            전화번호: 010-3747-0086
           </p>
         </div>
 

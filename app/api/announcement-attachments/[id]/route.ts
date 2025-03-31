@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 // 첨부 파일 삭제
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
     // Authorization 헤더에서 토큰 추출
@@ -43,7 +43,7 @@ export async function DELETE(
     const { data: attachment, error: fetchError } = await supabase
       .from('announcement_attachments')
       .select('*')
-      .eq('id', params.id)
+      .eq('id', context.params.id)
       .single();
     
     if (fetchError) {
@@ -77,7 +77,7 @@ export async function DELETE(
     const { error } = await supabase
       .from('announcement_attachments')
       .delete()
-      .eq('id', params.id);
+      .eq('id', context.params.id);
     
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });

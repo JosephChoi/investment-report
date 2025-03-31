@@ -59,7 +59,7 @@ export default function DashboardRebalancing({ title = "리밸런싱 안내" }: 
 
   if (loading) {
     return (
-      <Card className="border-gray-200 shadow-sm">
+      <Card className="border border-gray-200 rounded-lg shadow-sm overflow-hidden">
         <div className="absolute h-1 w-full bg-green-500 top-0 left-0"></div>
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
@@ -67,7 +67,7 @@ export default function DashboardRebalancing({ title = "리밸런싱 안내" }: 
               <div className="bg-green-100 p-1.5 rounded-full mr-2">
                 <RefreshCw className="w-4 h-4 text-green-600" />
               </div>
-              <CardTitle className="text-xl text-gray-900">{title}</CardTitle>
+              <CardTitle className="text-xl text-black">{title}</CardTitle>
             </div>
           </div>
         </CardHeader>
@@ -88,7 +88,7 @@ export default function DashboardRebalancing({ title = "리밸런싱 안내" }: 
   }
 
   return (
-    <Card className="border-gray-200 shadow-sm">
+    <Card className="border border-gray-200 rounded-lg shadow-sm overflow-hidden">
       <div className="absolute h-1 w-full bg-green-500 top-0 left-0"></div>
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
@@ -96,7 +96,7 @@ export default function DashboardRebalancing({ title = "리밸런싱 안내" }: 
             <div className="bg-green-100 p-1.5 rounded-full mr-2">
               <RefreshCw className="w-4 h-4 text-green-600" />
             </div>
-            <CardTitle className="text-xl text-gray-900">{title}</CardTitle>
+            <CardTitle className="text-xl text-black">{title}</CardTitle>
           </div>
           <Link href="/rebalancing-history" className="text-sm text-blue-600 hover:text-blue-800 flex items-center">
             <span>상세 보기</span>

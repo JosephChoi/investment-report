@@ -99,7 +99,7 @@ export default function ConsultationPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+    <div className="min-h-screen bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex items-center mb-6">
           <Link href="/dashboard" className="flex items-center text-blue-600 hover:text-blue-800 transition-colors">
@@ -108,7 +108,7 @@ export default function ConsultationPage() {
           </Link>
         </div>
 
-        <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600 mb-6">상담 내역</h1>
+        <h1 className="text-3xl font-bold text-black mb-6">상담 내역</h1>
 
         {/* 에러 메시지 */}
         {error && (
@@ -126,17 +126,17 @@ export default function ConsultationPage() {
           <div className="flex justify-center py-12">
             <div className="flex flex-col items-center space-y-4">
               <div className="w-12 h-12 border-t-4 border-b-4 border-blue-600 rounded-full animate-spin"></div>
-              <p className="text-lg font-medium text-gray-800">상담 내역을 불러오는 중...</p>
+              <p className="text-lg font-medium text-black">상담 내역을 불러오는 중...</p>
             </div>
           </div>
         ) : consultations.length === 0 ? (
-          <Card className="border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden">
+          <Card className="border border-gray-200 rounded-lg shadow-sm overflow-hidden">
             <div className="absolute h-1 w-full bg-blue-500 top-0 left-0"></div>
             <CardContent className="pt-8 pb-8">
               <div className="text-center">
-                <FileText className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-                <p className="text-lg font-medium text-gray-700">상담 내역이 없습니다.</p>
-                <p className="text-gray-500 mt-2">관리자에게 문의하시면 상담 내역을 확인하실 수 있습니다.</p>
+                <FileText className="h-12 w-12 mx-auto text-blue-400 mb-4" />
+                <p className="text-lg font-medium text-black">상담 내역이 없습니다.</p>
+                <p className="text-black mt-2">관리자에게 문의하시면 상담 내역을 확인하실 수 있습니다.</p>
               </div>
             </CardContent>
           </Card>
@@ -145,27 +145,27 @@ export default function ConsultationPage() {
             {consultations.map((consultation) => (
               <Card 
                 key={consultation.id} 
-                className="border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden cursor-pointer"
+                className="border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden cursor-pointer"
                 onClick={() => handleSelectConsultation(consultation)}
               >
                 <div className="absolute h-1 w-full bg-blue-500 top-0 left-0"></div>
                 <CardHeader className="pb-2">
                   <div className="flex justify-between items-start">
-                    <CardTitle className="text-xl text-gray-900">{consultation.title}</CardTitle>
-                    <div className="flex items-center text-sm text-gray-500">
+                    <CardTitle className="text-xl text-black">{consultation.title}</CardTitle>
+                    <div className="flex items-center text-sm text-black">
                       <Calendar className="h-4 w-4 mr-1" />
                       {formatDate(consultation.consultation_date)}
                     </div>
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-gray-700 line-clamp-2">
+                  <div className="text-black line-clamp-2">
                     {consultation.content.replace(/<[^>]*>/g, '').substring(0, 150)}
                     {consultation.content.length > 150 ? '...' : ''}
                   </div>
                 </CardContent>
                 <CardFooter className="border-t border-gray-100 pt-4 flex justify-between items-center">
-                  <div className="text-sm text-gray-500">
+                  <div className="text-sm text-black">
                     {formatDate(consultation.created_at)}
                   </div>
                   {consultation.attachments && consultation.attachments.length > 0 && (
@@ -190,13 +190,13 @@ export default function ConsultationPage() {
                 className={`flex items-center px-4 py-2 rounded-md transition-colors ${
                   page === 1 || loading
                     ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                    : 'bg-white text-blue-600 hover:bg-blue-50 border border-blue-200'
+                    : 'bg-white border border-blue-200 text-blue-600 hover:bg-blue-50'
                 }`}
               >
                 <ChevronLeft className="h-4 w-4 mr-1" />
                 이전
               </button>
-              <div className="px-4 py-2 bg-white border border-gray-200 rounded-md text-gray-700 font-medium">
+              <div className="px-4 py-2 bg-white border border-gray-200 rounded-md text-black font-medium">
                 {page} / {totalPages}
               </div>
               <button
@@ -205,7 +205,7 @@ export default function ConsultationPage() {
                 className={`flex items-center px-4 py-2 rounded-md transition-colors ${
                   page === totalPages || loading
                     ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                    : 'bg-white text-blue-600 hover:bg-blue-50 border border-blue-200'
+                    : 'bg-white border border-blue-200 text-blue-600 hover:bg-blue-50'
                 }`}
               >
                 다음
@@ -218,28 +218,28 @@ export default function ConsultationPage() {
 
       {/* 상담 내역 상세 모달 */}
       {selectedConsultation && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-white flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             <div className="absolute h-1 w-full bg-blue-500 top-0 left-0"></div>
             <div className="p-6">
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-gray-900">{selectedConsultation.title}</h2>
+                <h2 className="text-2xl font-bold text-black">{selectedConsultation.title}</h2>
                 <button 
                   onClick={handleCloseDetail}
                   className="p-2 rounded-full hover:bg-gray-100 transition-colors"
                   aria-label="닫기"
                 >
-                  <X className="h-5 w-5 text-gray-500" />
+                  <X className="h-5 w-5 text-black" />
                 </button>
               </div>
               
-              <div className="mb-6 flex items-center text-gray-600">
+              <div className="mb-6 flex items-center text-black">
                 <Calendar className="h-5 w-5 mr-2" />
                 <span>상담 날짜: {formatDate(selectedConsultation.consultation_date)}</span>
               </div>
               
               <div className="mb-8">
-                <h3 className="text-lg font-semibold mb-3 text-gray-800">상담 내용</h3>
+                <h3 className="text-lg font-semibold mb-3 text-black">상담 내용</h3>
                 <div 
                   className="prose max-w-none bg-gray-50 p-6 rounded-lg border border-gray-200"
                   dangerouslySetInnerHTML={{ __html: selectedConsultation.content }}
@@ -248,7 +248,7 @@ export default function ConsultationPage() {
               
               {selectedConsultation.attachments && selectedConsultation.attachments.length > 0 && (
                 <div>
-                  <h3 className="text-lg font-semibold mb-3 text-gray-800">첨부 파일</h3>
+                  <h3 className="text-lg font-semibold mb-3 text-black">첨부 파일</h3>
                   <div className="bg-gray-50 p-6 rounded-lg border border-gray-200">
                     <FileViewer 
                       files={selectedConsultation.attachments.map(attachment => ({

@@ -181,81 +181,83 @@ export default function RebalancingHistoryPage() {
   };
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-8 bg-white min-h-screen">
-      <div className="mb-8">
-        <Link href="/dashboard" className="inline-flex items-center text-blue-600 hover:text-blue-800 mb-6">
-          <ArrowLeft className="w-4 h-4 mr-1" />
-          <span>대시보드로 돌아가기</span>
-        </Link>
-        <div className="border-b border-gray-200 pb-4">
-          <h1 className="text-2xl font-bold text-black mb-2">리밸런싱 내역 보기</h1>
-          <p className="text-base text-black">보유하신 포트폴리오의 리밸런싱 내역을 확인하실 수 있습니다.</p>
-        </div>
-      </div>
-
-      {loading ? (
-        <div className="flex justify-center items-center h-64">
-          <div className="w-8 h-8 border-t-2 border-b-2 border-blue-600 rounded-full animate-spin"></div>
-          <span className="ml-2 text-black">데이터 로딩 중...</span>
-        </div>
-      ) : error ? (
-        <div className="bg-red-50 border-l-4 border-red-500 p-4">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div className="ml-3">
-              <p className="text-red-700">{error}</p>
-            </div>
+    <div className="min-h-screen bg-white w-full">
+      <div className="max-w-5xl mx-auto px-4 py-8">
+        <div className="mb-8">
+          <Link href="/dashboard" className="inline-flex items-center text-blue-600 hover:text-blue-800 mb-6">
+            <ArrowLeft className="w-4 h-4 mr-1" />
+            <span>대시보드로 돌아가기</span>
+          </Link>
+          <div className="border-b border-gray-200 pb-4">
+            <h1 className="text-2xl font-bold text-black mb-2">리밸런싱 내역 보기</h1>
+            <p className="text-base text-black">보유하신 포트폴리오의 리밸런싱 내역을 확인하실 수 있습니다.</p>
           </div>
         </div>
-      ) : (
-        <div className="bg-white rounded-lg border border-gray-200">
-          {showDetail && selectedRebalancingHistory ? (
-            <RebalancingHistoryDetail
-              rebalancingHistory={selectedRebalancingHistory}
-              onClose={handleCloseDetail}
-            />
-          ) : (
-            <>
-              {/* 탭 네비게이션 */}
-              <div className="border-b border-gray-200">
-                <nav className="-mb-px flex space-x-8 px-6 py-2">
-                  <button
-                    className={`py-4 px-1 border-b-2 font-medium text-base ${
-                      activeTab === 'current'
-                        ? 'border-blue-500 text-blue-600'
-                        : 'border-transparent text-black hover:text-blue-600 hover:border-gray-300'
-                    }`}
-                    onClick={() => setActiveTab('current')}
-                  >
-                    예정된 리밸런싱 ({rebalancingHistories.current.length})
-                  </button>
-                  <button
-                    className={`py-4 px-1 border-b-2 font-medium text-base ${
-                      activeTab === 'past'
-                        ? 'border-blue-500 text-blue-600'
-                        : 'border-transparent text-black hover:text-blue-600 hover:border-gray-300'
-                    }`}
-                    onClick={() => setActiveTab('past')}
-                  >
-                    과거 리밸런싱 내역 ({rebalancingHistories.past.length})
-                  </button>
-                </nav>
-              </div>
 
-              {/* 리밸런싱 내역 목록 */}
-              <RebalancingHistoryList
-                rebalancingHistories={activeTab === 'current' ? rebalancingHistories.current : rebalancingHistories.past}
-                portfolios={portfolios}
-                onViewDetail={handleViewDetail}
+        {loading ? (
+          <div className="flex justify-center items-center h-64">
+            <div className="w-8 h-8 border-t-2 border-b-2 border-blue-600 rounded-full animate-spin"></div>
+            <span className="ml-2 text-black">데이터 로딩 중...</span>
+          </div>
+        ) : error ? (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <p className="text-red-700">{error}</p>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-white rounded-lg border border-gray-200">
+            {showDetail && selectedRebalancingHistory ? (
+              <RebalancingHistoryDetail
+                rebalancingHistory={selectedRebalancingHistory}
+                onClose={handleCloseDetail}
               />
-            </>
-          )}
-        </div>
-      )}
+            ) : (
+              <>
+                {/* 탭 네비게이션 */}
+                <div className="border-b border-gray-200">
+                  <nav className="-mb-px flex space-x-8 px-6 py-2">
+                    <button
+                      className={`py-4 px-1 border-b-2 font-medium text-base ${
+                        activeTab === 'current'
+                          ? 'border-blue-500 text-blue-600'
+                          : 'border-transparent text-black hover:text-blue-600 hover:border-gray-300'
+                      }`}
+                      onClick={() => setActiveTab('current')}
+                    >
+                      예정된 리밸런싱 ({rebalancingHistories.current.length})
+                    </button>
+                    <button
+                      className={`py-4 px-1 border-b-2 font-medium text-base ${
+                        activeTab === 'past'
+                          ? 'border-blue-500 text-blue-600'
+                          : 'border-transparent text-black hover:text-blue-600 hover:border-gray-300'
+                      }`}
+                      onClick={() => setActiveTab('past')}
+                    >
+                      과거 리밸런싱 내역 ({rebalancingHistories.past.length})
+                    </button>
+                  </nav>
+                </div>
+
+                {/* 리밸런싱 내역 목록 */}
+                <RebalancingHistoryList
+                  rebalancingHistories={activeTab === 'current' ? rebalancingHistories.current : rebalancingHistories.past}
+                  portfolios={portfolios}
+                  onViewDetail={handleViewDetail}
+                />
+              </>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 } 

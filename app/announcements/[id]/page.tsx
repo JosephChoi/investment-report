@@ -162,20 +162,20 @@ export default function AnnouncementDetailPage({ params }: PageProps) {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
-      <div className="bg-white rounded-lg shadow-xl overflow-hidden">
+      <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
         {/* 헤더 */}
-        <div className="bg-gradient-to-r from-blue-500 to-blue-700 p-6 text-white">
+        <div className="border-b border-gray-200 p-6">
           <div className="flex items-center mb-2">
             <button
               onClick={handleGoBack}
-              className="mr-4 p-2 rounded-full bg-white bg-opacity-20 hover:bg-opacity-30 transition-colors duration-300"
+              className="mr-4 p-2 rounded-full hover:bg-gray-100 transition-colors duration-300"
             >
-              <ArrowLeft className="h-5 w-5" />
+              <ArrowLeft className="h-5 w-5 text-black" />
             </button>
-            <h1 className="text-2xl font-bold">공지사항</h1>
+            <h1 className="text-2xl font-bold text-black">공지사항</h1>
           </div>
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold">{announcement.title}</h2>
+            <h2 className="text-xl font-semibold text-black">{announcement.title}</h2>
             <div>
               {announcement.importance_level === 1 ? (
                 <span className="px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full bg-red-100 text-red-800">
@@ -196,7 +196,7 @@ export default function AnnouncementDetailPage({ params }: PageProps) {
         
         {/* 본문 */}
         <div className="p-6">
-          <div className="flex items-center text-sm text-gray-500 mb-6">
+          <div className="flex items-center text-sm text-black mb-6">
             <span className="mr-2">
               {new Date(announcement.created_at).toLocaleDateString('ko-KR', {
                 year: 'numeric',
@@ -228,17 +228,16 @@ export default function AnnouncementDetailPage({ params }: PageProps) {
             </div>
           )}
           
-          <div className="prose max-w-none text-gray-900">
+          <div className="prose max-w-none">
             <div 
               dangerouslySetInnerHTML={{ __html: announcement.content }} 
-              className="text-gray-900 leading-relaxed"
-              style={{ color: '#1a202c' }}
+              className="text-black leading-relaxed"
             />
           </div>
           
           {announcement.announcement_attachments && announcement.announcement_attachments.length > 0 && (
             <div className="mt-8 border-t pt-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">첨부 파일</h3>
+              <h3 className="text-lg font-medium text-black mb-4">첨부 파일</h3>
               <ul className="space-y-2">
                 {announcement.announcement_attachments.map((attachment: any) => (
                   <li key={attachment.id}>
@@ -248,31 +247,26 @@ export default function AnnouncementDetailPage({ params }: PageProps) {
                       rel="noopener noreferrer"
                       className="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors duration-300"
                     >
-                      <FileText className="h-5 w-5 text-blue-500 mr-2" />
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-gray-900">{attachment.file_name}</p>
-                        <p className="text-xs text-gray-500">{formatFileSize(attachment.file_size)}</p>
+                      <div className="flex-shrink-0 mr-3">
+                        <FileText className="h-6 w-6 text-blue-500" />
                       </div>
-                      <Download className="h-5 w-5 text-gray-400" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-black truncate">
+                          {attachment.file_name}
+                        </p>
+                        <p className="text-xs text-black">
+                          {formatFileSize(attachment.file_size)}
+                        </p>
+                      </div>
+                      <div className="ml-3">
+                        <Download className="h-5 w-5 text-black" />
+                      </div>
                     </a>
                   </li>
                 ))}
               </ul>
             </div>
           )}
-        </div>
-        
-        {/* 푸터 */}
-        <div className="border-t p-4 bg-gray-50">
-          <div className="flex justify-between items-center">
-            <Link 
-              href="/dashboard"
-              className="flex items-center text-blue-600 hover:text-blue-800 transition-colors duration-300"
-            >
-              <ArrowLeft className="h-4 w-4 mr-1" />
-              대시보드로 돌아가기
-            </Link>
-          </div>
         </div>
       </div>
     </div>

@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ChevronRight, TrendingUp, BarChart, PieChart, FileText, BookOpen, Shield } from 'lucide-react';
+import { ChevronRight, TrendingUp, BarChart, PieChart, FileText, Bell, AlertCircle, CreditCard, MessageSquare, Mail } from 'lucide-react';
 
 export default function Home() {
   return (
@@ -9,23 +9,17 @@ export default function Home() {
         <div className="container mx-auto px-6 md:px-12 py-12 flex flex-col md:flex-row items-center gap-12">
           <div className="md:w-1/2 flex flex-col gap-6">
             <h1 className="text-4xl md:text-5xl font-bold leading-tight">
-              투자 포트폴리오를 더 효율적으로 관리하세요
+              자문서비스 정보를 스마트하게 관리하세요
             </h1>
             <p className="text-xl text-blue-100">
-              실시간 데이터, 투자 리포트, 리밸런싱 알림을 통해 포트폴리오를 최적화하고 더 나은 투자 결정을 내릴 수 있습니다.
+              다양한 정보를 안내하고, 기록하며, 확인하실 수 있습니다.
             </p>
             <div className="flex gap-4 mt-4">
               <Link 
-                href="/signup" 
+                href="/login" 
                 className="bg-white text-blue-700 hover:bg-blue-50 px-6 py-3 rounded-lg font-medium transition-colors duration-200 text-center"
               >
-                무료로 시작하기
-              </Link>
-              <Link 
-                href="/login" 
-                className="bg-blue-800 hover:bg-blue-900 text-white px-6 py-3 rounded-lg font-medium transition-colors duration-200 border border-blue-400 text-center"
-              >
-                로그인
+                회원전용 로그인
               </Link>
             </div>
           </div>
@@ -60,69 +54,69 @@ export default function Home() {
           </div>
           
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {/* 기능 카드 1 */}
+            {/* 카드 1: 본인계좌 정보 */}
             <div className="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow duration-300 p-8 border border-gray-100">
               <div className="bg-blue-100 p-3 rounded-full w-14 h-14 flex items-center justify-center mb-6">
-                <TrendingUp className="w-7 h-7 text-blue-600" />
+                <CreditCard className="w-7 h-7 text-blue-600" />
               </div>
-              <h3 className="text-xl font-bold mb-3 text-gray-900">실시간 포트폴리오 추적</h3>
+              <h3 className="text-xl font-bold mb-3 text-gray-900">본인계좌 정보</h3>
               <p className="text-gray-600">
-                전체 포트폴리오의 성과를 실시간으로 모니터링하고 자산 배분 현황을 한눈에 파악하세요.
+                본인 보유 계좌 및 관련 정보를 확인하세요
               </p>
             </div>
             
-            {/* 기능 카드 2 */}
+            {/* 카드 2: 월간리포트 */}
             <div className="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow duration-300 p-8 border border-gray-100">
               <div className="bg-indigo-100 p-3 rounded-full w-14 h-14 flex items-center justify-center mb-6">
                 <BarChart className="w-7 h-7 text-indigo-600" />
               </div>
-              <h3 className="text-xl font-bold mb-3 text-gray-900">상세한 월간 리포트</h3>
+              <h3 className="text-xl font-bold mb-3 text-gray-900">월간리포트</h3>
               <p className="text-gray-600">
-                매월 전문가의 투자 분석 리포트를 받아보고 시장 동향과 투자 기회를 파악하세요.
+                매월 포트폴리오별 리포트와 계좌 현황을 확인하세요
               </p>
             </div>
             
-            {/* 기능 카드 3 */}
+            {/* 카드 3: 리밸런싱 알림 */}
             <div className="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow duration-300 p-8 border border-gray-100">
               <div className="bg-green-100 p-3 rounded-full w-14 h-14 flex items-center justify-center mb-6">
                 <PieChart className="w-7 h-7 text-green-600" />
               </div>
               <h3 className="text-xl font-bold mb-3 text-gray-900">리밸런싱 알림</h3>
               <p className="text-gray-600">
-                포트폴리오 리밸런싱 시기를 놓치지 않도록 맞춤형 알림을 받아보세요.
+                포트폴리오 리밸런싱 안내와 히스토리를 관리합니다.
               </p>
             </div>
             
-            {/* 기능 카드 4 */}
+            {/* 카드 4: 관리자 상담내역 */}
             <div className="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow duration-300 p-8 border border-gray-100">
               <div className="bg-red-100 p-3 rounded-full w-14 h-14 flex items-center justify-center mb-6">
-                <FileText className="w-7 h-7 text-red-600" />
+                <MessageSquare className="w-7 h-7 text-red-600" />
               </div>
-              <h3 className="text-xl font-bold mb-3 text-gray-900">맞춤형 투자 제안</h3>
+              <h3 className="text-xl font-bold mb-3 text-gray-900">관리자 상담내역</h3>
               <p className="text-gray-600">
-                투자 목표와 위험 성향에 맞는 개인화된 투자 제안을 받아보세요.
+                관리자와 상담하신 내용을 일자별로 확인하세요
               </p>
             </div>
             
-            {/* 기능 카드 5 */}
+            {/* 카드 5: 공지사항 */}
             <div className="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow duration-300 p-8 border border-gray-100">
               <div className="bg-yellow-100 p-3 rounded-full w-14 h-14 flex items-center justify-center mb-6">
-                <BookOpen className="w-7 h-7 text-yellow-600" />
+                <Bell className="w-7 h-7 text-yellow-600" />
               </div>
-              <h3 className="text-xl font-bold mb-3 text-gray-900">자산 교육 자료</h3>
+              <h3 className="text-xl font-bold mb-3 text-gray-900">공지사항</h3>
               <p className="text-gray-600">
-                투자 지식을 넓히고 더 나은 투자 결정을 내릴 수 있도록 도와주는 교육 자료를 제공합니다.
+                투자자문사의 주요한 공지사항을 안내드립니다
               </p>
             </div>
             
-            {/* 기능 카드 6 */}
+            {/* 카드 6: 연체관리 */}
             <div className="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow duration-300 p-8 border border-gray-100">
               <div className="bg-purple-100 p-3 rounded-full w-14 h-14 flex items-center justify-center mb-6">
-                <Shield className="w-7 h-7 text-purple-600" />
+                <AlertCircle className="w-7 h-7 text-purple-600" />
               </div>
-              <h3 className="text-xl font-bold mb-3 text-gray-900">안전한 데이터 보호</h3>
+              <h3 className="text-xl font-bold mb-3 text-gray-900">연체관리</h3>
               <p className="text-gray-600">
-                최고 수준의 보안 시스템으로 고객의 금융 데이터를 안전하게 보호합니다.
+                수수료 미납사항에 대한 정보를 업데이트 합니다
               </p>
             </div>
           </div>
@@ -133,18 +127,18 @@ export default function Home() {
       <section className="py-16 bg-gradient-to-r from-indigo-600 to-blue-700 text-white">
         <div className="container mx-auto px-6 md:px-12 text-center">
           <h2 className="text-3xl md:text-4xl font-bold mb-6">
-            지금 바로 시작하세요
+            다양한 의견을 수렴합니다
           </h2>
           <p className="text-xl mb-8 max-w-2xl mx-auto text-blue-100">
-            무료 회원가입을 통해 포트폴리오 관리의 새로운 경험을 만나보세요.
+            제품 사용과 관련한 의견을 주시면 더 좋은 서비스를 위해 반영하도록 하겠습니다.
           </p>
-          <Link
-            href="/signup"
+          <a
+            href="mailto:kunmin.choi@gmail.com"
             className="inline-flex items-center gap-2 bg-white text-blue-700 hover:bg-blue-50 px-8 py-4 rounded-lg font-medium transition-colors duration-200 text-lg"
           >
-            무료로 시작하기
-            <ChevronRight className="w-5 h-5" />
-          </Link>
+            의견 제시하기
+            <Mail className="w-5 h-5" />
+          </a>
         </div>
       </section>
       
@@ -153,7 +147,7 @@ export default function Home() {
         <div className="container mx-auto px-6 md:px-12">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div>
-              <h3 className="text-white text-lg font-bold mb-4">투자 리포트</h3>
+              <h3 className="text-white text-lg font-bold mb-4">투자자문 고객관리 서비스</h3>
               <p className="mb-4">
                 최고의 투자 포트폴리오 관리 서비스를 제공합니다.
               </p>
@@ -162,10 +156,11 @@ export default function Home() {
             <div>
               <h4 className="text-white text-lg font-bold mb-4">제품</h4>
               <ul className="space-y-2">
-                <li><Link href="#" className="hover:text-white transition-colors">포트폴리오 추적</Link></li>
-                <li><Link href="#" className="hover:text-white transition-colors">월간 리포트</Link></li>
-                <li><Link href="#" className="hover:text-white transition-colors">리밸런싱 알림</Link></li>
-                <li><Link href="#" className="hover:text-white transition-colors">투자 제안</Link></li>
+                <li><Link href="#" className="hover:text-white transition-colors">월간리포트제공</Link></li>
+                <li><Link href="#" className="hover:text-white transition-colors">리밸런싱안내</Link></li>
+                <li><Link href="#" className="hover:text-white transition-colors">연체관리</Link></li>
+                <li><Link href="#" className="hover:text-white transition-colors">상담내역관리</Link></li>
+                <li><Link href="#" className="hover:text-white transition-colors">공지사항</Link></li>
               </ul>
             </div>
             
@@ -182,15 +177,15 @@ export default function Home() {
             <div>
               <h4 className="text-white text-lg font-bold mb-4">법적 정보</h4>
               <ul className="space-y-2">
-                <li><Link href="#" className="hover:text-white transition-colors">개인정보처리방침</Link></li>
-                <li><Link href="#" className="hover:text-white transition-colors">이용약관</Link></li>
-                <li><Link href="#" className="hover:text-white transition-colors">쿠키 정책</Link></li>
+                <li><Link href="/privacy-policy" className="hover:text-white transition-colors">개인정보처리방침</Link></li>
+                <li><Link href="/terms" className="hover:text-white transition-colors">이용약관</Link></li>
+                <li><Link href="/cookie-policy" className="hover:text-white transition-colors">쿠키 정책</Link></li>
               </ul>
             </div>
           </div>
           
           <div className="border-t border-gray-800 mt-12 pt-8 text-center">
-            <p>&copy; 2024 투자 리포트. All rights reserved.</p>
+            <p>&copy; 2024 투자자문 고객관리 서비스. All rights reserved.</p>
           </div>
         </div>
       </footer>

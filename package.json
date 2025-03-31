@@ -36,6 +36,7 @@
     "next": "15.2.1",
     "pg": "^8.13.3",
     "postcss": "^8.4.35",
+    "postcss-import": "^16.0.1",
     "postgres": "^3.4.5",
     "quill": "^2.0.3",
     "react": "18.2.0",
@@ -58,8 +59,14 @@
     "drizzle-kit": "^0.30.5",
     "eslint": "^9",
     "eslint-config-next": "15.2.1",
+    "prettier-plugin-tailwindcss": "^0.5.11",
     "tsx": "^4.19.3",
-    "typescript": "^5.4.3",
-    "prettier-plugin-tailwindcss": "^0.5.11"
+    "typescript": "^5.4.3"
+  },
+  "resolutions": {
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
+    "@types/react": "18.2.45",
+    "@types/react-dom": "18.2.18"
   }
 }

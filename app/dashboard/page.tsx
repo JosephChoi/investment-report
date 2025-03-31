@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/card';
 import DashboardAnnouncements from '@/components/dashboard-announcements';
 import DashboardOverduePayments from '@/components/dashboard-overdue-payments';
+import DashboardRebalancing from '@/components/dashboard-rebalancing';
 
 // 공지사항 타입 정의
 interface Announcement {
@@ -445,22 +446,24 @@ export default function Dashboard() {
           </Link>
           
           {/* 리밸런싱 히스토리 카드 */}
-          <Card className="h-full border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden group">
-            <div className="absolute h-1 w-full bg-green-500 top-0 left-0 transform origin-left transition-transform duration-300 group-hover:scale-x-110"></div>
-            <CardContent className="p-6">
-              <div className="flex items-center mb-4">
-                <div className="bg-green-100 p-3 rounded-full mr-4 group-hover:bg-green-200 transition-colors duration-300">
-                  <RefreshCw className="h-6 w-6 text-green-600" />
+          <Link href="/rebalancing-history" className="block group">
+            <Card className="h-full border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden group">
+              <div className="absolute h-1 w-full bg-green-500 top-0 left-0 transform origin-left transition-transform duration-300 group-hover:scale-x-110"></div>
+              <CardContent className="p-6">
+                <div className="flex items-center mb-4">
+                  <div className="bg-green-100 p-3 rounded-full mr-4 group-hover:bg-green-200 transition-colors duration-300">
+                    <RefreshCw className="h-6 w-6 text-green-600" />
+                  </div>
+                  <CardTitle className="text-xl text-gray-900">리밸런싱 히스토리</CardTitle>
                 </div>
-                <CardTitle className="text-xl text-gray-900">리밸런싱 히스토리</CardTitle>
-              </div>
-              <p className="text-gray-600 mb-4">포트폴리오 리밸런싱 내역과 변경 사항을 확인하세요.</p>
-              <div className="text-green-600 font-medium flex items-center">
-                <span>히스토리 보기</span>
-                <ChevronRight className="h-4 w-4 ml-1 transform transition-transform duration-300 group-hover:translate-x-1" />
-              </div>
-            </CardContent>
-          </Card>
+                <p className="text-gray-600 mb-4">포트폴리오 리밸런싱 내역과 변경 사항을 확인하세요.</p>
+                <div className="text-green-600 font-medium flex items-center">
+                  <span>히스토리 보기</span>
+                  <ChevronRight className="h-4 w-4 ml-1 transform transition-transform duration-300 group-hover:translate-x-1" />
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
           
           {/* 관리자 상담 내역 카드 */}
           <Link href="/dashboard/consultation" className="block group">
@@ -483,10 +486,10 @@ export default function Dashboard() {
           </Link>
         </div>
         
-        {/* 공지사항과 연체정보 섹션 - 나란히 배치 */}
+        {/* 공지사항과 연체정보, 리밸런싱 섹션 - 2열 배치 */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           {/* 공지사항 섹션 */}
-          <Card className="border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden h-full">
+          <Card className="border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden">
             <div className="absolute h-1 w-full bg-amber-500 top-0 left-0"></div>
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
@@ -507,8 +510,14 @@ export default function Dashboard() {
             </CardContent>
           </Card>
           
-          {/* 연체정보 섹션 */}
-          <DashboardOverduePayments />
+          {/* 연체정보와 리밸런싱 섹션을 세로로 배치 */}
+          <div className="grid grid-cols-1 gap-6">
+            {/* 연체정보 섹션 */}
+            <DashboardOverduePayments />
+
+            {/* 리밸런싱 섹션 */}
+            <DashboardRebalancing />
+          </div>
         </div>
       </div>
     </div>

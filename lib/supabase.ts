@@ -1,4 +1,5 @@
 import { createClient as supabaseCreateClient } from '@supabase/supabase-js';
+import { cookies } from 'next/headers';
 
 // Supabase 환경 변수 확인
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -9,9 +10,14 @@ if (!supabaseUrl || !supabaseKey) {
   throw new Error('Supabase URL과 Anon Key가 환경 변수에 설정되어 있지 않습니다.');
 }
 
+// 쿠키 옵션 타입 정의
+type CookieOptions = {
+  cookies: () => ReturnType<typeof cookies>
+}
+
 // createClient 함수 export
-export const createClient = () => {
-  // 서버 사이드에서는 기본 클라이언트 반환
+export const createClient = (options?: CookieOptions) => {
+  // 서버 사이드에서는 쿠키 옵션을 포함하여 클라이언트 생성
   if (typeof window === 'undefined') {
     console.log('서버 사이드 Supabase 클라이언트 생성');
     
@@ -21,7 +27,8 @@ export const createClient = () => {
       {
         auth: {
           persistSession: false,
-          autoRefreshToken: false
+          autoRefreshToken: false,
+          ...(options ? { cookies: options.cookies } : {})
         }
       }
     );

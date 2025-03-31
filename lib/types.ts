@@ -43,4 +43,25 @@ export interface User {
   email: string;
   role: 'admin' | 'user';
   // 기타 사용자 관련 필드
+}
+
+// 리밸런싱 내역 타입
+export interface RebalancingHistory {
+  id: string;
+  portfolio_type_id: string;
+  rebalancing_date: string;
+  comment: string;
+  reference_url: string;
+  created_at: string;
+  updated_at: string;
+  created_by: string;
+  portfolio_details?: Portfolio;
+}
+
+// 리밸런싱 내역 폼 데이터 타입
+export interface RebalancingHistoryFormData {
+  portfolio_type_id: string;
+  rebalancing_date: string;
+  comment: string;
+  reference_url: string;
 } 

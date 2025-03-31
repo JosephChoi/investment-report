@@ -46,7 +46,8 @@ export async function GET() {
           id: (index + 1).toString(),
           name: type.toString(),
           description: `${type.toString()} 유형의 포트폴리오`,
-          type: type.toString()
+          category: null,
+          risk_level: null
         };
       });
       
@@ -60,7 +61,6 @@ export async function GET() {
         id: item.id,
         name: item.name,
         description: item.description || `${item.name} 유형의 포트폴리오`,
-        type: item.name,
         category: item.category,
         risk_level: item.risk_level
       };

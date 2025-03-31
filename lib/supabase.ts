@@ -19,8 +19,6 @@ type CookieOptions = {
 export const createClient = (options?: CookieOptions) => {
   // 서버 사이드에서는 쿠키 옵션을 포함하여 클라이언트 생성
   if (typeof window === 'undefined') {
-    console.log('서버 사이드 Supabase 클라이언트 생성');
-    
     return supabaseCreateClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -35,7 +33,6 @@ export const createClient = (options?: CookieOptions) => {
   }
   
   // 클라이언트 사이드에서는 기존 방식 사용
-  console.log('클라이언트 사이드 Supabase 클라이언트 생성');
   return supabaseCreateClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,

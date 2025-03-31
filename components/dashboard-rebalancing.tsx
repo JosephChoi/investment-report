@@ -20,7 +20,6 @@ export default function DashboardRebalancing({ title = "리밸런싱 안내" }: 
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session?.user?.id) {
-          console.log('세션 또는 사용자 ID가 없습니다.');
           return;
         }
 
@@ -48,7 +47,7 @@ export default function DashboardRebalancing({ title = "리밸런싱 안내" }: 
 
         setUpcomingRebalancing(upcoming);
       } catch (error) {
-        console.log('리밸런싱 내역 조회 중 오류 발생:', error);
+        console.error('리밸런싱 내역 조회 중 오류:', error);
       } finally {
         setLoading(false);
       }

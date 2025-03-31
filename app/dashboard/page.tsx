@@ -51,9 +51,6 @@ export default function Dashboard() {
         }
         
         setUser(user);
-        console.log('로그인한 사용자 정보:', user);
-        console.log('사용자 메타데이터:', user.user_metadata);
-        console.log('사용자 ID:', user.id);
         
         // 데이터베이스에서 사용자 정보 가져오기
         await fetchUserFromDatabase(user.id);
@@ -74,15 +71,11 @@ export default function Dashboard() {
   // 데이터베이스에서 사용자 정보 가져오기
   const fetchUserFromDatabase = async (userId: string) => {
     try {
-      console.log('데이터베이스에서 사용자 정보 가져오기 시작...', userId);
-      
       // 서비스 역할 키를 사용하는 API를 통해 사용자 정보 가져오기
       const response = await fetch(`/api/user/get?id=${userId}`);
       const result = await response.json();
       
       if (response.ok && result.data) {
-        console.log('데이터베이스에서 가져온 사용자 정보:', result.data);
-        console.log('사용자 이름:', result.data.name);
         setDbUser(result.data);
       } else {
         console.error('데이터베이스에서 사용자 정보를 가져오지 못했습니다:', result.error);
@@ -95,16 +88,11 @@ export default function Dashboard() {
   // 사용자 계좌 정보 가져오기 함수
   const fetchUserAccounts = async (user: any) => {
     try {
-      console.log('계좌 정보 가져오기 시작...');
-      console.log('현재 로그인한 사용자 이메일:', user.email);
-      
       // 서비스 역할 키를 사용하는 API를 통해 계좌 정보 가져오기
       const response = await fetch('/api/get-all-accounts');
       const result = await response.json();
       
       if (result.success && result.data && result.data.length > 0) {
-        console.log('모든 계좌 정보:', result.data);
-        
         // 현재 로그인한 사용자의 이메일과 일치하는 계좌만 필터링
         const userAccounts = result.data.filter((account: any) => {
           return account.user && 
@@ -113,8 +101,6 @@ export default function Dashboard() {
         });
         
         if (userAccounts.length > 0) {
-          console.log('현재 사용자의 실제 계좌 정보:', userAccounts);
-          
           // portfolio_types 테이블에서 포트폴리오 정보 가져오기
           const portfolioResponse = await fetch('/api/portfolios');
           const portfolioResult = await portfolioResponse.json();
@@ -143,33 +129,24 @@ export default function Dashboard() {
           const balanceResult = await balanceResponse.json();
           
           if (balanceResult.success) {
-            console.log('잔고 데이터:', balanceResult.data);
             // 잔고 데이터를 상태에 저장
             setBalance(balanceResult.data);
-          } else {
-            console.log('잔고 데이터를 가져오지 못했습니다.');
           }
           
           return;
-        } else {
-          console.log('일치하는 실제 계좌 정보가 없습니다. 사용자 이메일:', user.email);
-          console.log('사용자 목록:', result.data.map((account: any) => account.user?.email));
         }
       }
       
       // 백업 방법: 직접 API 호출
-      console.log('백업 방법으로 계좌 정보 가져오기 시도...');
       const backupResponse = await fetch('/api/user/accounts?email=' + encodeURIComponent(user.email));
       const backupResult = await backupResponse.json();
       
       if (backupResult.success && backupResult.data && backupResult.data.accounts && backupResult.data.accounts.length > 0) {
-        console.log('백업 방법으로 가져온 실제 계좌 정보:', backupResult.data.accounts);
         setAccounts(backupResult.data.accounts);
         return;
       }
       
       // 계좌 정보가 없는 경우
-      console.log('계좌 정보를 찾을 수 없습니다.');
       setError('등록된 계좌 정보가 없습니다. 관리자에게 문의하여 계좌 정보를 등록해주세요.');
     } catch (error) {
       console.error('계좌 정보 가져오기 오류:', error);
@@ -384,19 +361,28 @@ export default function Dashboard() {
                 <div className="bg-purple-100 p-1.5 rounded-full mr-2">
                   <MessageSquare className="h-4 w-4 text-purple-600" />
                 </div>
-                관리자 연락처
+                관리자 정보
               </CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-gray-700">문의사항이 있으시면 연락주세요.</p>
               <div className="mt-3 space-y-2">
                 <div className="flex items-center p-2 rounded-lg hover:bg-gray-50 transition-colors duration-300">
-                  <span className="text-gray-600 w-16">이메일:</span>
-                  <span className="text-gray-900">support@example.com</span>
+                  <span className="text-gray-600 w-16">관리자:</span>
+                  <span className="text-gray-900">최근민</span>
                 </div>
                 <div className="flex items-center p-2 rounded-lg hover:bg-gray-50 transition-colors duration-300">
-                  <span className="text-gray-600 w-16">전화:</span>
-                  <span className="text-gray-900">02-1234-5678</span>
+                  <span className="text-gray-600 w-16">이메일:</span>
+                  <a 
+                    href="mailto:kunmin.choi@gmail.com" 
+                    className="text-blue-600 hover:text-blue-800 hover:underline"
+                  >
+                    kunmin.choi@gmail.com
+                  </a>
+                </div>
+                <div className="flex items-center p-2 rounded-lg hover:bg-gray-50 transition-colors duration-300">
+                  <span className="text-gray-600 w-16">연락처:</span>
+                  <span className="text-gray-900">010-3747-0086</span>
                 </div>
               </div>
             </CardContent>

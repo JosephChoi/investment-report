@@ -6,12 +6,14 @@ import { supabase } from '@/lib/supabase';
 import { RefreshCw, ChevronRight } from 'lucide-react';
 import { RebalancingHistory } from '@/lib/types';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 
-export default function DashboardRebalancing() {
-  const [rebalancingHistories, setRebalancingHistories] = useState<RebalancingHistory[]>([]);
+interface DashboardRebalancingProps {
+  title?: string;
+}
+
+export default function DashboardRebalancing({ title = "리밸런싱 안내" }: DashboardRebalancingProps) {
+  const [upcomingRebalancing, setUpcomingRebalancing] = useState<RebalancingHistory[]>([]);
   const [loading, setLoading] = useState(true);
-  const router = useRouter();
 
   useEffect(() => {
     const fetchRebalancingHistories = async () => {
@@ -33,7 +35,18 @@ export default function DashboardRebalancing() {
         }
 
         const { data } = await response.json();
-        setRebalancingHistories(data?.all || []);
+        
+        // 오늘 날짜 이후의 리밸런싱만 필터링
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // 오늘 자정을 기준으로 설정
+        
+        const upcoming = (data?.all || []).filter((history: RebalancingHistory) => {
+          const rebalancingDate = new Date(history.rebalancing_date);
+          rebalancingDate.setHours(0, 0, 0, 0);
+          return rebalancingDate >= today;
+        });
+
+        setUpcomingRebalancing(upcoming);
       } catch (error) {
         console.log('리밸런싱 내역 조회 중 오류 발생:', error);
       } finally {
@@ -43,10 +56,6 @@ export default function DashboardRebalancing() {
 
     fetchRebalancingHistories();
   }, []);
-
-  const handleHistoryClick = (historyId: string) => {
-    router.push(`/rebalancing-history?id=${historyId}`);
-  };
 
   if (loading) {
     return (
@@ -58,7 +67,7 @@ export default function DashboardRebalancing() {
               <div className="bg-green-100 p-1.5 rounded-full mr-2">
                 <RefreshCw className="w-4 h-4 text-green-600" />
               </div>
-              <CardTitle className="text-xl text-gray-900">리밸런싱 내역</CardTitle>
+              <CardTitle className="text-xl text-gray-900">{title}</CardTitle>
             </div>
           </div>
         </CardHeader>
@@ -71,8 +80,12 @@ export default function DashboardRebalancing() {
     );
   }
 
-  const hasRebalancing = rebalancingHistories.length > 0;
-  const latestRebalancing = hasRebalancing ? rebalancingHistories[0] : null;
+  const hasUpcomingRebalancing = upcomingRebalancing.length > 0;
+
+  // 예정된 리밸런싱이 없으면 컴포넌트를 렌더링하지 않음
+  if (!hasUpcomingRebalancing) {
+    return null;
+  }
 
   return (
     <Card className="border-gray-200 shadow-sm">
@@ -83,43 +96,23 @@ export default function DashboardRebalancing() {
             <div className="bg-green-100 p-1.5 rounded-full mr-2">
               <RefreshCw className="w-4 h-4 text-green-600" />
             </div>
-            <CardTitle className="text-xl text-gray-900">리밸런싱 내역</CardTitle>
+            <CardTitle className="text-xl text-gray-900">{title}</CardTitle>
           </div>
           <Link href="/rebalancing-history" className="text-sm text-blue-600 hover:text-blue-800 flex items-center">
-            <span>모두 보기</span>
+            <span>상세 보기</span>
             <ChevronRight className="h-4 w-4 ml-1" />
           </Link>
         </div>
       </CardHeader>
       <CardContent className="pt-2">
-        {hasRebalancing ? (
-          <div 
-            className="cursor-pointer hover:bg-gray-50 transition-colors rounded-md p-3"
-            onClick={() => latestRebalancing && handleHistoryClick(latestRebalancing.id)}
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-900">
-                  {latestRebalancing?.portfolio_details?.name || '포트폴리오'} 리밸런싱
-                </p>
-                <p className="text-xs text-gray-500 mt-1">
-                  {new Date(latestRebalancing?.rebalancing_date || '').toLocaleDateString('ko-KR', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                  })}
-                </p>
-              </div>
-              <div className="text-xs text-green-600 font-medium">
-                외 {rebalancingHistories.length - 1}건
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="text-center py-3">
-            <p className="text-sm text-gray-500">리밸런싱 내역이 없습니다.</p>
-          </div>
-        )}
+        <div className="border-l-4 border-green-500 pl-4">
+          <p className="text-sm font-medium text-green-800">
+            {upcomingRebalancing.length}건의 리밸런싱이 예정되어 있습니다.
+          </p>
+          <p className="text-xs text-green-600 mt-1">
+            상세 내용은 리밸런싱 안내 페이지에서 확인하세요.
+          </p>
+        </div>
       </CardContent>
     </Card>
   );

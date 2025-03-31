@@ -243,4 +243,55 @@ export async function GET(request: NextRequest) {
     console.error('사용자별 공지사항 조회 중 오류 발생:', error);
     return NextResponse.json({ error: '서버 오류가 발생했습니다.' }, { status: 500 });
   }
+}
+
+export async function POST(request: Request) {
+  try {
+    const supabase = createRouteHandlerClient({ cookies });
+    
+    // 세션 확인
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      return new NextResponse(
+        JSON.stringify({ error: '인증되지 않은 요청입니다.' }),
+        { status: 401 }
+      );
+    }
+
+    // 요청 본문에서 포트폴리오 ID 목록 가져오기
+    const { portfolioIds } = await request.json();
+
+    // 공지사항 조회 쿼리 구성
+    let query = supabase
+      .from('announcements')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    // 포트폴리오 ID가 있는 경우, 해당 포트폴리오에 대한 공지사항 필터링
+    if (portfolioIds && portfolioIds.length > 0) {
+      query = query.or(`target_portfolios.cs.{${portfolioIds.join(',')}},target_type.eq.all`);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error('공지사항 조회 중 오류 발생:', error);
+      return new NextResponse(
+        JSON.stringify({ error: '공지사항을 불러오는데 실패했습니다.' }),
+        { status: 500 }
+      );
+    }
+
+    return new NextResponse(
+      JSON.stringify({ data }),
+      { status: 200 }
+    );
+
+  } catch (error) {
+    console.error('공지사항 API 오류:', error);
+    return new NextResponse(
+      JSON.stringify({ error: '서버 오류가 발생했습니다.' }),
+      { status: 500 }
+    );
+  }
 } 

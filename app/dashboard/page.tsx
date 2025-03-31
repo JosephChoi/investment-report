@@ -454,11 +454,11 @@ export default function Dashboard() {
                   <div className="bg-green-100 p-3 rounded-full mr-4 group-hover:bg-green-200 transition-colors duration-300">
                     <RefreshCw className="h-6 w-6 text-green-600" />
                   </div>
-                  <CardTitle className="text-xl text-gray-900">리밸런싱 히스토리</CardTitle>
+                  <CardTitle className="text-xl text-gray-900">리밸런싱 내역</CardTitle>
                 </div>
                 <p className="text-gray-600 mb-4">포트폴리오 리밸런싱 내역과 변경 사항을 확인하세요.</p>
                 <div className="text-green-600 font-medium flex items-center">
-                  <span>히스토리 보기</span>
+                  <span>리밸런싱 내역 보기</span>
                   <ChevronRight className="h-4 w-4 ml-1 transform transition-transform duration-300 group-hover:translate-x-1" />
                 </div>
               </CardContent>
@@ -489,26 +489,7 @@ export default function Dashboard() {
         {/* 공지사항과 연체정보, 리밸런싱 섹션 - 2열 배치 */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           {/* 공지사항 섹션 */}
-          <Card className="border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden">
-            <div className="absolute h-1 w-full bg-amber-500 top-0 left-0"></div>
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <div className="bg-amber-100 p-1.5 rounded-full mr-2">
-                    <Bell className="w-4 h-4 text-amber-600" />
-                  </div>
-                  <CardTitle className="text-xl text-gray-900">공지사항</CardTitle>
-                </div>
-                <Link href="/dashboard/announcements" className="text-sm text-blue-600 hover:text-blue-800 flex items-center">
-                  <span>모든 공지 보기</span>
-                  <ChevronRight className="h-4 w-4 ml-1" />
-                </Link>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <DashboardAnnouncements />
-            </CardContent>
-          </Card>
+          <DashboardAnnouncements />
           
           {/* 연체정보와 리밸런싱 섹션을 세로로 배치 */}
           <div className="grid grid-cols-1 gap-6">
@@ -516,7 +497,7 @@ export default function Dashboard() {
             <DashboardOverduePayments />
 
             {/* 리밸런싱 섹션 */}
-            <DashboardRebalancing />
+            <DashboardRebalancing title="리밸런싱 안내" />
           </div>
         </div>
       </div>

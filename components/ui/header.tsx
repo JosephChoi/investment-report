@@ -1,12 +1,19 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Menu, X } from 'lucide-react';
+import { usePathname } from 'next/navigation';
 
 const Header = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
+  const pathname = usePathname();
+  
+  // 메인 페이지(/)가 아니면 헤더를 표시하지 않음
+  if (pathname !== '/') {
+    return null;
+  }
 
   return (
     <header className="bg-white border-b border-gray-100 shadow-sm sticky top-0 z-50">

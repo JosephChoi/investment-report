@@ -572,6 +572,62 @@ export default function MonthlyReportDetail({ params }: PageProps) {
     }
   }, [selectedAccount?.id]);
 
+  const getFilePatternsByType = (portfolioType: { name: string }) => {
+    // 포트폴리오 타입 이름을 소문자로 변환하고 특수문자를 언더스코어로 변환
+    const normalizedType = portfolioType.name.toLowerCase().replace(/[^a-z0-9가-힣]/g, '_');
+    
+    // 포트폴리오 타입별 파일명 패턴 매핑
+    const typePatterns: { [key: string]: string[] } = {
+      // 1. 연금 관련 포트폴리오
+      '인모스트 연금2호(이전,분할매수)': ['pension'],
+      '인모스트 연금(적립식ETF)': ['pension'],
+      '인모스트 연금전환형 ISA': ['isa'],
+      
+      // 2. IRP/EMP 관련 포트폴리오
+      '인모스트 IRP EMP': ['irpdcemp'],
+      '인모스트 퇴직연금DC EMP': ['irpdcfemp'],
+      '인모스트 IRP 멀티에셋 인컴형': ['irpdcincome'],
+      '인모스트 IRP 멀티에셋 1호': ['irpdcmulti1pension'],
+      '인모스트 분할성장전략EMP': ['split'],
+      '인모스트 글로벌 액티브 EMP': ['active'],
+      '인모스트 글로벌 성장 EMP': ['global'],
+      '인모스트 연금 EMP Plus(이전)': ['pensionplusl'],
+      
+      // 3. 글로벌/해외 관련 포트폴리오
+      '인모스트 글로벌 핀테크': ['fin'],
+      '인모스트 글로벌 선택형 ETF': ['choice'],
+      '인모스트 해외ETF 적립식': ['split2'],
+      
+      // 4. 국내 ETF 관련 포트폴리오
+      '인모스트 국내 ETF': ['domestic_etf'],
+      '인모스트 적립식ETF 일반': ['domestic_etf'],
+      
+      // 5. 배당형 포트폴리오
+      '인모스트 BDC 배당형': ['bdcdividend'],
+      '인모스트 멀티에셋 인컴형': ['multiincome'],
+      
+      // 6. 기타 포트폴리오
+      '인모스트 채권전략형': ['bond'],
+      '인모스트 채권플러스': ['bondplus'],
+      '인모스트 유동성자금전용': ['fee'],
+      '인모스트 메가트렌드셀렉션(주식형)': ['mega'],
+      '인모스트 위대한유산(증여)': ['mf'],
+      '인모스트 그로스&밸류(주식형)': ['groth'],
+      '인모스트 Happy Tree 2호': ['happy2']
+    };
+
+    // 해당 포트폴리오 타입에 대한 패턴 가져오기
+    const patterns = typePatterns[portfolioType.name] || ['portfolio'];
+    
+    // 패턴에 연도와 월 추가
+    const yearMonthPatterns = patterns.map(pattern => `${pattern}_${year}_${month}`);
+    
+    console.log('포트폴리오 타입:', portfolioType.name);
+    console.log('생성된 검색 패턴:', yearMonthPatterns);
+    
+    return yearMonthPatterns;
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">

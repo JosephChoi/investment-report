@@ -554,7 +554,7 @@ export default function MonthlyReport() {
           <div className="col-span-full bg-white p-8 rounded-xl shadow-sm border border-gray-100 text-center">
             <div className="flex flex-col items-center justify-center space-y-4">
               <FileText className="w-12 h-12 text-gray-300" />
-              <p className="text-gray-600 text-lg">아직 등록된 월간 리포트가 없습니다.</p>
+              <p className="text-gray-600 text-lg">월간 리포트 가져오는 중...</p>
             </div>
           </div>
         )}

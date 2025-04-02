@@ -103,6 +103,61 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       }, { status: 400 });
     }
     
+    // 포트폴리오 타입별 파일명 매핑
+    const getFileNameByPortfolioType = (portfolioType: string, year: string, month: string) => {
+      // 포트폴리오 타입별 파일명 매핑
+      const typeToFileName: { [key: string]: string } = {
+        // 1. 연금 관련 포트폴리오
+        '인모스트 연금2호(이전,분할매수)': 'pension',
+        '인모스트 연금(적립식ETF)': 'pension',
+        '인모스트 연금전환형 ISA': 'isa',
+        
+        // 2. IRP/EMP 관련 포트폴리오
+        '인모스트 IRP EMP': 'irpdcfemp',
+        '인모스트 퇴직연금DC EMP': 'irpdcfemp',
+        '인모스트 IRP 멀티에셋 인컴형': 'irpdcincome',
+        '인모스트 IRP 멀티에셋 1호': 'irpdcmulti1pension',
+        '인모스트 분할성장전략EMP': 'split',
+        '인모스트 글로벌 액티브 EMP': 'active',
+        '인모스트 글로벌 성장 EMP': 'global',
+        '인모스트 연금 EMP Plus(이전)': 'pensionplusl',
+        
+        // 3. 글로벌/해외 관련 포트폴리오
+        '인모스트 글로벌 핀테크': 'fin',
+        '인모스트 글로벌 선택형 ETF': 'choice',
+        '인모스트 해외ETF 적립식': 'split2',
+        
+        // 4. 국내 ETF 관련 포트폴리오
+        '인모스트 국내 ETF': 'domestic_etf',
+        '인모스트 적립식ETF 일반': 'domestic_etf',
+        
+        // 5. 배당형 포트폴리오
+        '인모스트 BDC 배당형': 'bdcdividend',
+        '인모스트 멀티에셋 인컴형': 'multiincome',
+        
+        // 6. 기타 포트폴리오
+        '인모스트 채권전략형': 'bond',
+        '인모스트 채권플러스': 'bondplus',
+        '인모스트 유동성자금전용': 'fee',
+        '인모스트 메가트렌드셀렉션(주식형)': 'mega',
+        '인모스트 위대한유산(증여)': 'mf',
+        '인모스트 그로스&밸류(주식형)': 'groth',
+        '인모스트 Happy Tree 2호': 'happy2'
+      };
+
+      // 포트폴리오 타입에 해당하는 파일명 가져오기
+      const filePrefix = typeToFileName[portfolioType] || 'portfolio';
+      
+      // 연도와 월을 2자리 숫자로 포맷팅
+      const formattedMonth = month.padStart(2, '0');
+      
+      // 최종 파일명 생성
+      return `${filePrefix}_${year}_${formattedMonth}.jpg`;
+    };
+
+    // 파일 업로드 로직에서 파일명 생성 부분 수정
+    const uploadFileName = getFileNameByPortfolioType(portfolioType, year, month);
+    
     // 파일 삭제 및 업로드 로직
     try {
       console.log('파일 업로드/삭제 로직 시작');
@@ -122,7 +177,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       // 2. 동일한 파일명이 있는지 확인 (대소문자 구분 없이)
       if (existingFiles) {
         const matchingFiles = existingFiles.filter(file => 
-          file.name.toLowerCase() === fileName.toLowerCase()
+          file.name.toLowerCase() === uploadFileName.toLowerCase()
         );
         
         console.log('매칭된 파일:', matchingFiles);
@@ -149,7 +204,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       }
       
       // 4. 파일 업로드
-      console.log(`파일 업로드 시작: ${fileName}`);
+      console.log(`파일 업로드 시작: ${uploadFileName}`);
       
       try {
         // FormData에서 파일 내용 가져오기
@@ -163,7 +218,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         console.log(`파일 타입: ${file.type}`);
         
         // Supabase Storage에 파일 업로드
-        const uploadPath = `${year}/${month}/${fileName}`;
+        const uploadPath = `${year}/${month}/${uploadFileName}`;
         
         // 타임아웃 설정이 있는 업로드 함수
         const uploadWithTimeout = async () => {

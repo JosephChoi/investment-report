@@ -18,17 +18,11 @@ export const metadata: Metadata = {
   description: "투자자문 고객을 위한 포트폴리오 관리 및 투자 정보 서비스",
   icons: {
     icon: [
-      { url: '/favicon.ico', sizes: 'any' },
-      { url: '/ar-logo-full.png', type: 'image/png', sizes: '32x32' }
+      { url: '/favicon.ico' },
+      { url: '/favicon.png' }
     ],
-    shortcut: { url: '/ar-logo-full.png', type: 'image/png' },
-    apple: [
-      { url: '/apple-icon.png', type: 'image/png', sizes: '180x180' },
-    ],
-    other: [
-      { url: '/icon-192.png', type: 'image/png', sizes: '192x192' },
-      { url: '/icon-512.png', type: 'image/png', sizes: '512x512' },
-    ]
+    apple: { url: '/apple-icon.png' },
+    shortcut: { url: '/favicon.png' }
   },
 };
 

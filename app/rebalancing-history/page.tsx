@@ -107,14 +107,25 @@ export default function RebalancingHistoryPage() {
       
       const { data } = await response.json();
       
+      // API 응답 데이터 로깅
+      console.log('API 응답 데이터:', data);
       if (data?.all) {
+        // 전체 리밸런싱 데이터 날짜 정보 로깅
+        console.log('전체 리밸런싱 날짜 목록:', data.all.map((h: RebalancingHistory) => ({
+          id: h.id,
+          date: h.rebalancing_date,
+          portfolio: h.portfolio_type_id
+        })));
+        
         const today = new Date();
         today.setHours(0, 0, 0, 0);
+        console.log('현재 날짜(기준점):', today);
 
         // 예정된 리밸런싱: 오늘 이후 날짜
         const current = data.all.filter((history: RebalancingHistory) => {
           const rebalancingDate = new Date(history.rebalancing_date);
           rebalancingDate.setHours(0, 0, 0, 0);
+          console.log(`리밸런싱 날짜 비교: ${history.rebalancing_date} (변환: ${rebalancingDate}) >= ${today} = ${rebalancingDate >= today}`);
           return rebalancingDate >= today;
         });
 
@@ -122,11 +133,18 @@ export default function RebalancingHistoryPage() {
         const past = data.all.filter((history: RebalancingHistory) => {
           const rebalancingDate = new Date(history.rebalancing_date);
           rebalancingDate.setHours(0, 0, 0, 0);
+          console.log(`리밸런싱 날짜 비교: ${history.rebalancing_date} (변환: ${rebalancingDate}) < ${today} = ${rebalancingDate < today}`);
           return rebalancingDate < today;
         });
 
         // 날짜 내림차순 정렬 (최신 날짜가 먼저 오도록)
         past.sort((a: RebalancingHistory, b: RebalancingHistory) => new Date(b.rebalancing_date).getTime() - new Date(a.rebalancing_date).getTime());
+        
+        console.log('분류 후 과거 리밸런싱 내역:', past.map((h: RebalancingHistory) => ({
+          id: h.id,
+          date: h.rebalancing_date,
+          portfolio: h.portfolio_type_id
+        })));
 
         setRebalancingHistories({
           current,

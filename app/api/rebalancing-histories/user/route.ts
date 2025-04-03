@@ -91,9 +91,6 @@ export async function GET(request: NextRequest) {
       }
     }
     
-    // 현재 시간 기준으로 예정된 리밸런싱(현재 날짜 이후)과 과거 리밸런싱 구분
-    const now = new Date().toISOString();
-    
     // 포트폴리오 및 리밸런싱 내역 가져오기
     // 1. 사용자의 계정과 연결된 포트폴리오 타입 ID 목록 가져오기
     const { data: accounts, error: accountsError } = await supabaseAdmin
@@ -155,6 +152,15 @@ export async function GET(request: NextRequest) {
       );
     }
     
+    // 원본 데이터 로깅
+    console.log('데이터베이스에서 가져온 모든 리밸런싱 내역:', 
+      rebalancingHistories?.map(h => ({
+        id: h.id,
+        date: h.rebalancing_date,
+        portfolio_type_id: h.portfolio_type_id
+      }))
+    );
+    
     // 리밸런싱 내역이 없는 경우
     if (!rebalancingHistories || rebalancingHistories.length === 0) {
       console.log('리밸런싱 내역이 없습니다.');
@@ -168,12 +174,24 @@ export async function GET(request: NextRequest) {
     }
     
     // 현재 날짜 이후와 이전으로 구분
+    const now = new Date().toISOString();
+    console.log('현재 날짜:', now);
+    
     const current = rebalancingHistories.filter(
       (h: RebalancingHistory) => new Date(h.rebalancing_date) >= new Date(now)
     );
     
     const past = rebalancingHistories.filter(
       (h: RebalancingHistory) => new Date(h.rebalancing_date) < new Date(now)
+    );
+    
+    // 과거 내역 로깅
+    console.log('API에서 필터링된 과거 리밸런싱 내역:', 
+      past.map(h => ({
+        id: h.id,
+        date: h.rebalancing_date,
+        portfolio_type_id: h.portfolio_type_id
+      }))
     );
     
     // 결과 반환

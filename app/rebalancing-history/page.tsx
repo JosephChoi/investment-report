@@ -111,17 +111,22 @@ export default function RebalancingHistoryPage() {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
+        // 예정된 리밸런싱: 오늘 이후 날짜
         const current = data.all.filter((history: RebalancingHistory) => {
           const rebalancingDate = new Date(history.rebalancing_date);
           rebalancingDate.setHours(0, 0, 0, 0);
           return rebalancingDate >= today;
         });
 
+        // 과거 리밸런싱 내역: 오늘 이전 날짜 (월별 제한 없이 모든 내역 표시)
         const past = data.all.filter((history: RebalancingHistory) => {
           const rebalancingDate = new Date(history.rebalancing_date);
           rebalancingDate.setHours(0, 0, 0, 0);
           return rebalancingDate < today;
         });
+
+        // 날짜 내림차순 정렬 (최신 날짜가 먼저 오도록)
+        past.sort((a: RebalancingHistory, b: RebalancingHistory) => new Date(b.rebalancing_date).getTime() - new Date(a.rebalancing_date).getTime());
 
         setRebalancingHistories({
           current,

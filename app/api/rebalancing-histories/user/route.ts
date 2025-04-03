@@ -92,11 +92,51 @@ export async function GET(request: NextRequest) {
     }
     
     // 포트폴리오 및 리밸런싱 내역 가져오기
-    // 1. 사용자의 계정과 연결된 포트폴리오 타입 ID 목록 가져오기
+    // 1. 사용자 정보 조회 (전화번호, 이름 확인)
+    const { data: currentUser, error: userError } = await supabaseAdmin
+      .from('users')
+      .select('email, name, phone')
+      .eq('id', userId)
+      .single();
+      
+    if (userError) {
+      console.error('사용자 정보 조회 오류:', userError);
+      return NextResponse.json(
+        { error: '사용자 정보를 가져오는데 실패했습니다.' },
+        { status: 500 }
+      );
+    }
+    
+    console.log('현재 사용자 정보:', currentUser);
+    
+    // 2. 동일 전화번호/이름을 가진 모든 사용자 ID 찾기 (고객 일원화)
+    let allUserIds = [userId]; // 기본적으로 현재 사용자 ID 포함
+    
+    // 전화번호와 이름이 모두 있는 경우만 관련 사용자 검색
+    if (currentUser?.phone && currentUser?.name) {
+      const { data: relatedUsers, error: relatedUsersError } = await supabaseAdmin
+        .from('users')
+        .select('id')
+        .eq('phone', currentUser.phone)
+        .eq('name', currentUser.name);
+        
+      if (!relatedUsersError && relatedUsers && relatedUsers.length > 0) {
+        // 중복 없이 모든 관련 사용자 ID 추가
+        const relatedUserIds = relatedUsers.map(u => u.id);
+        console.log('전화번호/이름이 일치하는 관련 사용자 ID:', relatedUserIds);
+        
+        // 중복 제거 (Set 사용)
+        allUserIds = [...new Set([...allUserIds, ...relatedUserIds])];
+      }
+    }
+    
+    console.log('처리할 모든 사용자 ID 목록:', allUserIds);
+    
+    // 3. 모든 관련 사용자의 계정 조회
     const { data: accounts, error: accountsError } = await supabaseAdmin
       .from('accounts')
       .select('portfolio_type_id')
-      .eq('user_id', userId);
+      .in('user_id', allUserIds);
     
     if (accountsError) {
       console.error('계정 조회 오류:', accountsError);
@@ -174,16 +214,26 @@ export async function GET(request: NextRequest) {
     }
     
     // 현재 날짜 이후와 이전으로 구분
-    const now = new Date().toISOString();
-    console.log('현재 날짜:', now);
+    const now = new Date();
+    console.log('현재 날짜 객체:', now);
     
-    const current = rebalancingHistories.filter(
-      (h: RebalancingHistory) => new Date(h.rebalancing_date) >= new Date(now)
-    );
+    // 현재 날짜를 YYYY-MM-DD 형식의 문자열로 변환
+    const nowStr = now.toISOString().split('T')[0];
+    console.log('현재 날짜 문자열:', nowStr);
     
-    const past = rebalancingHistories.filter(
-      (h: RebalancingHistory) => new Date(h.rebalancing_date) < new Date(now)
-    );
+    const current = rebalancingHistories.filter((h: RebalancingHistory) => {
+      // 날짜를 YYYY-MM-DD 형식으로 추출
+      const dateStr = h.rebalancing_date.split('T')[0];
+      console.log(`비교: ${dateStr} >= ${nowStr} = ${dateStr >= nowStr}`);
+      return dateStr >= nowStr;
+    });
+    
+    const past = rebalancingHistories.filter((h: RebalancingHistory) => {
+      // 날짜를 YYYY-MM-DD 형식으로 추출
+      const dateStr = h.rebalancing_date.split('T')[0];
+      console.log(`비교: ${dateStr} < ${nowStr} = ${dateStr < nowStr}`);
+      return dateStr < nowStr;
+    });
     
     // 과거 내역 로깅
     console.log('API에서 필터링된 과거 리밸런싱 내역:', 

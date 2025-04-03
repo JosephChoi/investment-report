@@ -121,20 +121,24 @@ export default function RebalancingHistoryPage() {
         today.setHours(0, 0, 0, 0);
         console.log('현재 날짜(기준점):', today);
 
+        // 오늘 날짜를 YYYY-MM-DD 형식으로 변환
+        const todayStr = today.toISOString().split('T')[0];
+        console.log('현재 날짜(문자열):', todayStr);
+
         // 예정된 리밸런싱: 오늘 이후 날짜
         const current = data.all.filter((history: RebalancingHistory) => {
-          const rebalancingDate = new Date(history.rebalancing_date);
-          rebalancingDate.setHours(0, 0, 0, 0);
-          console.log(`리밸런싱 날짜 비교: ${history.rebalancing_date} (변환: ${rebalancingDate}) >= ${today} = ${rebalancingDate >= today}`);
-          return rebalancingDate >= today;
+          // 날짜를 YYYY-MM-DD 형식으로 추출
+          const dateStr = history.rebalancing_date.split('T')[0];
+          console.log(`리밸런싱 날짜 비교 (문자열): ${history.rebalancing_date} (변환: ${dateStr}) >= ${todayStr} = ${dateStr >= todayStr}`);
+          return dateStr >= todayStr;
         });
 
         // 과거 리밸런싱 내역: 오늘 이전 날짜 (월별 제한 없이 모든 내역 표시)
         const past = data.all.filter((history: RebalancingHistory) => {
-          const rebalancingDate = new Date(history.rebalancing_date);
-          rebalancingDate.setHours(0, 0, 0, 0);
-          console.log(`리밸런싱 날짜 비교: ${history.rebalancing_date} (변환: ${rebalancingDate}) < ${today} = ${rebalancingDate < today}`);
-          return rebalancingDate < today;
+          // 날짜를 YYYY-MM-DD 형식으로 추출
+          const dateStr = history.rebalancing_date.split('T')[0];
+          console.log(`리밸런싱 날짜 비교 (문자열): ${history.rebalancing_date} (변환: ${dateStr}) < ${todayStr} = ${dateStr < todayStr}`);
+          return dateStr < todayStr;
         });
 
         // 날짜 내림차순 정렬 (최신 날짜가 먼저 오도록)

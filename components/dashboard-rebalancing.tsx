@@ -39,10 +39,15 @@ export default function DashboardRebalancing({ title = "리밸런싱 안내" }: 
         const today = new Date();
         today.setHours(0, 0, 0, 0); // 오늘 자정을 기준으로 설정
         
+        // 오늘 날짜를 YYYY-MM-DD 형식으로 변환
+        const todayStr = today.toISOString().split('T')[0];
+        console.log('대시보드: 현재 날짜(문자열):', todayStr);
+        
         const upcoming = (data?.all || []).filter((history: RebalancingHistory) => {
-          const rebalancingDate = new Date(history.rebalancing_date);
-          rebalancingDate.setHours(0, 0, 0, 0);
-          return rebalancingDate >= today;
+          // 날짜를 YYYY-MM-DD 형식으로 추출
+          const dateStr = history.rebalancing_date.split('T')[0];
+          // console.log(`대시보드: 리밸런싱 날짜 비교: ${dateStr} >= ${todayStr} = ${dateStr >= todayStr}`);
+          return dateStr >= todayStr;
         });
 
         setUpcomingRebalancing(upcoming);

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Search, Filter, RefreshCw, ArrowLeft } from 'lucide-react';
+import { Plus, Search, Filter, RefreshCw, ArrowLeft, X, Calendar, User, FileText } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { Announcement, AnnouncementFormData } from '@/lib/types';
 import AnnouncementList from '@/components/announcement-list';
@@ -19,6 +19,7 @@ export default function AdminAnnouncements() {
   const [searchTerm, setSearchTerm] = useState('');
   const [importanceFilter, setImportanceFilter] = useState<number | null>(null);
   const [targetFilter, setTargetFilter] = useState<'all' | 'portfolio' | null>(null);
+  const [selectedAnnouncement, setSelectedAnnouncement] = useState<Announcement | null>(null);
   const router = useRouter();
 
   // 관리자 권한 확인
@@ -125,7 +126,7 @@ export default function AdminAnnouncements() {
   };
 
   // 공지사항 생성 핸들러
-  const handleCreateAnnouncement = async (formData: AnnouncementFormData, files?: File[]) => {
+  const handleCreateAnnouncement = async (formData: AnnouncementFormData) => {
     try {
       // 현재 세션 가져오기
       const { data: { session } } = await supabase.auth.getSession();
@@ -133,8 +134,6 @@ export default function AdminAnnouncements() {
       if (!session) {
         throw new Error('인증 세션이 없습니다. 다시 로그인해주세요.');
       }
-      
-      console.log('공지사항 생성 요청 - 사용자 ID:', session.user.id);
       
       // 공지사항 생성 API 호출
       const response = await fetch('/api/announcements', {
@@ -154,11 +153,6 @@ export default function AdminAnnouncements() {
       
       const { data: announcement } = await response.json();
       
-      // 첨부 파일이 있는 경우 업로드
-      if (files && files.length > 0) {
-        await uploadFiles(announcement.id, files);
-      }
-      
       // 폼 닫기 및 목록 새로고침
       setShowForm(false);
       fetchAnnouncements();
@@ -169,7 +163,7 @@ export default function AdminAnnouncements() {
   };
 
   // 공지사항 수정 핸들러
-  const handleUpdateAnnouncement = async (formData: AnnouncementFormData, files?: File[]) => {
+  const handleUpdateAnnouncement = async (formData: AnnouncementFormData) => {
     if (!editingAnnouncement) return;
     
     try {
@@ -193,11 +187,6 @@ export default function AdminAnnouncements() {
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || '공지사항 수정에 실패했습니다.');
-      }
-      
-      // 첨부 파일이 있는 경우 업로드
-      if (files && files.length > 0) {
-        await uploadFiles(editingAnnouncement.id, files);
       }
       
       // 폼 닫기 및 목록 새로고침
@@ -241,58 +230,29 @@ export default function AdminAnnouncements() {
     }
   };
 
-  // 첨부 파일 업로드 함수
-  const uploadFiles = async (announcementId: string, files: File[]) => {
-    // 현재 세션 가져오기
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    if (!session) {
-      throw new Error('인증 세션이 없습니다. 다시 로그인해주세요.');
-    }
-    
-    for (const file of files) {
-      const formData = new FormData();
-      formData.append('announcement_id', announcementId);
-      formData.append('file', file);
-      
-      try {
-        const response = await fetch('/api/announcement-attachments', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`
-          },
-          body: formData,
-        });
-        
-        if (!response.ok) {
-          const errorData = await response.json();
-          console.error('첨부 파일 업로드 오류:', errorData.error);
-        }
-      } catch (err) {
-        console.error('첨부 파일 업로드 오류:', err);
-      }
-    }
-  };
-
   // 공지사항 상세 보기
   const handleViewDetail = (announcement: Announcement) => {
-    // 모달 대신 상세 페이지로 이동
-    router.push(`/announcements/${announcement.id}`);
+    setSelectedAnnouncement(announcement);
   };
 
-  // 공지사항 수정 폼 열기
+  // 공지사항 상세 모달 닫기
+  const handleCloseDetail = () => {
+    setSelectedAnnouncement(null);
+  };
+
+  // 공지사항 수정 핸들러
   const handleEdit = (announcement: Announcement) => {
     setEditingAnnouncement(announcement);
     setShowForm(true);
   };
 
   // 폼 제출 핸들러
-  const handleFormSubmit = async (formData: AnnouncementFormData, files?: File[]) => {
+  const handleFormSubmit = async (formData: AnnouncementFormData, linkUrl?: string) => {
     try {
       if (editingAnnouncement) {
-        await handleUpdateAnnouncement(formData, files);
+        await handleUpdateAnnouncement(formData);
       } else {
-        await handleCreateAnnouncement(formData, files);
+        await handleCreateAnnouncement(formData);
       }
     } catch (err) {
       console.error('폼 제출 오류:', err);
@@ -422,6 +382,33 @@ export default function AdminAnnouncements() {
               onSubmit={handleFormSubmit}
               onCancel={handleFormCancel}
             />
+          </div>
+        </div>
+      )}
+      
+      {/* 공지사항 상세 모달 */}
+      {selectedAnnouncement && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-5xl w-full max-h-[90vh] overflow-hidden">
+            <div className="absolute h-1 w-full bg-blue-500 top-0 left-0"></div>
+            <div className="flex justify-between items-center p-4 border-b">
+              <h2 className="text-xl font-bold text-gray-900">고객 공지사항 화면</h2>
+              <button 
+                onClick={handleCloseDetail}
+                className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+                aria-label="닫기"
+              >
+                <X className="h-5 w-5 text-gray-500" />
+              </button>
+            </div>
+            
+            <div className="h-[80vh]">
+              <iframe 
+                src={`/announcements/${selectedAnnouncement.id}?preview=true`}
+                className="w-full h-full border-none"
+                title="고객 공지사항 보기"
+              ></iframe>
+            </div>
           </div>
         </div>
       )}

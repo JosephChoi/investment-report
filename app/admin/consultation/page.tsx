@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Plus, Search, Edit, Trash, Loader2, X, Check, User, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Plus, Search, Edit, Trash, Loader2, X, Check, User, ChevronRight, Eye } from 'lucide-react';
 import QuillEditor from '@/components/quill-editor';
 import FileUploader from '@/components/file-uploader';
 import FileViewer from '@/components/file-viewer';
@@ -32,6 +32,7 @@ interface Consultation {
     file_size: number;
     file_type: string;
   }[];
+  reference_url?: string;
 }
 
 // 고객 타입 정의
@@ -50,6 +51,22 @@ declare global {
   }
 }
 
+// FormData 인터페이스 정의
+interface FormData {
+  id: string;
+  user_id: string;
+  title: string;
+  content: string;
+  consultation_date: string;
+  reference_url?: string; // 추가: 링크 URL 필드
+  customer: {
+    name: string;
+    email: string;
+    account_number: string;
+    phone: string;
+  };
+}
+
 export default function ConsultationAdmin() {
   const [consultations, setConsultations] = useState<Consultation[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -58,12 +75,13 @@ export default function ConsultationAdmin() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormData>({
     id: '',
     user_id: '',
     title: '',
     content: '',
     consultation_date: '',
+    reference_url: '', // URL 필드 유지
     customer: {
       name: '',
       email: '',
@@ -72,9 +90,10 @@ export default function ConsultationAdmin() {
     }
   });
   
-  // 파일 업로드 관련 상태
-  const [files, setFiles] = useState<File[]>([]);
-  const [attachments, setAttachments] = useState<any[]>([]);
+  // 파일 업로드 관련 상태 제거
+  // const [files, setFiles] = useState<File[]>([]);
+  // const [attachments, setAttachments] = useState<any[]>([]);
+  // const [uploading, setUploading] = useState(false);
   const [uploading, setUploading] = useState(false);
   
   // 페이지네이션 상태
@@ -88,6 +107,10 @@ export default function ConsultationAdmin() {
   const [filteredCustomers, setFilteredCustomers] = useState<Customer[]>([]);
   const customerSearchRef = useRef<HTMLDivElement>(null);
   const [isLoadingCustomers, setIsLoadingCustomers] = useState(false);
+
+  // 상세보기 관련 상태 추가
+  const [selectedConsultation, setSelectedConsultation] = useState<Consultation | null>(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
 
   // 상담 내역 및 고객 데이터 로드
   useEffect(() => {
@@ -281,7 +304,7 @@ export default function ConsultationAdmin() {
       .then(response => response.json())
       .then(data => {
         if (data.exists) {
-          console.log('유효한 사용자 ID:', customer.id);
+          console.log('유효한 사용자 ID 확인됨:', customer.id, '사용자 정보:', data.user);
           setFormData(prev => ({
             ...prev,
             user_id: customer.id,
@@ -297,7 +320,39 @@ export default function ConsultationAdmin() {
           toast.success(`${customer.name} 고객이 선택되었습니다.`);
         } else {
           console.error('유효하지 않은 사용자 ID:', customer.id, data);
-          toast.error('선택한 고객 정보가 유효하지 않습니다. 다른 고객을 선택해주세요.');
+          
+          // 이메일로 추가 확인 시도
+          if (customer.email) {
+            console.log('이메일로 사용자 확인 시도:', customer.email);
+            fetch(`/api/user/check?email=${encodeURIComponent(customer.email)}`)
+              .then(response => response.json())
+              .then(emailData => {
+                if (emailData.exists && emailData.user) {
+                  console.log('이메일로 유효한 사용자 ID 찾음:', emailData.user.id);
+                  setFormData(prev => ({
+                    ...prev,
+                    user_id: emailData.user.id,
+                    customer: {
+                      name: customer.name || '',
+                      email: customer.email || '',
+                      account_number: customer.account_number || '',
+                      phone: customer.phone || ''
+                    }
+                  }));
+                  setShowCustomerSearch(false);
+                  setCustomerSearchTerm('');
+                  toast.success(`${customer.name} 고객이 선택되었습니다.`);
+                } else {
+                  toast.error('선택한 고객 정보가 유효하지 않습니다. 다른 고객을 선택해주세요.');
+                }
+              })
+              .catch(emailError => {
+                console.error('이메일 검증 오류:', emailError);
+                toast.error('고객 정보 확인 중 오류가 발생했습니다.');
+              });
+          } else {
+            toast.error('선택한 고객 정보가 유효하지 않습니다. 다른 고객을 선택해주세요.');
+          }
         }
       })
       .catch(error => {
@@ -388,8 +443,9 @@ export default function ConsultationAdmin() {
       console.log('저장할 상담 내역 데이터:', {
         user_id: formData.user_id,
         title: formData.title,
-        content: formData.content,
-        consultation_date: formData.consultation_date
+        content: formData.content.substring(0, 100) + (formData.content.length > 100 ? '...' : ''),
+        consultation_date: formData.consultation_date,
+        reference_url: formData.reference_url
       });
       
       // 1. 상담 내역 저장
@@ -404,10 +460,11 @@ export default function ConsultationAdmin() {
             user_id: formData.user_id,
             title: formData.title,
             content: formData.content,
-            consultation_date: formData.consultation_date
+            consultation_date: formData.consultation_date,
+            reference_url: formData.reference_url
           };
           
-          console.log('요청 본문:', JSON.stringify(requestBody).substring(0, 200) + '...');
+          console.log('요청 본문:', JSON.stringify(requestBody));
           
           consultationResponse = await fetch(`/api/consultations/${editingId}`, {
             method: 'PUT',
@@ -428,10 +485,11 @@ export default function ConsultationAdmin() {
             user_id: formData.user_id,
             title: formData.title,
             content: formData.content,
-            consultation_date: formData.consultation_date
+            consultation_date: formData.consultation_date,
+            reference_url: formData.reference_url
           };
           
-          console.log('요청 본문:', JSON.stringify(requestBody).substring(0, 200) + '...');
+          console.log('요청 본문:', JSON.stringify(requestBody));
           
           consultationResponse = await fetch('/api/consultations', {
             method: 'POST',
@@ -464,59 +522,6 @@ export default function ConsultationAdmin() {
         console.warn('응답에 data 필드가 없습니다:', result);
       }
       
-      // 2. 파일 첨부 처리
-      if (files.length > 0 && consultationId) {
-        console.log(`${files.length}개의 파일 첨부 처리 시작`);
-        
-        // 기존 첨부 파일 삭제 (수정 시)
-        if (editingId) {
-          try {
-            const { error: deleteError } = await supabase
-              .from('consultation_attachments')
-              .delete()
-              .eq('consultation_id', editingId);
-            
-            if (deleteError) {
-              console.error('기존 첨부 파일 삭제 오류:', deleteError);
-              throw new Error(`기존 첨부 파일 삭제 오류: ${deleteError.message}`);
-            }
-          } catch (error) {
-            console.error('기존 첨부 파일 삭제 중 오류:', error);
-            throw new Error('기존 첨부 파일 삭제 중 오류가 발생했습니다.');
-          }
-        }
-
-        // 새 파일 업로드 및 DB에 저장 (API 엔드포인트 사용)
-        for (const file of files) {
-          try {
-            console.log(`파일 업로드 시작: ${file.name} (${file.size} bytes)`);
-            
-            // FormData 생성
-            const formData = new FormData();
-            formData.append('file', file);
-            formData.append('consultationId', consultationId);
-            
-            // API 호출
-            const response = await fetch('/api/consultation-attachments/upload', {
-              method: 'POST',
-              body: formData
-            });
-            
-            if (!response.ok) {
-              const errorData = await response.json();
-              console.error('파일 업로드 API 오류:', errorData);
-              throw new Error(`파일 업로드 오류: ${errorData.error || response.statusText}`);
-            }
-            
-            const result = await response.json();
-            console.log(`파일 업로드 및 정보 저장 완료: ${file.name}`, result);
-          } catch (error) {
-            console.error('파일 업로드 오류:', error);
-            throw new Error(`파일 업로드 오류: ${error instanceof Error ? error.message : JSON.stringify(error)}`);
-          }
-        }
-      }
-      
       // 성공 메시지 표시
       toast.success(editingId ? '상담 내역이 수정되었습니다.' : '상담 내역이 추가되었습니다.');
       
@@ -543,6 +548,7 @@ export default function ConsultationAdmin() {
       title: '',
       content: '',
       consultation_date: today,
+      reference_url: '', // URL 필드 초기화
       customer: {
         name: '',
         email: '',
@@ -550,7 +556,7 @@ export default function ConsultationAdmin() {
         phone: ''
       }
     });
-    setFiles([]);
+    // setFiles([]); // 파일 관련 상태 초기화 제거
     setEditingId(null);
     setShowForm(false);
   };
@@ -576,6 +582,7 @@ export default function ConsultationAdmin() {
         title: consultation.title,
         content: consultation.content,
         consultation_date: consultation.consultation_date,
+        reference_url: consultation.reference_url || '', // 참조 URL 로드
         customer: {
           name: consultation.users?.name || '',
           email: consultation.users?.email || '',
@@ -584,45 +591,7 @@ export default function ConsultationAdmin() {
         }
       });
       
-      // 첨부 파일 처리
-      if (consultation.consultation_attachments && consultation.consultation_attachments.length > 0) {
-        // 첨부 파일 URL 가져오기
-        const attachmentsWithUrls = await Promise.all(
-          consultation.consultation_attachments.map(async (attachment: any) => {
-            try {
-              const response = await fetch('/api/consultation-attachments', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ file_path: attachment.file_path })
-              });
-              
-              if (response.ok) {
-                const { url } = await response.json();
-                return {
-                  id: attachment.id,
-                  name: attachment.file_name,
-                  size: attachment.file_size,
-                  type: attachment.file_type,
-                  path: attachment.file_path,
-                  url
-                };
-              }
-              return null;
-            } catch (error) {
-              console.error('첨부 파일 URL 가져오기 오류:', error);
-              return null;
-            }
-          })
-        );
-        
-        // null 값 제거
-        const validAttachments = attachmentsWithUrls.filter(Boolean);
-        setAttachments(validAttachments);
-      } else {
-        setAttachments([]);
-      }
+      // 첨부 파일 처리 코드 제거
       
       setEditingId(id);
       setShowForm(true);
@@ -655,9 +624,35 @@ export default function ConsultationAdmin() {
     }
   };
 
-  // 파일 선택 핸들러
-  const handleFilesSelected = (selectedFiles: File[]) => {
-    setFiles(selectedFiles);
+  // 상담 내역 상세보기 핸들러
+  const handleViewDetail = async (consultation: Consultation) => {
+    console.log('상세보기 호출:', consultation);
+    
+    try {
+      // 이미 모든 정보가 있다면 바로 표시
+      if (consultation.users && consultation.consultation_attachments) {
+        setSelectedConsultation(consultation);
+        setShowDetailModal(true);
+        return;
+      }
+      
+      // 필요한 경우 상세 정보 추가 로드
+      setLoading(true);
+      const response = await fetch(`/api/consultations/${consultation.id}`);
+      const result = await response.json();
+      
+      if (!response.ok || !result.data) {
+        throw new Error('상담 내역을 불러오는 중 오류가 발생했습니다.');
+      }
+      
+      setSelectedConsultation(result.data);
+      setShowDetailModal(true);
+    } catch (error) {
+      console.error('상담 내역 상세 조회 오류:', error);
+      toast.error('상담 내역을 불러오는 중 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   // 컴포넌트 마운트 시 초기 설정
@@ -797,7 +792,7 @@ export default function ConsultationAdmin() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">고객명</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">계좌번호</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">제목</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">첨부파일</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">참조 링크</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">관리</th>
               </tr>
             </thead>
@@ -832,14 +827,42 @@ export default function ConsultationAdmin() {
                       {consultation.title}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {consultation.consultation_attachments && consultation.consultation_attachments.length > 0 ? (
-                        <span className="text-blue-500">{consultation.consultation_attachments.length}개</span>
+                      {consultation.reference_url ? (
+                        <a 
+                          href={consultation.reference_url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:underline flex items-center"
+                        >
+                          자세히 보기
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="h-4 w-4 ml-1"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                            />
+                          </svg>
+                        </a>
                       ) : (
                         <span>-</span>
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       <div className="flex space-x-2">
+                        <button
+                          onClick={() => handleViewDetail(consultation)}
+                          className="text-blue-600 hover:text-blue-900"
+                          disabled={loading}
+                        >
+                          <Eye className="h-5 w-5" />
+                        </button>
                         <button
                           onClick={() => handleEdit(consultation.id)}
                           className="text-indigo-600 hover:text-indigo-900"
@@ -1076,35 +1099,23 @@ export default function ConsultationAdmin() {
                   `}</style>
                 </div>
                 
-                {/* 파일 업로드 */}
+                {/* 자세히 보기 링크 추가 */}
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-800 mb-1">첨부 파일</label>
-                  {/* 파일 업로더 컴포넌트로 대체 */}
-                  <FileUploader
-                    onFilesSelected={handleFilesSelected}
-                    maxFiles={5}
-                    acceptedFileTypes=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
-                    maxSizeInMB={10}
+                  <label className="block text-sm font-medium text-gray-800 mb-1">
+                    자세히 보기 링크
+                  </label>
+                  <input
+                    type="url"
+                    name="reference_url"
+                    value={formData.reference_url || ''}
+                    onChange={handleInputChange}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-black"
+                    placeholder="https://example.com"
+                    disabled={uploading}
                   />
-                  
-                  {/* 기존 첨부 파일 목록 (수정 시) */}
-                  {editingId && attachments.length > 0 && (
-                    <div className="mt-4">
-                      <h3 className="text-sm font-medium text-gray-700 mb-2">기존 첨부 파일</h3>
-                      <FileViewer 
-                        files={attachments.map(file => ({
-                          id: file.id,
-                          fileName: file.name,
-                          fileUrl: file.url,
-                          fileType: file.type,
-                          fileSize: file.size
-                        }))}
-                        onDownload={(file) => {
-                          window.open(file.fileUrl, '_blank');
-                        }}
-                      />
-                    </div>
-                  )}
+                  <p className="mt-1 text-xs text-gray-500">
+                    링크를 추가하면 상담 내역에 '자세히 보기' 버튼이 표시됩니다
+                  </p>
                 </div>
               </div>
               
@@ -1127,6 +1138,123 @@ export default function ConsultationAdmin() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* 상담 내역 상세보기 모달 */}
+      {showDetailModal && selectedConsultation && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-bold text-black">상담 내역 상세보기</h2>
+              <button 
+                onClick={() => setShowDetailModal(false)}
+                className="text-gray-700 hover:text-red-700"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+            
+            <div className="space-y-6">
+              {/* 고객 정보 섹션 */}
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h3 className="text-md font-semibold text-gray-800 mb-3">고객 정보</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-gray-600">고객명</p>
+                    <p className="text-black font-medium">{selectedConsultation.users?.name || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">계좌번호</p>
+                    <p className="text-black">{selectedConsultation.users?.account_number || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">이메일</p>
+                    <p className="text-black">{selectedConsultation.users?.email || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">연락처</p>
+                    <p className="text-black">{selectedConsultation.users?.phone || '-'}</p>
+                  </div>
+                </div>
+              </div>
+              
+              {/* 상담 정보 섹션 */}
+              <div>
+                <div className="flex justify-between mb-3">
+                  <h3 className="text-md font-semibold text-gray-800">상담 정보</h3>
+                  <p className="text-sm text-gray-600">
+                    상담일: {formatDate(selectedConsultation.consultation_date)}
+                  </p>
+                </div>
+                
+                <div className="mb-4">
+                  <h4 className="text-lg font-medium text-black">{selectedConsultation.title}</h4>
+                </div>
+                
+                <div className="mb-6 bg-white border border-gray-200 rounded-lg p-4">
+                  <div 
+                    className="prose max-w-none"
+                    dangerouslySetInnerHTML={{ __html: selectedConsultation.content }}
+                  />
+                </div>
+                
+                {/* 참조 링크 */}
+                {selectedConsultation.reference_url && (
+                  <div className="mt-4">
+                    <h3 className="text-md font-semibold text-gray-800 mb-2">참조 링크</h3>
+                    <a
+                      href={selectedConsultation.reference_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline flex items-center"
+                    >
+                      {selectedConsultation.reference_url}
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-4 w-4 ml-1"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                        />
+                      </svg>
+                    </a>
+                  </div>
+                )}
+              </div>
+              
+              {/* 작성/수정 정보 */}
+              <div className="border-t pt-4 text-sm text-gray-500">
+                <p>작성일: {formatDate(selectedConsultation.created_at)}</p>
+                {selectedConsultation.updated_at && selectedConsultation.updated_at !== selectedConsultation.created_at && (
+                  <p>최종 수정일: {formatDate(selectedConsultation.updated_at)}</p>
+                )}
+              </div>
+              
+              {/* 하단 버튼 */}
+              <div className="flex justify-end space-x-3 pt-4 border-t">
+                <button
+                  onClick={() => handleEdit(selectedConsultation.id)}
+                  className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 flex items-center"
+                >
+                  <Edit className="h-4 w-4 mr-2" />
+                  수정하기
+                </button>
+                <button
+                  onClick={() => setShowDetailModal(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-md text-gray-800 hover:bg-gray-50"
+                >
+                  닫기
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

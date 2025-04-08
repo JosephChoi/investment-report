@@ -93,24 +93,26 @@ export default function DashboardAnnouncements() {
   }
 
   return (
-    <Card className="border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden h-full">
-      <CardHeader className="pb-2">
+    <Card className="shadow-sm border border-gray-200 overflow-hidden">
+      <CardHeader className="bg-blue-50 border-b border-blue-100 p-4">
         <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <div className="bg-amber-100 p-1.5 rounded-full mr-2">
-              <Bell className="w-4 h-4 text-amber-600" />
+          <div className="flex items-center space-x-2">
+            <div className="p-1.5 bg-blue-100 rounded-full">
+              <Bell className="h-4 w-4 text-blue-600" />
             </div>
-            <CardTitle className="text-xl text-gray-900">공지사항</CardTitle>
+            <CardTitle className="text-lg font-semibold text-blue-900">공지사항</CardTitle>
           </div>
           <Link 
             href="/announcements" 
-            className="text-sm text-blue-600 hover:text-blue-800 flex items-center"
+            className="text-sm text-blue-600 font-medium flex items-center hover:text-blue-800 transition-colors"
+            passHref
           >
-            <span>전체 보기</span>
+            <span>전체보기</span>
             <ChevronRight className="h-4 w-4 ml-1" />
           </Link>
         </div>
       </CardHeader>
+      
       <CardContent className="pt-6">
         {announcements.length > 0 ? (
           <div className="space-y-2">
@@ -120,7 +122,11 @@ export default function DashboardAnnouncements() {
                 <div 
                   key={announcement.id} 
                   className={`transition-all duration-200 cursor-pointer ${style.bg} border-b last:border-b-0 border-gray-100 -mx-6 px-6 py-2.5 first:pt-0`}
-                  onClick={() => router.push(`/announcements/${announcement.id}`)}
+                  onClick={() => {
+                    // 현재 페이지가 대시보드임을 로컬 스토리지에 저장하고 공지사항으로 이동
+                    localStorage.setItem('redirectFrom', '/dashboard');
+                    router.push(`/announcements/${announcement.id}`);
+                  }}
                 >
                   <div className={`border-l-4 ${style.border} pl-3`}>
                     <div className="flex items-center justify-between">

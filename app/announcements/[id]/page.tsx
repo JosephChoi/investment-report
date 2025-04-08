@@ -17,6 +17,7 @@ interface Announcement {
   created_at: string;
   target_type: 'all' | 'portfolio';
   target_portfolios?: string[];
+  link_url?: string;
 }
 
 // 확장된 공지사항 타입
@@ -29,6 +30,7 @@ interface AnnouncementWithDetails extends Announcement {
     file_url: string;
     file_type: string;
   }>;
+  reference_url?: string;
 }
 
 interface PageProps {
@@ -101,7 +103,27 @@ export default function AnnouncementDetailPage({ params }: PageProps) {
 
   // 뒤로 가기
   const handleGoBack = () => {
-    router.back();
+    // 로컬 스토리지에서 이전 페이지 정보 확인
+    const redirectFrom = typeof window !== 'undefined' ? localStorage.getItem('redirectFrom') : null;
+    
+    if (redirectFrom) {
+      // 로컬 스토리지에서 정보 삭제
+      localStorage.removeItem('redirectFrom');
+      // 저장된 경로로 이동
+      router.push(redirectFrom);
+    } else {
+      // 일반적인 뒤로 가기
+      router.back();
+    }
+  };
+
+  // 대시보드로 이동
+  const handleGoToDashboard = () => {
+    // 로컬 스토리지 정보 삭제 (이미 대시보드로 직접 이동하므로)
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('redirectFrom');
+    }
+    router.push('/dashboard');
   };
 
   if (loading) {
@@ -173,6 +195,13 @@ export default function AnnouncementDetailPage({ params }: PageProps) {
               <ArrowLeft className="h-5 w-5 text-black" />
             </button>
             <h1 className="text-2xl font-bold text-black">공지사항</h1>
+            <div className="flex-grow"></div>
+            <button
+              onClick={handleGoToDashboard}
+              className="px-4 py-2 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-colors duration-300 text-sm font-medium"
+            >
+              대시보드로 돌아가기
+            </button>
           </div>
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-semibold text-black">{announcement.title}</h2>
@@ -235,36 +264,17 @@ export default function AnnouncementDetailPage({ params }: PageProps) {
             />
           </div>
           
-          {announcement.announcement_attachments && announcement.announcement_attachments.length > 0 && (
+          {(announcement.link_url || announcement.reference_url) && (
             <div className="mt-8 border-t pt-6">
-              <h3 className="text-lg font-medium text-black mb-4">첨부 파일</h3>
-              <ul className="space-y-2">
-                {announcement.announcement_attachments.map((attachment: any) => (
-                  <li key={attachment.id}>
-                    <a 
-                      href={attachment.file_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors duration-300"
-                    >
-                      <div className="flex-shrink-0 mr-3">
-                        <FileText className="h-6 w-6 text-blue-500" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-black truncate">
-                          {attachment.file_name}
-                        </p>
-                        <p className="text-xs text-black">
-                          {formatFileSize(attachment.file_size)}
-                        </p>
-                      </div>
-                      <div className="ml-3">
-                        <Download className="h-5 w-5 text-black" />
-                      </div>
-                    </a>
-                  </li>
-                ))}
-              </ul>
+              <a 
+                href={announcement.link_url || announcement.reference_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                자세히 보기
+              </a>
             </div>
           )}
         </div>

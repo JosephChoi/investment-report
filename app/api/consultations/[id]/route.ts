@@ -32,7 +32,7 @@ export async function GET(
     // 사용자 정보 조회
     const { data: userData, error: userError } = await serviceSupabase
       .from('users')
-      .select('id, name, email')
+      .select('id, name, email, account_number, phone')
       .eq('id', consultationData.user_id)
       .single();
 
@@ -58,6 +58,14 @@ export async function GET(
     };
 
     console.log('Successfully fetched consultation details');
+    console.log('상담 내역 단일 조회 결과:', {
+      id: result.id,
+      user_id: result.user_id,
+      title: result.title,
+      reference_url: result.reference_url || '없음',
+      has_attachments: (result.consultation_attachments?.length || 0) > 0
+    });
+    
     return NextResponse.json({ data: result });
   } catch (error) {
     console.error('상담 내역 상세 조회 API 오류:', error);
@@ -73,7 +81,7 @@ export async function PUT(
   try {
     const id = params.id;
     const body = await request.json();
-    const { user_id, title, content, consultation_date } = body;
+    const { user_id, title, content, consultation_date, reference_url } = body;
 
     // 필수 필드 검증
     if (!user_id || !title || !content || !consultation_date) {
@@ -94,6 +102,7 @@ export async function PUT(
         title,
         content,
         consultation_date,
+        reference_url,
         updated_at: new Date().toISOString()
       })
       .eq('id', id)

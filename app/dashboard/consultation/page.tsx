@@ -18,7 +18,8 @@ interface Consultation {
   consultation_date: string;
   created_at: string;
   updated_at?: string;
-  attachments?: {
+  reference_url?: string;
+  consultation_attachments?: {
     id: string;
     file_name: string;
     file_url: string;
@@ -32,16 +33,53 @@ export default function ConsultationPage() {
   const [selectedConsultation, setSelectedConsultation] = useState<Consultation | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isPreview, setIsPreview] = useState(false);
+  const [previewId, setPreviewId] = useState<string | null>(null);
   
   // 페이지네이션 상태
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [limit] = useState(5);
 
-  // 상담 내역 로드
+  // URL 파라미터 확인
   useEffect(() => {
-    fetchConsultations();
+    // 클라이언트 사이드에서만 실행
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const previewParam = params.get('preview');
+      const idParam = params.get('id');
+      
+      if (previewParam === 'true' && idParam) {
+        setIsPreview(true);
+        setPreviewId(idParam);
+        fetchSingleConsultation(idParam);
+      } else {
+        fetchConsultations();
+      }
+    }
   }, [page]);
+
+  // 단일 상담 내역 조회 (미리보기용)
+  const fetchSingleConsultation = async (id: string) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await fetch(`/api/consultations/${id}`);
+      const result = await response.json();
+      
+      if (response.ok && result.data) {
+        setSelectedConsultation(result.data);
+      } else {
+        setError('상담 내역을 불러오는 중 오류가 발생했습니다.');
+      }
+    } catch (err) {
+      console.error('상담 내역 조회 오류:', err);
+      setError('상담 내역을 불러오는 중 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // 사용자의 상담 내역 조회
   const fetchConsultations = async () => {
@@ -49,27 +87,124 @@ export default function ConsultationPage() {
       setLoading(true);
       setError(null);
       
-      // 현재 로그인한 사용자 정보 가져오기
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        setError('로그인이 필요합니다.');
+      // 미리보기 모드인 경우 API 호출 스킵
+      if (isPreview && previewId) {
         return;
       }
       
+      // 현재 로그인한 사용자 정보 가져오기
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      
+      if (userError) {
+        console.error('사용자 정보 가져오기 오류:', userError);
+        setError('사용자 정보를 가져오는 중 오류가 발생했습니다.');
+        return;
+      }
+      
+      if (!user) {
+        console.error('사용자 정보 없음');
+        setError('로그인이 필요합니다.');
+        return;
+      }
+
+      console.log('현재 로그인한 사용자 정보:', { 
+        id: user.id, 
+        email: user.email,
+        provider: user.app_metadata?.provider,
+        created_at: user.created_at
+      });
+      
+      // 사용자 ID 유효성 확인 - Supabase에서 직접 확인
+      try {
+        const { data: userData, error: userCheckError } = await supabase
+          .from('users')
+          .select('id, name, email, phone, account_number')
+          .eq('id', user.id)
+          .single();
+        
+        if (userCheckError) {
+          // 에러가 발생해도 API 호출은 계속 진행
+          console.log('사용자 정보 직접 조회 시 문제가 발생했으나, 상담 내역 조회를 계속합니다:', 
+            userCheckError.message || '사용자 정보 조회 에러');
+        } else {
+          console.log('사용자 정보 직접 조회 결과:', userData);
+        }
+      } catch (checkErr) {
+        // 예외가 발생해도 API 호출은 계속 진행
+        console.log('사용자 정보 직접 조회 중 예외가 발생했으나, 상담 내역 조회를 계속합니다:', 
+          checkErr instanceof Error ? checkErr.message : '알 수 없는 예외');
+      }
+      
       // 사용자의 상담 내역 조회
-      const response = await fetch(`/api/consultations/user/${user.id}?page=${page}&limit=${limit}`);
+      console.log(`상담 내역 API 호출 시작: /api/consultations/user/${user.id}?page=${page}&limit=${limit}`);
+      
+      // 더 자세한 오류 정보를 위해 fetch 옵션 추가
+      const fetchOptions = {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache',
+          'X-Debug-Info': '1' // 디버그 정보 요청
+        }
+      };
+      
+      const response = await fetch(`/api/consultations/user/${user.id}?page=${page}&limit=${limit}`, fetchOptions);
+      
+      // 응답 상태 로깅
+      console.log('상담 내역 API 응답 상태:', response.status, response.statusText);
+      console.log('응답 헤더:', Object.fromEntries([...response.headers.entries()]));
+      
       const result = await response.json();
+      console.log('상담 내역 API 응답 데이터:', result);
+      
+      // 추가 디버깅: 상담 내역의 user_id 출력
+      if (result.data && Array.isArray(result.data)) {
+        console.log('상담 내역 조회 성공:', result.data.length, '개 항목');
+        console.log('상담 내역 user_id 목록:', result.data.map((item: Consultation) => ({
+          id: item.id,
+          user_id: item.user_id,
+          title: item.title.substring(0, 20),
+          reference_url: item.reference_url ? '있음' : '없음'
+        })));
+      } else {
+        console.warn('상담 내역 데이터가 배열이 아니거나 없음:', result);
+      }
       
       if (response.ok) {
-        setConsultations(result.data);
-        setTotalPages(result.pagination.totalPages);
+        if (result.data && Array.isArray(result.data)) {
+          console.log(`${result.data.length}개의 상담 내역 로드됨`);
+          result.data.forEach((item: Consultation, index: number) => {
+            console.log(`상담 내역 #${index + 1}:`, {
+              id: item.id,
+              title: item.title,
+              date: item.consultation_date,
+              user_id: item.user_id,
+              reference_url: item.reference_url || '없음'
+            });
+          });
+          setConsultations(result.data);
+          setTotalPages(result.pagination.totalPages);
+          
+          // 메시지가 있으면 표시
+          if (result.message && result.data.length === 0) {
+            setError(result.message);
+          }
+        } else {
+          console.error('API 응답이 올바른 형식이 아닙니다:', result);
+          setError(result.message || '상담 내역 데이터 형식이 올바르지 않습니다.');
+        }
       } else {
-        setError(result.error || '상담 내역을 불러오는 중 오류가 발생했습니다.');
+        console.error('API 오류 응답:', result);
+        
+        // 오류 메시지 개선
+        const errorMessage = result.error || result.message || '상담 내역을 불러오는 중 오류가 발생했습니다.';
+        const errorDetails = result.details ? ` (${result.details})` : '';
+        
+        setError(`${errorMessage}${errorDetails}`);
       }
     } catch (err) {
       console.error('상담 내역 조회 오류:', err);
-      setError('상담 내역을 불러오는 중 오류가 발생했습니다.');
+      setError('상담 내역을 불러오는 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
     } finally {
       setLoading(false);
     }
@@ -97,6 +232,63 @@ export default function ConsultationPage() {
   const handleCloseDetail = () => {
     setSelectedConsultation(null);
   };
+
+  // 미리보기 모드인 경우 선택된 상담 내역만 표시
+  if (isPreview && selectedConsultation) {
+    return (
+      <div className="min-h-screen bg-white p-6">
+        <div className="bg-white rounded-lg max-w-4xl mx-auto">
+          <div className="mb-6">
+            <h2 className="text-2xl font-bold text-black">{selectedConsultation.title}</h2>
+          </div>
+          
+          <div className="mb-6 flex items-center text-black">
+            <Calendar className="h-5 w-5 mr-2" />
+            <span>상담 날짜: {formatDate(selectedConsultation.consultation_date)}</span>
+          </div>
+          
+          <div className="mb-8">
+            <h3 className="text-lg font-semibold mb-3 text-black">상담 내용</h3>
+            <div 
+              className="prose max-w-none bg-gray-50 p-6 rounded-lg border border-gray-200"
+              dangerouslySetInnerHTML={{ __html: selectedConsultation.content }}
+            />
+          </div>
+          
+          {selectedConsultation.consultation_attachments && selectedConsultation.consultation_attachments.length > 0 && (
+            <div>
+              <h3 className="text-lg font-semibold mb-3 text-black">첨부 파일</h3>
+              <div className="bg-gray-50 p-6 rounded-lg border border-gray-200">
+                <FileViewer 
+                  files={selectedConsultation.consultation_attachments.map(attachment => ({
+                    id: attachment.id,
+                    fileName: attachment.file_name,
+                    fileUrl: attachment.file_url,
+                    fileType: attachment.file_type
+                  }))}
+                />
+              </div>
+            </div>
+          )}
+          
+          {selectedConsultation.reference_url && (
+            <div className="mb-8">
+              <h3 className="text-lg font-semibold mb-3 text-black">관련 자료</h3>
+              <a 
+                href={selectedConsultation.reference_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                관련 자료 보기
+              </a>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-white">
@@ -137,6 +329,12 @@ export default function ConsultationPage() {
                 <FileText className="h-12 w-12 mx-auto text-blue-400 mb-4" />
                 <p className="text-lg font-medium text-black">상담 내역이 없습니다.</p>
                 <p className="text-black mt-2">관리자에게 문의하시면 상담 내역을 확인하실 수 있습니다.</p>
+                <div className="mt-4">
+                  <Link href="/dashboard" className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    <ChevronLeft className="h-4 w-4 mr-2" />
+                    대시보드로 돌아가기
+                  </Link>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -160,20 +358,48 @@ export default function ConsultationPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-black line-clamp-2">
-                    {consultation.content.replace(/<[^>]*>/g, '').substring(0, 150)}
-                    {consultation.content.length > 150 ? '...' : ''}
+                    {typeof consultation.content === 'string' 
+                      ? consultation.content.replace(/<[^>]*>/g, '').substring(0, 150) + (consultation.content.length > 150 ? '...' : '')
+                      : '내용이 없습니다.'}
                   </div>
                 </CardContent>
                 <CardFooter className="border-t border-gray-100 pt-4 flex justify-between items-center">
                   <div className="text-sm text-black">
                     {formatDate(consultation.created_at)}
                   </div>
-                  {consultation.attachments && consultation.attachments.length > 0 && (
-                    <div className="flex items-center text-blue-600">
-                      <FileText className="h-4 w-4 mr-1" />
-                      <span className="text-sm font-medium">첨부파일 {consultation.attachments.length}개</span>
-                    </div>
-                  )}
+                  <div className="flex items-center space-x-3">
+                    {consultation.consultation_attachments && consultation.consultation_attachments.length > 0 && (
+                      <div className="flex items-center text-blue-600">
+                        <FileText className="h-4 w-4 mr-1" />
+                        <span className="text-sm font-medium">첨부파일 {consultation.consultation_attachments.length}개</span>
+                      </div>
+                    )}
+                    {consultation.reference_url && (
+                      <a 
+                        href={consultation.reference_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center text-blue-600 hover:text-blue-800"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-4 w-4 mr-1"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                          />
+                        </svg>
+                        <span className="text-sm font-medium">링크</span>
+                      </a>
+                    )}
+                  </div>
                 </CardFooter>
               </Card>
             ))}
@@ -246,12 +472,12 @@ export default function ConsultationPage() {
                 />
               </div>
               
-              {selectedConsultation.attachments && selectedConsultation.attachments.length > 0 && (
+              {selectedConsultation.consultation_attachments && selectedConsultation.consultation_attachments.length > 0 && (
                 <div>
                   <h3 className="text-lg font-semibold mb-3 text-black">첨부 파일</h3>
                   <div className="bg-gray-50 p-6 rounded-lg border border-gray-200">
                     <FileViewer 
-                      files={selectedConsultation.attachments.map(attachment => ({
+                      files={selectedConsultation.consultation_attachments.map(attachment => ({
                         id: attachment.id,
                         fileName: attachment.file_name,
                         fileUrl: attachment.file_url,
@@ -259,6 +485,21 @@ export default function ConsultationPage() {
                       }))}
                     />
                   </div>
+                </div>
+              )}
+              
+              {selectedConsultation.reference_url && (
+                <div className="mb-8">
+                  <h3 className="text-lg font-semibold mb-3 text-black">관련 자료</h3>
+                  <a 
+                    href={selectedConsultation.reference_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  >
+                    <FileText className="h-4 w-4 mr-2" />
+                    관련 자료 보기
+                  </a>
                 </div>
               )}
             </div>

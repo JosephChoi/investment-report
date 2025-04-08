@@ -96,18 +96,33 @@ export async function POST(request: NextRequest) {
     }
     
     console.log('대상 포트폴리오 ID:', targetPortfolios);
+
+    // 생성할 공지사항 데이터 객체
+    const announcementData: any = {
+      title: body.title,
+      content: body.content,
+      importance_level: body.importance_level,
+      target_type: body.target_type,
+      target_portfolios: targetPortfolios,
+      created_by: userId
+    };
+
+    // 선택 필드: 사용자가 지정한 생성일이 있으면 사용
+    if (body.created_at) {
+      announcementData.created_at = body.created_at;
+    }
+
+    // 선택 필드: 링크 URL이 있으면 추가 (데이터베이스에는 reference_url로 저장)
+    if (body.link_url) {
+      announcementData.reference_url = body.link_url;
+    } else if (body.reference_url) {
+      announcementData.reference_url = body.reference_url;
+    }
     
     // 공지사항 생성
     const { data, error } = await serviceSupabase
       .from('announcements')
-      .insert({
-        title: body.title,
-        content: body.content,
-        importance_level: body.importance_level,
-        target_type: body.target_type,
-        target_portfolios: targetPortfolios,
-        created_by: userId
-      })
+      .insert(announcementData)
       .select()
       .single();
     

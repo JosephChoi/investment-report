@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Announcement } from '@/lib/types';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Bell } from 'lucide-react';
+import { Bell, ArrowLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 export default function AnnouncementsPage() {
@@ -68,6 +68,11 @@ export default function AnnouncementsPage() {
     return html.replace(/<[^>]*>/g, '');
   };
 
+  // 대시보드로 이동
+  const handleGoToDashboard = () => {
+    router.push('/dashboard');
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -99,11 +104,20 @@ export default function AnnouncementsPage() {
         <Card className="border-gray-200 shadow-sm bg-white">
           <CardHeader className="pb-0">
             <div className="absolute h-1 w-full bg-amber-500 top-0 left-0"></div>
-            <div className="flex items-center">
-              <div className="bg-amber-100 p-1.5 rounded-full mr-2">
-                <Bell className="w-4 h-4 text-amber-600" />
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <div className="bg-amber-100 p-1.5 rounded-full mr-2">
+                  <Bell className="w-4 h-4 text-amber-600" />
+                </div>
+                <h2 className="text-xl text-gray-900">공지사항</h2>
               </div>
-              <h2 className="text-xl text-gray-900">공지사항</h2>
+              <button
+                onClick={handleGoToDashboard}
+                className="flex items-center px-4 py-2 text-sm bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-colors duration-300"
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                대시보드로 돌아가기
+              </button>
             </div>
           </CardHeader>
           <CardContent className="pt-4">

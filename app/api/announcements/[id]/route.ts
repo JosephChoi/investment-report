@@ -94,18 +94,37 @@ export async function PUT(
     
     console.log('대상 포트폴리오 ID:', targetPortfolios);
     
+    // 수정할 데이터 객체 생성
+    const updateData: any = {
+      title: body.title,
+      content: body.content,
+      importance_level: body.importance_level,
+      target_type: body.target_type,
+      target_portfolios: targetPortfolios,
+      updated_at: new Date().toISOString()
+    };
+    
+    // 선택 필드: 사용자가 지정한 생성일이 있으면 사용
+    if (body.created_at) {
+      updateData.created_at = body.created_at;
+    }
+    
+    // 선택 필드: 링크 URL이 있으면 추가, 없으면 null로 설정하여 삭제
+    // 데이터베이스에는 reference_url로 저장
+    if (body.link_url) {
+      updateData.reference_url = body.link_url;
+    } else if (body.reference_url) {
+      updateData.reference_url = body.reference_url;
+    } else {
+      updateData.reference_url = null;
+    }
+    
     // 공지사항 수정 - single() 대신 limit(1) 사용
     const { data, error } = await serviceSupabase
       .from('announcements')
-      .update({
-        title: body.title,
-        content: body.content,
-        importance_level: body.importance_level,
-        target_type: body.target_type,
-        target_portfolios: targetPortfolios,
-        updated_at: new Date().toISOString()
-      })
+      .update(updateData)
       .eq('id', announcementId)
+      .order('created_at', { ascending: false })
       .select()
       .limit(1);
     

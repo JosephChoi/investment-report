@@ -110,9 +110,9 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { user_id, title, content, consultation_date } = body;
+    const { user_id, title, content, consultation_date, reference_url } = body;
 
-    console.log('상담 내역 생성 요청:', { user_id, title, consultation_date });
+    console.log('상담 내역 생성 요청:', { user_id, title, consultation_date, reference_url });
 
     // 필수 필드 검증 (user_id는 필수이지만 유효성 검증은 하지 않음)
     if (!title || !content || !consultation_date) {
@@ -148,6 +148,7 @@ export async function POST(request: NextRequest) {
       title,
       content: content.substring(0, 50) + '...',
       consultation_date,
+      reference_url,
       created_at: new Date().toISOString()
     });
     
@@ -158,6 +159,7 @@ export async function POST(request: NextRequest) {
         p_title: title,
         p_content: content,
         p_consultation_date: consultation_date,
+        p_reference_url: reference_url,
         p_created_at: new Date().toISOString()
       });
 
@@ -173,6 +175,7 @@ export async function POST(request: NextRequest) {
             title,
             content,
             consultation_date,
+            reference_url,
             created_at: new Date().toISOString()
           })
           .select();
@@ -206,6 +209,7 @@ export async function POST(request: NextRequest) {
             title,
             content,
             consultation_date,
+            reference_url,
             created_at: new Date().toISOString()
           })
           .select();

@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Announcement, AnnouncementFormData, Portfolio } from '@/lib/types';
 import QuillEditor from './quill-editor';
-import FileUploader from './file-uploader';
 
 interface AnnouncementFormProps {
   announcement?: Announcement;
-  onSubmit: (formData: AnnouncementFormData, files?: File[]) => Promise<void>;
+  onSubmit: (formData: AnnouncementFormData, linkUrl?: string) => Promise<void>;
   onCancel: () => void;
 }
 
@@ -20,7 +19,12 @@ export default function AnnouncementForm({
   const [targetType, setTargetType] = useState<'all' | 'portfolio'>(announcement?.target_type || 'all');
   const [selectedPortfolios, setSelectedPortfolios] = useState<string[]>(announcement?.target_portfolios || []);
   const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
-  const [files, setFiles] = useState<File[]>([]);
+  const [linkUrl, setLinkUrl] = useState<string>(announcement?.link_url || '');
+  const [createDate, setCreateDate] = useState<string>(
+    announcement?.created_at 
+      ? new Date(announcement.created_at).toISOString().split('T')[0]
+      : new Date().toISOString().split('T')[0]
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -71,11 +75,6 @@ export default function AnnouncementForm({
     });
   };
 
-  // 파일 업로드 핸들러
-  const handleFileChange = (newFiles: File[]) => {
-    setFiles(newFiles);
-  };
-
   // 폼 제출 핸들러
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -102,13 +101,16 @@ export default function AnnouncementForm({
         content,
         importance_level: importanceLevel,
         target_type: targetType,
-        target_portfolios: targetType === 'portfolio' ? selectedPortfolios : []
+        target_portfolios: targetType === 'portfolio' ? selectedPortfolios : [],
+        created_at: createDate,
+        link_url: linkUrl.trim(),
+        reference_url: linkUrl.trim()
       };
       
       console.log('공지사항 폼 제출:', formData);
       
       // 폼 제출
-      await onSubmit(formData, files.length > 0 ? files : undefined);
+      await onSubmit(formData, linkUrl.trim() || undefined);
       
       // 폼 초기화
       if (!announcement) {
@@ -117,7 +119,8 @@ export default function AnnouncementForm({
         setImportanceLevel(3);
         setTargetType('all');
         setSelectedPortfolios([]);
-        setFiles([]);
+        setLinkUrl('');
+        setCreateDate(new Date().toISOString().split('T')[0]);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다.');
@@ -149,44 +152,60 @@ export default function AnnouncementForm({
         />
       </div>
       
-      <div>
-        <label className="block text-sm font-medium text-black mb-1">
-          중요도 <span className="text-red-500">*</span>
-        </label>
-        <div className="flex space-x-4">
-          <label className="inline-flex items-center">
-            <input
-              type="radio"
-              name="importance"
-              value="1"
-              checked={importanceLevel === 1}
-              onChange={() => setImportanceLevel(1)}
-              className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300"
-            />
-            <span className="ml-2 text-sm text-red-600">매우 중요</span>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label htmlFor="createDate" className="block text-sm font-medium text-black mb-1">
+            날짜 <span className="text-red-500">*</span>
           </label>
-          <label className="inline-flex items-center">
-            <input
-              type="radio"
-              name="importance"
-              value="2"
-              checked={importanceLevel === 2}
-              onChange={() => setImportanceLevel(2)}
-              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
-            />
-            <span className="ml-2 text-sm text-blue-600">중요</span>
+          <input
+            type="date"
+            id="createDate"
+            value={createDate}
+            onChange={(e) => setCreateDate(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-black"
+            required
+          />
+        </div>
+        
+        <div>
+          <label className="block text-sm font-medium text-black mb-1">
+            중요도 <span className="text-red-500">*</span>
           </label>
-          <label className="inline-flex items-center">
-            <input
-              type="radio"
-              name="importance"
-              value="3"
-              checked={importanceLevel === 3}
-              onChange={() => setImportanceLevel(3)}
-              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
-            />
-            <span className="ml-2 text-sm text-black">보통</span>
-          </label>
+          <div className="flex space-x-4">
+            <label className="inline-flex items-center">
+              <input
+                type="radio"
+                name="importance"
+                value="1"
+                checked={importanceLevel === 1}
+                onChange={() => setImportanceLevel(1)}
+                className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300"
+              />
+              <span className="ml-2 text-sm text-red-600">매우 중요</span>
+            </label>
+            <label className="inline-flex items-center">
+              <input
+                type="radio"
+                name="importance"
+                value="2"
+                checked={importanceLevel === 2}
+                onChange={() => setImportanceLevel(2)}
+                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+              />
+              <span className="ml-2 text-sm text-blue-600">중요</span>
+            </label>
+            <label className="inline-flex items-center">
+              <input
+                type="radio"
+                name="importance"
+                value="3"
+                checked={importanceLevel === 3}
+                onChange={() => setImportanceLevel(3)}
+                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+              />
+              <span className="ml-2 text-sm text-black">보통</span>
+            </label>
+          </div>
         </div>
       </div>
       
@@ -278,15 +297,20 @@ export default function AnnouncementForm({
       </div>
       
       <div>
-        <label className="block text-sm font-medium text-black mb-1">
-          첨부 파일
+        <label htmlFor="linkUrl" className="block text-sm font-medium text-black mb-1">
+          자세히 보기 링크
         </label>
-        <FileUploader
-          onFilesSelected={handleFileChange}
-          maxFiles={5}
-          maxSizeInMB={10}
-          acceptedFileTypes=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
+        <input
+          type="url"
+          id="linkUrl"
+          value={linkUrl}
+          onChange={(e) => setLinkUrl(e.target.value)}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-black"
+          placeholder="https://example.com"
         />
+        <p className="mt-1 text-xs text-gray-500">
+          링크를 추가하면 공지사항에 '자세히 보기' 버튼이 표시됩니다
+        </p>
       </div>
       
       <div className="flex justify-end space-x-3">

@@ -21,49 +21,7 @@ export async function GET(
     // 서비스 역할 키를 사용하는 클라이언트로 변경 (RLS 우회)
     const serviceSupabase = getServiceSupabase();
     
-    // 요청한 사용자의 인증 확인 - Next.js 15 방식으로 수정
-    // cookies()를 await 없이 직접 전달
-    const supabase = createRouteHandlerClient({ cookies });
-    
-    // 세션 확인 (인증 여부 확인)
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    if (!session) {
-      console.error('인증되지 않은 사용자: 세션 없음');
-      
-      // 인증 없이도 상담 내역을 볼 수 있도록 수정
-      // 서비스 역할 키를 사용하여 상담 내역 조회
-      return await getConsultationsWithoutAuth(serviceSupabase, userId, page, limit, offset);
-    }
-    
-    // 요청한 사용자의 역할 확인
-    const { data: userData, error: userError } = await serviceSupabase
-      .from('users')
-      .select('role')
-      .eq('id', session.user.id)
-      .single();
-    
-    if (userError) {
-      console.error('사용자 역할 조회 오류:', userError);
-      // 역할 확인 실패 시에도 상담 내역을 볼 수 있도록 수정
-      return await getConsultationsWithoutAuth(serviceSupabase, userId, page, limit, offset);
-    }
-    
-    const userRole = userData?.role || 'user';
-    console.log('사용자 역할:', userRole);
-    
-    // 관리자가 아니고, 자신의 상담 내역이 아닌 경우 접근 거부
-    if (userRole !== 'admin' && session.user.id !== userId) {
-      console.error('권한 없음: 다른 사용자의 상담 내역에 접근 시도');
-      return NextResponse.json(
-        { error: '다른 사용자의 상담 내역을 볼 수 있는 권한이 없습니다.' },
-        { status: 403 }
-      );
-    }
-    
-    // 일반 사용자(user)는 상담 내역을 볼 수 없음 - 이 부분 제거
-    // 모든 사용자가 자신의 상담 내역을 볼 수 있도록 수정
-    
+    // 로그인 체크와 권한 확인 없이 바로 상담 내역 조회
     return await getConsultationsWithoutAuth(serviceSupabase, userId, page, limit, offset);
   } catch (error) {
     console.error('사용자 상담 내역 API 오류:', error);
@@ -79,23 +37,129 @@ async function getConsultationsWithoutAuth(
   limit: number,
   offset: number
 ) {
-  // 사용자의 상담 내역 조회
-  const { data: consultationsData, error: consultationsError } = await serviceSupabase
-    .from('consultations')
-    .select('*')
-    .eq('user_id', userId)
-    .order('consultation_date', { ascending: false })
-    .range(offset, offset + limit - 1);
+  console.log(`상담 내역 조회 시작 - 사용자 ID: ${userId}, 페이지: ${page}, 한계: ${limit}, 오프셋: ${offset}`);
+  
+  // 먼저 사용자의 이름을 가져옵니다
+  let userName = null;
+  // 상담 내역과 총 개수를 저장할 변수
+  let consultationsData: any[] = [];
+  let totalCount = 0;
 
-  if (consultationsError) {
-    console.error('사용자 상담 내역 조회 오류:', consultationsError);
-    return NextResponse.json({ error: consultationsError.message }, { status: 500 });
+  try {
+    const { data: userData, error: userError } = await serviceSupabase
+      .from('users')
+      .select('id, name, email')
+      .eq('id', userId)
+      .single();
+    
+    if (userError) {
+      console.error('사용자 정보 조회 오류:', userError);
+      console.log('사용자 ID가 유효하지 않을 수 있습니다:', userId);
+    } else if (userData) {
+      console.log('사용자 정보 확인됨:', userData.name, userData.email);
+      userName = userData.name;
+    }
+  } catch (e) {
+    console.warn('사용자 확인 중 오류:', e);
   }
 
-  // 상담 내역이 없는 경우
+  // 사용자 이름이 있으면 이름으로 상담 내역 조회 시도 (더 신뢰할 수 있음)
+  if (userName) {
+    console.log(`사용자 이름(${userName})으로 상담 내역 조회 시도`);
+    
+    try {
+      // 동일한 이름의 사용자 모두 찾기
+      const { data: usersWithSameName, error: sameNameError } = await serviceSupabase
+        .from('users')
+        .select('id, name')
+        .eq('name', userName);
+      
+      if (sameNameError) {
+        console.error('동일 이름 사용자 조회 오류:', sameNameError);
+      } else if (usersWithSameName && usersWithSameName.length > 0) {
+        console.log(`동일 이름(${userName}) 사용자 ${usersWithSameName.length}명 찾음:`, usersWithSameName.map(u => u.id));
+        
+        // 동일 이름 사용자들의 ID 목록 
+        const userIds = usersWithSameName.map(u => u.id);
+        
+        // 이 사용자들의 상담 내역 조회
+        const { data: consultationsByName, error: nameQueryError } = await serviceSupabase
+          .from('consultations')
+          .select('*')
+          .in('user_id', userIds)
+          .order('created_at', { ascending: false })
+          .range(offset, offset + limit - 1);
+        
+        if (nameQueryError) {
+          console.error('이름 기반 상담 내역 조회 오류:', nameQueryError);
+        } else {
+          console.log(`이름 기반 조회 결과: ${consultationsByName?.length || 0}개 상담 내역 발견`);
+          
+          if (consultationsByName && consultationsByName.length > 0) {
+            consultationsData = consultationsByName;
+            
+            // 이름 기반으로 전체 개수 조회
+            const { count: nameBasedCount, error: nameCountError } = await serviceSupabase
+              .from('consultations')
+              .select('*', { count: 'exact', head: true })
+              .in('user_id', userIds);
+            
+            if (nameCountError) {
+              console.error('이름 기반 개수 조회 오류:', nameCountError);
+            } else {
+              console.log(`이름 기반 총 개수: ${nameBasedCount}`);
+              // 전체 개수 정보 저장 (이후 사용)
+              totalCount = nameBasedCount || 0;
+            }
+          }
+        }
+      }
+    } catch (nameError) {
+      console.error('이름 기반 조회 중 오류:', nameError);
+    }
+  }
+  
+  // 이름 기반 조회로 데이터를 찾지 못한 경우에만 ID 기반 조회 시도
   if (!consultationsData || consultationsData.length === 0) {
+    console.log('ID 기반 상담 내역 조회 시도');
+     
+    const { data: idBasedData, error: idQueryError } = await serviceSupabase
+      .from('consultations')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
+     
+    if (idQueryError) {
+      console.error('ID 기반 상담 내역 조회 오류:', idQueryError);
+    } else {
+      console.log(`ID 기반 조회 결과: ${idBasedData?.length || 0}개 상담 내역 발견`);
+      consultationsData = idBasedData || [];
+       
+      // ID 기반으로 전체 개수 조회
+      if (idBasedData && idBasedData.length > 0) {
+        const { count: idBasedCount, error: idCountError } = await serviceSupabase
+          .from('consultations')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', userId);
+        
+        if (idCountError) {
+          console.error('ID 기반 개수 조회 오류:', idCountError);
+        } else {
+          console.log(`ID 기반 총 개수: ${idBasedCount}`);
+          totalCount = idBasedCount || 0;
+        }
+      }
+    }
+  }
+
+  // 모든 시도 후에도 데이터가 없는 경우
+  if (!consultationsData || consultationsData.length === 0) {
+    console.log('모든 검색 방법으로도 상담 내역을 찾지 못했습니다.');
+    
     return NextResponse.json({
       data: [],
+      message: '상담 내역이 없습니다. 관리자에게 문의하세요.',
       pagination: {
         page,
         limit,
@@ -105,42 +169,82 @@ async function getConsultationsWithoutAuth(
     });
   }
 
+  console.log('조회된 상담 내역 ID 목록:', consultationsData.map(c => c.id));
+  consultationsData.forEach((consultation, idx) => {
+    console.log(`상담 내역 #${idx + 1}:`, {
+      id: consultation.id,
+      user_id: consultation.user_id,
+      title: consultation.title,
+      date: consultation.consultation_date,
+      created_at: consultation.created_at
+    });
+  });
+  
+  // 디버깅: 상담 내역 상세 정보 및 URL 체크
+  console.log('상담 내역 상세 처리 전 확인:');
+  consultationsData.forEach((c, i) => {
+    console.log(`[${i}] ID: ${c.id}, 제목: ${c.title}, URL: ${c.reference_url || '없음'}`);
+  });
+
   // 각 상담 내역에 대한 첨부 파일 정보 조회
   const consultationsWithAttachments = await Promise.all(
     consultationsData.map(async (consultation: any) => {
+      // 사용자 정보 조회
+      let userData = null;
+      try {
+        const { data, error } = await serviceSupabase
+          .from('users')
+          .select('id, name, email, account_number, phone')
+          .eq('id', consultation.user_id)
+          .single();
+          
+        if (error) {
+          console.error(`사용자 정보 조회 오류 (user_id: ${consultation.user_id}):`, error);
+        } else {
+          userData = data;
+        }
+      } catch (e) {
+        console.warn(`사용자 정보 조회 중 오류 (consultation_id: ${consultation.id}):`, e);
+      }
+      
       // 첨부 파일 정보 조회
       const { data: attachmentsData, error: attachmentsError } = await serviceSupabase
         .from('consultation_attachments')
-        .select('*')
+        .select('id, file_name, file_url, file_type, file_size')
         .eq('consultation_id', consultation.id);
       
       if (attachmentsError) {
         console.error(`첨부 파일 조회 오류 (consultation_id: ${consultation.id}):`, attachmentsError);
       }
-
-      return {
+      
+      // 데이터 필드 확인 및 구조화
+      const processedConsultation = {
         ...consultation,
-        attachments: attachmentsData || []
+        users: userData,
+        consultation_attachments: attachmentsData || [],
+        reference_url: consultation.reference_url || null // 참조 URL이 없을 경우 명시적으로 null 처리
       };
+      
+      // 상담 내역 디버그
+      console.log(`상담 내역 ${consultation.id} 상세 정보:`, {
+        id: consultation.id,
+        title: consultation.title,
+        reference_url: consultation.reference_url || '없음',
+        has_attachments: (attachmentsData?.length || 0) > 0
+      });
+
+      return processedConsultation;
     })
   );
-
-  // 전체 개수 조회
-  const { count: totalCount, error: countError } = await serviceSupabase
-    .from('consultations')
-    .select('*', { count: 'exact', head: true })
-    .eq('user_id', userId);
-
-  if (countError) {
-    console.error('사용자 상담 내역 개수 조회 오류:', countError);
-  }
-
-  console.log(`사용자(${userId}) 상담 내역 조회 결과:`, {
-    count: consultationsWithAttachments.length,
-    totalCount: totalCount || 0
+  
+  // 응답 데이터에서 reference_url 확인
+  console.log('최종 응답 데이터 reference_url 확인:');
+  consultationsWithAttachments.forEach((c, i) => {
+    console.log(`[${i}] ID: ${c.id}, URL: ${c.reference_url || '없음'}`);
   });
 
-  return NextResponse.json({
+  // 응답 데이터 디버깅
+  const responseData = {
     data: consultationsWithAttachments,
     pagination: {
       page,
@@ -148,5 +252,12 @@ async function getConsultationsWithoutAuth(
       total: totalCount || 0,
       totalPages: Math.ceil((totalCount || 0) / limit)
     }
-  });
+  };
+  
+  console.log('응답 데이터 요약:', JSON.stringify({
+    dataLength: responseData.data.length,
+    pagination: responseData.pagination
+  }));
+  
+  return NextResponse.json(responseData);
 } 

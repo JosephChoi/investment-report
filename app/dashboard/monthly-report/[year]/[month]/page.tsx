@@ -640,10 +640,20 @@ export default function MonthlyReportDetail({ params }: PageProps) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-100 via-gray-50 to-zinc-100">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="mb-8">
+          <div className="mb-8 flex justify-between items-center">
             <Link href="/dashboard/monthly-report" className="inline-flex items-center text-blue-600 hover:text-blue-800 transition-all duration-300 transform hover:-translate-x-1 bg-white/80 backdrop-blur-sm px-4 py-2 rounded-full shadow-md hover:shadow-lg border border-white/20">
               <ChevronLeft className="w-4 h-4 mr-1" />
               <span>월간 리포트 목록으로 돌아가기</span>
+            </Link>
+            
+            <Link href="/dashboard" className="inline-flex items-center text-green-600 hover:text-green-800 transition-all duration-300 transform hover:translate-x-1 bg-white/80 backdrop-blur-sm px-4 py-2 rounded-full shadow-md hover:shadow-lg border border-white/20">
+              <span>대시보드로 이동</span>
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 ml-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="3" width="7" height="7"/>
+                <rect x="14" y="3" width="7" height="7"/>
+                <rect x="14" y="14" width="7" height="7"/>
+                <rect x="3" y="14" width="7" height="7"/>
+              </svg>
             </Link>
           </div>
           
@@ -664,11 +674,21 @@ export default function MonthlyReportDetail({ params }: PageProps) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-100 via-gray-50 to-zinc-100">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* 뒤로가기 버튼 */}
-        <div className="mb-8">
+        {/* 네비게이션 버튼들 */}
+        <div className="mb-8 flex justify-between items-center">
           <Link href="/dashboard/monthly-report" className="inline-flex items-center text-blue-600 hover:text-blue-800 transition-all duration-300 transform hover:-translate-x-1 bg-white/80 backdrop-blur-sm px-4 py-2 rounded-full shadow-md hover:shadow-lg border border-white/20">
             <ChevronLeft className="w-4 h-4 mr-1" />
             <span>월간 리포트 목록으로 돌아가기</span>
+          </Link>
+          
+          <Link href="/dashboard" className="inline-flex items-center text-green-600 hover:text-green-800 transition-all duration-300 transform hover:translate-x-1 bg-white/80 backdrop-blur-sm px-4 py-2 rounded-full shadow-md hover:shadow-lg border border-white/20">
+            <span>대시보드로 이동</span>
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 ml-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="3" width="7" height="7"/>
+              <rect x="14" y="3" width="7" height="7"/>
+              <rect x="14" y="14" width="7" height="7"/>
+              <rect x="3" y="14" width="7" height="7"/>
+            </svg>
           </Link>
         </div>
         

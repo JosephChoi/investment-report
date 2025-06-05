@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Home, RotateCcw, Calendar, Clock } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { RebalancingHistory, Portfolio } from '@/lib/types';
 import RebalancingHistoryList from '@/components/rebalancing-history-list';
@@ -208,68 +208,108 @@ export default function RebalancingHistoryPage() {
   };
 
   return (
-    <div className="min-h-screen bg-white w-full">
-      <div className="max-w-5xl mx-auto px-4 py-8">
-        <div className="mb-8">
-          <Link href="/dashboard" className="inline-flex items-center text-blue-600 hover:text-blue-800 mb-6">
-            <ArrowLeft className="w-4 h-4 mr-1" />
-            <span>대시보드로 돌아가기</span>
-          </Link>
-          <div className="border-b border-gray-200 pb-4">
-            <h1 className="text-2xl font-bold text-black mb-2">리밸런싱 내역 보기</h1>
-            <p className="text-base text-black">보유하신 포트폴리오의 리밸런싱 내역을 확인하실 수 있습니다.</p>
-          </div>
-        </div>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 relative overflow-hidden">
+      {/* 배경 패턴 */}
+      <div className="absolute inset-0 opacity-30">
+        <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+              <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#e5e7eb" strokeWidth="1" opacity="0.5"/>
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#grid)" />
+        </svg>
+      </div>
 
-        {loading ? (
-          <div className="flex justify-center items-center h-64">
-            <div className="w-8 h-8 border-t-2 border-b-2 border-blue-600 rounded-full animate-spin"></div>
-            <span className="ml-2 text-black">데이터 로딩 중...</span>
-          </div>
-        ) : error ? (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <div className="ml-3">
-                <p className="text-red-700">{error}</p>
+      <div className="relative max-w-4xl mx-auto px-4 py-6">
+        {showDetail && selectedRebalancingHistory ? (
+          <RebalancingHistoryDetail
+            rebalancingHistory={selectedRebalancingHistory}
+            onClose={handleCloseDetail}
+          />
+        ) : (
+          <>
+            {/* 네비게이션 */}
+            <div className="flex justify-start items-center mb-6">
+              <Link 
+                href="/dashboard" 
+                className="group flex items-center bg-gradient-to-r from-blue-500 to-purple-600 text-white px-4 py-2 rounded-lg hover:from-blue-600 hover:to-purple-700 transition-all duration-300 transform hover:translate-x-1 shadow-lg hover:shadow-xl"
+              >
+                <span className="font-medium mr-2">대시보드로 이동</span>
+                <Home className="h-5 w-5 group-hover:scale-110 transition-transform duration-300" />
+              </Link>
+            </div>
+
+            {/* 제목 섹션 */}
+            <div className="mb-6">
+              <div className="bg-white/70 backdrop-blur-sm rounded-2xl border-2 border-gray-200/50 shadow-xl p-6 transform transition-all duration-300 hover:shadow-2xl hover:-translate-y-1">
+                <div className="flex items-center mb-2">
+                  <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center mr-3">
+                    <RotateCcw className="h-4 w-4 text-white" />
+                  </div>
+                  <div>
+                    <h1 className="text-2xl font-bold text-gray-800">리밸런싱 내역 보기</h1>
+                    <p className="text-gray-600 mt-1">보유하신 포트폴리오의 리밸런싱 내역을 확인하실 수 있습니다.</p>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-        ) : (
-          <div className="bg-white rounded-lg border border-gray-200">
-            {showDetail && selectedRebalancingHistory ? (
-              <RebalancingHistoryDetail
-                rebalancingHistory={selectedRebalancingHistory}
-                onClose={handleCloseDetail}
-              />
+
+            {loading ? (
+              <div className="space-y-4">
+                {[1, 2].map((i) => (
+                  <div key={i} className="bg-white/70 backdrop-blur-sm rounded-2xl border-2 border-gray-200/50 shadow-xl p-6 animate-pulse">
+                    <div className="h-6 bg-gray-200 rounded w-1/3 mb-4"></div>
+                    <div className="space-y-3">
+                      <div className="h-4 bg-gray-200 rounded w-full"></div>
+                      <div className="h-4 bg-gray-200 rounded w-full"></div>
+                      <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : error ? (
+              <div className="bg-red-50/90 backdrop-blur-sm text-red-700 p-6 rounded-2xl border-2 border-red-200/50 shadow-xl transform transition-all duration-300 hover:shadow-2xl hover:-translate-y-1">
+                <div className="flex items-center mb-2">
+                  <div className="w-8 h-8 bg-gradient-to-r from-red-500 to-pink-500 rounded-full flex items-center justify-center mr-3">
+                    <svg className="h-4 w-4 text-white" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <h2 className="font-bold text-xl">오류 발생</h2>
+                </div>
+                <p className="text-lg ml-11">{error}</p>
+              </div>
             ) : (
-              <>
+              <div className="bg-white/70 backdrop-blur-sm rounded-2xl border-2 border-gray-200/50 shadow-xl overflow-hidden transform transition-all duration-300 hover:shadow-2xl hover:-translate-y-1">
                 {/* 탭 네비게이션 */}
-                <div className="border-b border-gray-200">
+                <div className="border-b border-gray-200/50 bg-gradient-to-r from-gray-50/50 to-blue-50/50">
                   <nav className="-mb-px flex space-x-8 px-6 py-2">
                     <button
-                      className={`py-4 px-1 border-b-2 font-medium text-base ${
+                      className={`py-4 px-1 border-b-2 font-medium text-base transition-all duration-300 ${
                         activeTab === 'current'
                           ? 'border-blue-500 text-blue-600'
-                          : 'border-transparent text-black hover:text-blue-600 hover:border-gray-300'
+                          : 'border-transparent text-gray-700 hover:text-blue-600 hover:border-gray-300'
                       }`}
                       onClick={() => setActiveTab('current')}
                     >
-                      예정된 리밸런싱 ({rebalancingHistories.current.length})
+                      <div className="flex items-center space-x-2">
+                        <Clock className="h-4 w-4" />
+                        <span>예정된 리밸런싱 ({rebalancingHistories.current.length})</span>
+                      </div>
                     </button>
                     <button
-                      className={`py-4 px-1 border-b-2 font-medium text-base ${
+                      className={`py-4 px-1 border-b-2 font-medium text-base transition-all duration-300 ${
                         activeTab === 'past'
                           ? 'border-blue-500 text-blue-600'
-                          : 'border-transparent text-black hover:text-blue-600 hover:border-gray-300'
+                          : 'border-transparent text-gray-700 hover:text-blue-600 hover:border-gray-300'
                       }`}
                       onClick={() => setActiveTab('past')}
                     >
-                      과거 리밸런싱 내역 ({rebalancingHistories.past.length})
+                      <div className="flex items-center space-x-2">
+                        <Calendar className="h-4 w-4" />
+                        <span>과거 리밸런싱 내역 ({rebalancingHistories.past.length})</span>
+                      </div>
                     </button>
                   </nav>
                 </div>
@@ -280,9 +320,9 @@ export default function RebalancingHistoryPage() {
                   portfolios={portfolios}
                   onViewDetail={handleViewDetail}
                 />
-              </>
+              </div>
             )}
-          </div>
+          </>
         )}
       </div>
     </div>

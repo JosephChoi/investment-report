@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Loader2, Calendar, FileText, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Loader2, Calendar, FileText, X, ChevronLeft, ChevronRight, Home, MessageSquare, AlertCircle, ExternalLink } from 'lucide-react';
 // 파일 뷰어 컴포넌트 임포트
 import FileViewer from '@/components/file-viewer';
 import { supabase } from '@/lib/supabase';
@@ -198,13 +198,25 @@ export default function ConsultationPage() {
         
         // 오류 메시지 개선
         const errorMessage = result.error || result.message || '상담 내역을 불러오는 중 오류가 발생했습니다.';
-        const errorDetails = result.details ? ` (${result.details})` : '';
         
-        setError(`${errorMessage}${errorDetails}`);
+        if (response.status === 404) {
+          setError('상담 내역을 찾을 수 없습니다.');
+        } else if (response.status === 403) {
+          setError('접근 권한이 없습니다.');
+        } else if (response.status >= 500) {
+          setError('서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+        } else {
+          setError(errorMessage);
+        }
       }
     } catch (err) {
-      console.error('상담 내역 조회 오류:', err);
-      setError('상담 내역을 불러오는 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+      console.error('상담 내역 조회 네트워크 오류:', err);
+      
+      if (err instanceof TypeError && err.message.includes('fetch')) {
+        setError('네트워크 연결에 문제가 있습니다. 인터넷 연결을 확인해주세요.');
+      } else {
+        setError('상담 내역을 불러오는 중 예상치 못한 오류가 발생했습니다.');
+      }
     } finally {
       setLoading(false);
     }
@@ -213,22 +225,24 @@ export default function ConsultationPage() {
   // 상담 내역 선택 핸들러
   const handleSelectConsultation = async (consultation: Consultation) => {
     try {
-      // 상담 내역 상세 조회 (첨부 파일 포함)
+      console.log('상담 내역 상세 조회 시작:', consultation.id);
+      
       const response = await fetch(`/api/consultations/${consultation.id}`);
       const result = await response.json();
       
       if (response.ok && result.data) {
+        console.log('상담 내역 상세 조회 성공:', result.data);
         setSelectedConsultation(result.data);
       } else {
-        throw new Error('상담 내역을 불러오는 중 오류가 발생했습니다.');
+        console.error('상담 내역 상세 조회 오류:', result);
+        setError('상담 내역 상세 정보를 불러오는 중 오류가 발생했습니다.');
       }
     } catch (err) {
-      console.error('상담 내역 상세 조회 오류:', err);
-      setError('상담 내역을 불러오는 중 오류가 발생했습니다.');
+      console.error('상담 내역 상세 조회 네트워크 오류:', err);
+      setError('상담 내역 상세 정보를 불러오는 중 오류가 발생했습니다.');
     }
   };
 
-  // 상담 내역 상세 모달 닫기
   const handleCloseDetail = () => {
     setSelectedConsultation(null);
   };
@@ -236,138 +250,182 @@ export default function ConsultationPage() {
   // 미리보기 모드인 경우 선택된 상담 내역만 표시
   if (isPreview && selectedConsultation) {
     return (
-      <div className="min-h-screen bg-white p-6">
-        <div className="bg-white rounded-lg max-w-4xl mx-auto">
-          <div className="mb-6">
-            <h2 className="text-2xl font-bold text-black">{selectedConsultation.title}</h2>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 relative overflow-hidden">
+        {/* 배경 패턴 */}
+        <div className="absolute inset-0 opacity-30">
+          <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+                <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#e5e7eb" strokeWidth="1" opacity="0.5"/>
+              </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#grid)" />
+          </svg>
+        </div>
+
+        <div className="relative max-w-4xl mx-auto px-4 py-6">
+          {/* 네비게이션 */}
+          <div className="flex justify-start items-center mb-6">
+            <Link 
+              href="/dashboard" 
+              className="group flex items-center bg-gradient-to-r from-blue-500 to-purple-600 text-white px-4 py-2 rounded-lg hover:from-blue-600 hover:to-purple-700 transition-all duration-300 transform hover:translate-x-1 shadow-lg hover:shadow-xl"
+            >
+              <span className="font-medium mr-2">대시보드로 이동</span>
+              <Home className="h-5 w-5 group-hover:scale-110 transition-transform duration-300" />
+            </Link>
           </div>
-          
-          <div className="mb-6 flex items-center text-black">
-            <Calendar className="h-5 w-5 mr-2" />
-            <span>상담 날짜: {formatDate(selectedConsultation.consultation_date)}</span>
-          </div>
-          
-          <div className="mb-8">
-            <h3 className="text-lg font-semibold mb-3 text-black">상담 내용</h3>
-            <div 
-              className="prose max-w-none bg-gray-50 p-6 rounded-lg border border-gray-200"
-              dangerouslySetInnerHTML={{ __html: selectedConsultation.content }}
-            />
-          </div>
-          
-          {selectedConsultation.consultation_attachments && selectedConsultation.consultation_attachments.length > 0 && (
-            <div>
-              <h3 className="text-lg font-semibold mb-3 text-black">첨부 파일</h3>
-              <div className="bg-gray-50 p-6 rounded-lg border border-gray-200">
-                <FileViewer 
-                  files={selectedConsultation.consultation_attachments.map(attachment => ({
-                    id: attachment.id,
-                    fileName: attachment.file_name,
-                    fileUrl: attachment.file_url,
-                    fileType: attachment.file_type
-                  }))}
-                />
-              </div>
+
+          <div className="bg-white/70 backdrop-blur-sm rounded-2xl border-2 border-gray-200/50 shadow-xl p-6 transform transition-all duration-300">
+            <h2 className="text-2xl font-bold text-gray-900 mb-3">{selectedConsultation.title}</h2>
+            <div className="flex items-center text-gray-600 mb-6">
+              <Calendar className="h-5 w-5 mr-2" />
+              <span>상담 날짜: {formatDate(selectedConsultation.consultation_date)}</span>
             </div>
-          )}
-          
-          {selectedConsultation.reference_url && (
+            
             <div className="mb-8">
-              <h3 className="text-lg font-semibold mb-3 text-black">관련 자료</h3>
-              <a 
-                href={selectedConsultation.reference_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
-                <FileText className="h-4 w-4 mr-2" />
-                관련 자료 보기
-              </a>
+              <h3 className="text-lg font-semibold mb-3 text-gray-800">상담 내용</h3>
+              <div 
+                className="prose max-w-none bg-gray-50 p-6 rounded-lg border border-gray-200"
+                dangerouslySetInnerHTML={{ __html: selectedConsultation.content }}
+              />
             </div>
-          )}
+            
+            {selectedConsultation.consultation_attachments && selectedConsultation.consultation_attachments.length > 0 && (
+              <div>
+                <h3 className="text-lg font-semibold mb-3 text-gray-800">첨부 파일</h3>
+                <div className="bg-gray-50 p-6 rounded-lg border border-gray-200">
+                  <FileViewer 
+                    files={selectedConsultation.consultation_attachments.map(attachment => ({
+                      id: attachment.id,
+                      fileName: attachment.file_name,
+                      fileUrl: attachment.file_url,
+                      fileType: attachment.file_type
+                    }))}
+                  />
+                </div>
+              </div>
+            )}
+            
+            {selectedConsultation.reference_url && (
+              <div className="mb-8">
+                <h3 className="text-lg font-semibold mb-3 text-gray-800">관련 자료</h3>
+                <a 
+                  href={selectedConsultation.reference_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  관련 자료 보기
+                </a>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex items-center mb-6">
-          <Link href="/dashboard" className="flex items-center text-blue-600 hover:text-blue-800 transition-colors">
-            <ChevronLeft className="h-5 w-5 mr-1" />
-            <span>대시보드로 돌아가기</span>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 relative overflow-hidden">
+      {/* 배경 패턴 */}
+      <div className="absolute inset-0 opacity-30">
+        <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+              <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#e5e7eb" strokeWidth="1" opacity="0.5"/>
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#grid)" />
+        </svg>
+      </div>
+
+      <div className="relative max-w-4xl mx-auto px-4 py-6">
+        {/* 네비게이션 */}
+        <div className="flex justify-start items-center mb-6">
+          <Link 
+            href="/dashboard" 
+            className="group flex items-center bg-gradient-to-r from-blue-500 to-purple-600 text-white px-4 py-2 rounded-lg hover:from-blue-600 hover:to-purple-700 transition-all duration-300 transform hover:translate-x-1 shadow-lg hover:shadow-xl"
+          >
+            <span className="font-medium mr-2">대시보드로 이동</span>
+            <Home className="h-5 w-5 group-hover:scale-110 transition-transform duration-300" />
           </Link>
         </div>
 
-        <h1 className="text-3xl font-bold text-black mb-6">상담 내역</h1>
+        {/* 제목 섹션 */}
+        <div className="mb-6">
+          <div className="bg-white/70 backdrop-blur-sm rounded-2xl border-2 border-gray-200/50 shadow-xl p-6 transform transition-all duration-300 hover:shadow-2xl hover:-translate-y-1">
+            <div className="flex items-center mb-2">
+              <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full flex items-center justify-center mr-3">
+                <MessageSquare className="h-4 w-4 text-white" />
+              </div>
+              <h1 className="text-2xl font-bold text-gray-800">상담 내역</h1>
+            </div>
+          </div>
+        </div>
 
         {/* 에러 메시지 */}
         {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg animate-fadeIn">
-            <div className="flex items-center">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-red-500" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-              </svg>
-              <p>{error}</p>
+          <div className="mb-6">
+            <div className="bg-red-50/90 backdrop-blur-sm text-red-700 p-6 rounded-2xl border-2 border-red-200/50 shadow-xl transform transition-all duration-300 hover:shadow-2xl hover:-translate-y-1">
+              <div className="flex items-center mb-2">
+                <div className="w-8 h-8 bg-gradient-to-r from-red-500 to-pink-500 rounded-full flex items-center justify-center mr-3">
+                  <AlertCircle className="h-4 w-4 text-white" />
+                </div>
+                <h2 className="font-bold text-xl">오류 발생</h2>
+              </div>
+              <p className="text-lg ml-11">{error}</p>
             </div>
           </div>
         )}
 
         {loading ? (
-          <div className="flex justify-center py-12">
-            <div className="flex flex-col items-center space-y-4">
-              <div className="w-12 h-12 border-t-4 border-b-4 border-blue-600 rounded-full animate-spin"></div>
-              <p className="text-lg font-medium text-black">상담 내역을 불러오는 중...</p>
-            </div>
-          </div>
-        ) : consultations.length === 0 ? (
-          <Card className="border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-            <div className="absolute h-1 w-full bg-blue-500 top-0 left-0"></div>
-            <CardContent className="pt-8 pb-8">
-              <div className="text-center">
-                <FileText className="h-12 w-12 mx-auto text-blue-400 mb-4" />
-                <p className="text-lg font-medium text-black">상담 내역이 없습니다.</p>
-                <p className="text-black mt-2">관리자에게 문의하시면 상담 내역을 확인하실 수 있습니다.</p>
-                <div className="mt-4">
-                  <Link href="/dashboard" className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                    <ChevronLeft className="h-4 w-4 mr-2" />
-                    대시보드로 돌아가기
-                  </Link>
+          <div className="space-y-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="bg-white/70 backdrop-blur-sm rounded-2xl border-2 border-gray-200/50 shadow-xl p-6 animate-pulse">
+                <div className="h-6 bg-gray-200 rounded w-1/3 mb-4"></div>
+                <div className="space-y-3">
+                  <div className="h-4 bg-gray-200 rounded w-full"></div>
+                  <div className="h-4 bg-gray-200 rounded w-3/4"></div>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            ))}
+          </div>
+        ) : consultations.length === 0 ? (
+          <div className="bg-white/70 backdrop-blur-sm rounded-2xl border-2 border-gray-200/50 shadow-xl p-8 text-center transform transition-all duration-300 hover:shadow-2xl hover:-translate-y-1">
+            <div className="bg-gray-100 p-4 rounded-full mx-auto w-16 h-16 flex items-center justify-center mb-4">
+              <FileText className="h-8 w-8 text-gray-400" />
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">상담 내역이 없습니다</h3>
+            <p className="text-gray-600 mb-6">관리자에게 문의하시면 상담 내역을 확인하실 수 있습니다.</p>
+          </div>
         ) : (
-          <div className="space-y-6">
+          <div className="space-y-4">
             {consultations.map((consultation) => (
-              <Card 
+              <div 
                 key={consultation.id} 
-                className="border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden cursor-pointer"
+                className="bg-white/70 backdrop-blur-sm rounded-2xl border-2 border-gray-200/50 shadow-xl p-6 cursor-pointer transform transition-all duration-300 hover:shadow-2xl hover:-translate-y-1"
                 onClick={() => handleSelectConsultation(consultation)}
               >
-                <div className="absolute h-1 w-full bg-blue-500 top-0 left-0"></div>
-                <CardHeader className="pb-2">
-                  <div className="flex justify-between items-start">
-                    <CardTitle className="text-xl text-black">{consultation.title}</CardTitle>
-                    <div className="flex items-center text-sm text-black">
-                      <Calendar className="h-4 w-4 mr-1" />
-                      {formatDate(consultation.consultation_date)}
-                    </div>
+                <div className="flex justify-between items-start mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900 flex-1 pr-4">{consultation.title}</h3>
+                  <div className="flex items-center text-sm text-gray-500 flex-shrink-0">
+                    <Calendar className="h-4 w-4 mr-1" />
+                    {formatDate(consultation.consultation_date)}
                   </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-black line-clamp-2">
-                    {typeof consultation.content === 'string' 
-                      ? consultation.content.replace(/<[^>]*>/g, '').substring(0, 150) + (consultation.content.length > 150 ? '...' : '')
-                      : '내용이 없습니다.'}
-                  </div>
-                </CardContent>
-                <CardFooter className="border-t border-gray-100 pt-4 flex justify-between items-center">
-                  <div className="text-sm text-black">
+                </div>
+                
+                <div className="text-gray-600 mb-4 line-clamp-2 leading-relaxed">
+                  {typeof consultation.content === 'string' 
+                    ? consultation.content.replace(/<[^>]*>/g, '').substring(0, 150) + (consultation.content.length > 150 ? '...' : '')
+                    : '내용이 없습니다.'}
+                </div>
+                
+                <div className="flex justify-between items-center pt-4 border-t border-gray-200/50">
+                  <div className="text-sm text-gray-500">
                     {formatDate(consultation.created_at)}
                   </div>
-                  <div className="flex items-center space-x-3">
+                  <div className="flex items-center space-x-4">
                     {consultation.consultation_attachments && consultation.consultation_attachments.length > 0 && (
                       <div className="flex items-center text-blue-600">
                         <FileText className="h-4 w-4 mr-1" />
@@ -375,33 +433,14 @@ export default function ConsultationPage() {
                       </div>
                     )}
                     {consultation.reference_url && (
-                      <a 
-                        href={consultation.reference_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center text-blue-600 hover:text-blue-800"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="h-4 w-4 mr-1"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-                          />
-                        </svg>
+                      <div className="flex items-center text-green-600">
+                        <ExternalLink className="h-4 w-4 mr-1" />
                         <span className="text-sm font-medium">링크</span>
-                      </a>
+                      </div>
                     )}
                   </div>
-                </CardFooter>
-              </Card>
+                </div>
+              </div>
             ))}
           </div>
         )}
@@ -413,25 +452,25 @@ export default function ConsultationPage() {
               <button
                 onClick={() => setPage(prev => Math.max(prev - 1, 1))}
                 disabled={page === 1 || loading}
-                className={`flex items-center px-4 py-2 rounded-md transition-colors ${
+                className={`flex items-center px-4 py-2 rounded-lg transition-all duration-300 ${
                   page === 1 || loading
                     ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                    : 'bg-white border border-blue-200 text-blue-600 hover:bg-blue-50'
+                    : 'bg-white/70 backdrop-blur-sm border border-blue-200/50 text-blue-600 hover:bg-blue-50 shadow-md hover:shadow-lg'
                 }`}
               >
                 <ChevronLeft className="h-4 w-4 mr-1" />
                 이전
               </button>
-              <div className="px-4 py-2 bg-white border border-gray-200 rounded-md text-black font-medium">
+              <div className="px-4 py-2 bg-white/70 backdrop-blur-sm border border-gray-200/50 rounded-lg text-gray-800 font-medium shadow-md">
                 {page} / {totalPages}
               </div>
               <button
                 onClick={() => setPage(prev => Math.min(prev + 1, totalPages))}
                 disabled={page === totalPages || loading}
-                className={`flex items-center px-4 py-2 rounded-md transition-colors ${
+                className={`flex items-center px-4 py-2 rounded-lg transition-all duration-300 ${
                   page === totalPages || loading
                     ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                    : 'bg-white border border-blue-200 text-blue-600 hover:bg-blue-50'
+                    : 'bg-white/70 backdrop-blur-sm border border-blue-200/50 text-blue-600 hover:bg-blue-50 shadow-md hover:shadow-lg'
                 }`}
               >
                 다음
@@ -444,64 +483,107 @@ export default function ConsultationPage() {
 
       {/* 상담 내역 상세 모달 */}
       {selectedConsultation && (
-        <div className="fixed inset-0 bg-white flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="absolute h-1 w-full bg-blue-500 top-0 left-0"></div>
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-black">{selectedConsultation.title}</h2>
-                <button 
-                  onClick={handleCloseDetail}
-                  className="p-2 rounded-full hover:bg-gray-100 transition-colors"
-                  aria-label="닫기"
-                >
-                  <X className="h-5 w-5 text-black" />
-                </button>
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden border-2 border-gray-200/50">
+            <div className="relative">
+              {/* 헤더 */}
+              <div className="bg-gradient-to-r from-blue-500 to-purple-600 p-6">
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center">
+                    <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center mr-3">
+                      <MessageSquare className="h-4 w-4 text-white" />
+                    </div>
+                    <h2 className="text-xl font-bold text-white">상담 내역 상세</h2>
+                  </div>
+                  <button 
+                    onClick={handleCloseDetail}
+                    className="p-2 rounded-full hover:bg-white/20 transition-all duration-300"
+                    aria-label="닫기"
+                  >
+                    <X className="h-5 w-5 text-white" />
+                  </button>
+                </div>
               </div>
               
-              <div className="mb-6 flex items-center text-black">
-                <Calendar className="h-5 w-5 mr-2" />
-                <span>상담 날짜: {formatDate(selectedConsultation.consultation_date)}</span>
-              </div>
-              
-              <div className="mb-8">
-                <h3 className="text-lg font-semibold mb-3 text-black">상담 내용</h3>
-                <div 
-                  className="prose max-w-none bg-gray-50 p-6 rounded-lg border border-gray-200"
-                  dangerouslySetInnerHTML={{ __html: selectedConsultation.content }}
-                />
-              </div>
-              
-              {selectedConsultation.consultation_attachments && selectedConsultation.consultation_attachments.length > 0 && (
-                <div>
-                  <h3 className="text-lg font-semibold mb-3 text-black">첨부 파일</h3>
-                  <div className="bg-gray-50 p-6 rounded-lg border border-gray-200">
-                    <FileViewer 
-                      files={selectedConsultation.consultation_attachments.map(attachment => ({
-                        id: attachment.id,
-                        fileName: attachment.file_name,
-                        fileUrl: attachment.file_url,
-                        fileType: attachment.file_type
-                      }))}
-                    />
+              <div className="p-6 overflow-y-auto max-h-[calc(90vh-80px)]">
+                {/* 제목 및 날짜 */}
+                <div className="mb-6">
+                  <h3 className="text-xl font-bold text-gray-900 mb-3">{selectedConsultation.title}</h3>
+                  <div className="flex items-center text-gray-600">
+                    <Calendar className="h-5 w-5 mr-2" />
+                    <span>상담 날짜: {formatDate(selectedConsultation.consultation_date)}</span>
                   </div>
                 </div>
-              )}
-              
-              {selectedConsultation.reference_url && (
-                <div className="mb-8">
-                  <h3 className="text-lg font-semibold mb-3 text-black">관련 자료</h3>
-                  <a 
-                    href={selectedConsultation.reference_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                  >
-                    <FileText className="h-4 w-4 mr-2" />
-                    관련 자료 보기
-                  </a>
+                
+                {/* 상담 내용 */}
+                <div className="mb-6">
+                  <div className="bg-white/70 backdrop-blur-sm rounded-2xl border-2 border-gray-200/50 shadow-xl p-6 transform transition-all duration-300">
+                    <div className="flex items-center mb-4">
+                      <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center mr-3">
+                        <FileText className="h-4 w-4 text-white" />
+                      </div>
+                      <h3 className="text-lg font-bold text-gray-800">상담 내용</h3>
+                    </div>
+                    <div className="ml-11">
+                      <div 
+                        className="prose max-w-none bg-gray-50/80 p-6 rounded-xl border border-gray-200/50 text-gray-700 leading-relaxed"
+                        dangerouslySetInnerHTML={{ __html: selectedConsultation.content }}
+                      />
+                    </div>
+                  </div>
                 </div>
-              )}
+                
+                {/* 첨부 파일 */}
+                {selectedConsultation.consultation_attachments && selectedConsultation.consultation_attachments.length > 0 && (
+                  <div className="mb-6">
+                    <div className="bg-white/70 backdrop-blur-sm rounded-2xl border-2 border-gray-200/50 shadow-xl p-6 transform transition-all duration-300">
+                      <div className="flex items-center mb-4">
+                        <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center mr-3">
+                          <FileText className="h-4 w-4 text-white" />
+                        </div>
+                        <h3 className="text-lg font-bold text-gray-800">첨부 파일</h3>
+                      </div>
+                      <div className="ml-11">
+                        <div className="bg-gray-50/80 p-6 rounded-xl border border-gray-200/50">
+                          <FileViewer 
+                            files={selectedConsultation.consultation_attachments.map(attachment => ({
+                              id: attachment.id,
+                              fileName: attachment.file_name,
+                              fileUrl: attachment.file_url,
+                              fileType: attachment.file_type
+                            }))}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {/* 관련 자료 */}
+                {selectedConsultation.reference_url && (
+                  <div className="mb-6">
+                    <div className="bg-white/70 backdrop-blur-sm rounded-2xl border-2 border-gray-200/50 shadow-xl p-6 transform transition-all duration-300">
+                      <div className="flex items-center mb-4">
+                        <div className="w-8 h-8 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full flex items-center justify-center mr-3">
+                          <ExternalLink className="h-4 w-4 text-white" />
+                        </div>
+                        <h3 className="text-lg font-bold text-gray-800">관련 자료</h3>
+                      </div>
+                      <div className="ml-11">
+                        <a 
+                          href={selectedConsultation.reference_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="w-full inline-flex items-center justify-center bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
+                        >
+                          <ExternalLink className="w-5 h-5 mr-2" />
+                          관련 자료 보기
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>

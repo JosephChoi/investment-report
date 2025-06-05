@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ChevronLeft, FileText } from 'lucide-react';
+import { ChevronLeft, FileText, Home } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { formatCurrency } from '@/lib/utils';
@@ -486,9 +486,12 @@ export default function MonthlyReport() {
     return (
       <div className="container mx-auto px-4 py-8 bg-gray-50 min-h-screen">
         <div className="mb-6">
-          <Link href="/dashboard" className="inline-flex items-center text-gray-700 hover:text-gray-900">
-            <ChevronLeft className="w-4 h-4 mr-2" />
-            <span>대시보드로 돌아가기</span>
+          <Link 
+            href="/dashboard" 
+            className="group inline-flex items-center bg-gradient-to-r from-blue-500 to-purple-600 text-white px-4 py-2 rounded-lg hover:from-blue-600 hover:to-purple-700 transition-all duration-300 transform hover:translate-x-1 shadow-lg hover:shadow-xl"
+          >
+            <span className="font-medium mr-2">대시보드로 이동</span>
+            <Home className="h-5 w-5 group-hover:scale-110 transition-transform duration-300" />
           </Link>
         </div>
         
@@ -512,9 +515,12 @@ export default function MonthlyReport() {
     <div className="min-h-screen bg-gradient-to-br from-slate-100 via-gray-50 to-zinc-100">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-10">
-          <Link href="/dashboard" className="inline-flex items-center text-blue-600 hover:text-blue-800 transition-all duration-300 transform hover:-translate-x-1 bg-white/80 backdrop-blur-sm px-4 py-2 rounded-full shadow-md hover:shadow-lg">
-            <ChevronLeft className="w-4 h-4 mr-1" />
-            <span>대시보드로 돌아가기</span>
+          <Link 
+            href="/dashboard" 
+            className="group inline-flex items-center bg-gradient-to-r from-blue-500 to-purple-600 text-white px-4 py-2 rounded-lg hover:from-blue-600 hover:to-purple-700 transition-all duration-300 transform hover:translate-x-1 shadow-lg hover:shadow-xl"
+          >
+            <span className="font-medium mr-2">대시보드로 이동</span>
+            <Home className="h-5 w-5 group-hover:scale-110 transition-transform duration-300" />
           </Link>
         </div>
         

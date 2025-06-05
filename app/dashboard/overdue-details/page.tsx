@@ -124,18 +124,10 @@ export default function OverdueDetailsPage() {
 
       <div className="relative max-w-4xl mx-auto px-4 py-6">
         {/* 네비게이션 */}
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex justify-start items-center mb-6">
           <Link 
             href="/dashboard" 
-            className="group flex items-center text-blue-600 hover:text-blue-800 transition-all duration-300 transform hover:-translate-x-1"
-          >
-            <ArrowLeft className="h-5 w-5 mr-2 group-hover:scale-110 transition-transform duration-300" />
-            <span className="font-medium">뒤로가기</span>
-          </Link>
-          
-          <Link 
-            href="/dashboard" 
-            className="group flex items-center bg-gradient-to-r from-green-500 to-emerald-600 text-white px-4 py-2 rounded-lg hover:from-green-600 hover:to-emerald-700 transition-all duration-300 transform hover:translate-x-1 shadow-lg hover:shadow-xl"
+            className="group flex items-center bg-gradient-to-r from-blue-500 to-purple-600 text-white px-4 py-2 rounded-lg hover:from-blue-600 hover:to-purple-700 transition-all duration-300 transform hover:translate-x-1 shadow-lg hover:shadow-xl"
           >
             <span className="font-medium mr-2">대시보드로 이동</span>
             <Home className="h-5 w-5 group-hover:scale-110 transition-transform duration-300" />

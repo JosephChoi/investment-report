@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { AlertTriangle, FileText, Download, ArrowLeft } from 'lucide-react';
+import { AlertTriangle, FileText, Download, ArrowLeft, Home, Clock, Users, Target, ExternalLink } from 'lucide-react';
 import { formatFileSize } from '@/lib/utils';
 import Link from 'next/link';
 import React from 'react';
@@ -84,11 +84,26 @@ export default function AnnouncementDetailPage({ params }: PageProps) {
   }, [id]);
 
   // 중요도에 따른 스타일 클래스
-  const importanceTextClass = (level: number) => {
+  const getImportanceStyle = (level: number) => {
     switch (level) {
-      case 1: return 'text-red-600';
-      case 2: return 'text-blue-600';
-      default: return 'text-gray-600';
+      case 1: return {
+        color: 'red',
+        bg: 'bg-red-100',
+        text: 'text-red-800',
+        border: 'border-red-200'
+      };
+      case 2: return {
+        color: 'amber',
+        bg: 'bg-amber-100',
+        text: 'text-amber-800',
+        border: 'border-amber-200'
+      };
+      default: return {
+        color: 'gray',
+        bg: 'bg-gray-100',
+        text: 'text-gray-800',
+        border: 'border-gray-200'
+      };
     }
   };
 
@@ -101,38 +116,27 @@ export default function AnnouncementDetailPage({ params }: PageProps) {
     }
   };
 
-  // 뒤로 가기
-  const handleGoBack = () => {
-    // 로컬 스토리지에서 이전 페이지 정보 확인
-    const redirectFrom = typeof window !== 'undefined' ? localStorage.getItem('redirectFrom') : null;
-    
-    if (redirectFrom) {
-      // 로컬 스토리지에서 정보 삭제
-      localStorage.removeItem('redirectFrom');
-      // 저장된 경로로 이동
-      router.push(redirectFrom);
-    } else {
-      // 일반적인 뒤로 가기
-      router.back();
-    }
-  };
-
-  // 대시보드로 이동
-  const handleGoToDashboard = () => {
-    // 로컬 스토리지 정보 삭제 (이미 대시보드로 직접 이동하므로)
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('redirectFrom');
-    }
-    router.push('/dashboard');
-  };
-
   if (loading) {
     return (
-      <div className="container mx-auto px-4 py-8 max-w-4xl">
-        <div className="bg-white rounded-lg shadow-xl p-6">
-          <div className="flex justify-center items-center h-64">
-            <div className="w-12 h-12 border-t-4 border-b-4 border-blue-600 rounded-full animate-spin"></div>
-            <span className="ml-3 text-lg text-gray-600">로딩 중...</span>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 relative overflow-hidden">
+        {/* 배경 패턴 */}
+        <div className="absolute inset-0 opacity-30">
+          <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+                <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#e5e7eb" strokeWidth="1" opacity="0.5"/>
+              </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#grid)" />
+          </svg>
+        </div>
+
+        <div className="relative max-w-4xl mx-auto px-4 py-6">
+          <div className="bg-white/70 backdrop-blur-sm rounded-2xl border-2 border-gray-200/50 shadow-xl p-6">
+            <div className="flex justify-center items-center h-64">
+              <div className="w-12 h-12 border-t-4 border-b-4 border-blue-600 rounded-full animate-spin"></div>
+              <span className="ml-3 text-lg text-gray-600">로딩 중...</span>
+            </div>
           </div>
         </div>
       </div>
@@ -141,22 +145,37 @@ export default function AnnouncementDetailPage({ params }: PageProps) {
 
   if (error) {
     return (
-      <div className="container mx-auto px-4 py-8 max-w-4xl">
-        <div className="bg-white rounded-lg shadow-xl p-6">
-          <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg">
-            <div className="flex items-center">
-              <AlertTriangle className="h-5 w-5 mr-2" />
-              <p>{error}</p>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 relative overflow-hidden">
+        {/* 배경 패턴 */}
+        <div className="absolute inset-0 opacity-30">
+          <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+                <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#e5e7eb" strokeWidth="1" opacity="0.5"/>
+              </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#grid)" />
+          </svg>
+        </div>
+
+        <div className="relative max-w-4xl mx-auto px-4 py-6">
+          <div className="bg-red-50/90 backdrop-blur-sm text-red-700 p-6 rounded-2xl border-2 border-red-200/50 shadow-xl transform transition-all duration-300 hover:shadow-2xl hover:-translate-y-1">
+            <div className="flex items-center mb-2">
+              <div className="w-8 h-8 bg-gradient-to-r from-red-500 to-pink-500 rounded-full flex items-center justify-center mr-3">
+                <AlertTriangle className="h-4 w-4 text-white" />
+              </div>
+              <h2 className="font-bold text-xl">오류 발생</h2>
             </div>
-          </div>
-          <div className="mt-6">
-            <button
-              onClick={handleGoBack}
-              className="flex items-center px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-md text-gray-800 transition-colors duration-300"
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              뒤로 가기
-            </button>
+            <p className="text-lg ml-11">{error}</p>
+            <div className="mt-6 ml-11">
+              <Link 
+                href="/announcements" 
+                className="inline-flex items-center bg-gradient-to-r from-blue-500 to-purple-600 text-white px-4 py-2 rounded-lg hover:from-blue-600 hover:to-purple-700 transition-all duration-300 transform hover:translate-x-1 shadow-lg hover:shadow-xl"
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                공지사항 목록으로
+              </Link>
+            </div>
           </div>
         </div>
       </div>
@@ -165,119 +184,190 @@ export default function AnnouncementDetailPage({ params }: PageProps) {
 
   if (!announcement) {
     return (
-      <div className="container mx-auto px-4 py-8 max-w-4xl">
-        <div className="bg-white rounded-lg shadow-xl p-6 text-center">
-          <p className="text-gray-500">공지사항을 찾을 수 없습니다.</p>
-          <div className="mt-6">
-            <button
-              onClick={handleGoBack}
-              className="flex items-center px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-md text-gray-800 transition-colors duration-300"
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 relative overflow-hidden">
+        {/* 배경 패턴 */}
+        <div className="absolute inset-0 opacity-30">
+          <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+                <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#e5e7eb" strokeWidth="1" opacity="0.5"/>
+              </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#grid)" />
+          </svg>
+        </div>
+
+        <div className="relative max-w-4xl mx-auto px-4 py-6">
+          <div className="bg-white/70 backdrop-blur-sm rounded-2xl border-2 border-gray-200/50 shadow-xl p-6 text-center">
+            <p className="text-gray-500 text-lg mb-6">공지사항을 찾을 수 없습니다.</p>
+            <Link 
+              href="/announcements" 
+              className="inline-flex items-center bg-gradient-to-r from-blue-500 to-purple-600 text-white px-4 py-2 rounded-lg hover:from-blue-600 hover:to-purple-700 transition-all duration-300 transform hover:translate-x-1 shadow-lg hover:shadow-xl"
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
-              뒤로 가기
-            </button>
+              공지사항 목록으로
+            </Link>
           </div>
         </div>
       </div>
     );
   }
 
+  const style = getImportanceStyle(announcement.importance_level);
+
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
-      <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
-        {/* 헤더 */}
-        <div className="border-b border-gray-200 p-6">
-          <div className="flex items-center mb-2">
-            <button
-              onClick={handleGoBack}
-              className="mr-4 p-2 rounded-full hover:bg-gray-100 transition-colors duration-300"
-            >
-              <ArrowLeft className="h-5 w-5 text-black" />
-            </button>
-            <h1 className="text-2xl font-bold text-black">공지사항</h1>
-            <div className="flex-grow"></div>
-            <button
-              onClick={handleGoToDashboard}
-              className="px-4 py-2 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-colors duration-300 text-sm font-medium"
-            >
-              대시보드로 돌아가기
-            </button>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 relative overflow-hidden">
+      {/* 배경 패턴 */}
+      <div className="absolute inset-0 opacity-30">
+        <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+              <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#e5e7eb" strokeWidth="1" opacity="0.5"/>
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#grid)" />
+        </svg>
+      </div>
+
+      <div className="relative max-w-4xl mx-auto px-4 py-6">
+        {/* 네비게이션 */}
+        <div className="flex justify-between items-center mb-6">
+          <Link 
+            href="/announcements" 
+            className="group flex items-center bg-gradient-to-r from-blue-500 to-purple-600 text-white px-4 py-2 rounded-lg hover:from-blue-600 hover:to-purple-700 transition-all duration-300 transform hover:translate-x-1 shadow-lg hover:shadow-xl"
+          >
+            <ArrowLeft className="h-5 w-5 group-hover:scale-110 transition-transform duration-300 mr-2" />
+            <span className="font-medium">공지사항 목록으로</span>
+          </Link>
+          <Link 
+            href="/dashboard" 
+            className="group flex items-center bg-gradient-to-r from-blue-500 to-purple-600 text-white px-4 py-2 rounded-lg hover:from-blue-600 hover:to-purple-700 transition-all duration-300 transform hover:translate-x-1 shadow-lg hover:shadow-xl"
+          >
+            <span className="font-medium mr-2">대시보드로 이동</span>
+            <Home className="h-5 w-5 group-hover:scale-110 transition-transform duration-300" />
+          </Link>
+        </div>
+
+        {/* 공지사항 제목 섹션 */}
+        <div className="mb-6">
+          <div className="bg-white/70 backdrop-blur-sm rounded-2xl border-2 border-gray-200/50 shadow-xl p-6 transform transition-all duration-300 hover:shadow-2xl hover:-translate-y-1">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center">
+                <div className="w-8 h-8 bg-gradient-to-r from-amber-500 to-orange-500 rounded-full flex items-center justify-center mr-3">
+                  <FileText className="h-4 w-4 text-white" />
+                </div>
+                <h1 className="text-2xl font-bold text-gray-800">공지사항</h1>
+              </div>
+              <span className={`px-4 py-2 text-sm font-semibold rounded-full ${style.bg} ${style.text} ${style.border} border`}>
+                {importanceLabel(announcement.importance_level)}
+              </span>
+            </div>
+            <h2 className="text-xl font-semibold text-gray-900 leading-tight">{announcement.title}</h2>
           </div>
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-black">{announcement.title}</h2>
-            <div>
-              {announcement.importance_level === 1 ? (
-                <span className="px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full bg-red-100 text-red-800">
-                  매우 중요
+        </div>
+
+        {/* 공지사항 정보 섹션 */}
+        <div className="mb-6">
+          <div className="bg-white/70 backdrop-blur-sm rounded-2xl border-2 border-gray-200/50 shadow-xl p-6 transform transition-all duration-300 hover:shadow-2xl hover:-translate-y-1">
+            <div className="flex items-center mb-4">
+              <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full flex items-center justify-center mr-3">
+                <Clock className="h-4 w-4 text-white" />
+              </div>
+              <h3 className="text-lg font-bold text-gray-800">공지 정보</h3>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex items-center text-gray-700">
+                <Clock className="h-4 w-4 mr-2 text-gray-500" />
+                <span className="text-sm">
+                  {new Date(announcement.created_at).toLocaleDateString('ko-KR', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                  })}
                 </span>
-              ) : announcement.importance_level === 2 ? (
-                <span className="px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-                  중요
+              </div>
+              <div className="flex items-center text-gray-700">
+                <Target className="h-4 w-4 mr-2 text-gray-500" />
+                <span className="text-sm">
+                  {announcement.target_type === 'all' 
+                    ? '전체 공지' 
+                    : '특정 포트폴리오 공지'}
                 </span>
-              ) : (
-                <span className="px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
-                  보통
-                </span>
-              )}
+              </div>
             </div>
           </div>
         </div>
-        
-        {/* 본문 */}
-        <div className="p-6">
-          <div className="flex items-center text-sm text-black mb-6">
-            <span className="mr-2">
-              {new Date(announcement.created_at).toLocaleDateString('ko-KR', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-              })}
-            </span>
-            <span className="mx-2">•</span>
-            <span>
-              {announcement.target_type === 'all' 
-                ? '전체 공지' 
-                : '특정 포트폴리오 공지'}
-            </span>
-          </div>
-          
-          {announcement.target_type === 'portfolio' && announcement.portfolio_details && (
-            <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-100">
-              <h3 className="text-sm font-medium text-blue-800 mb-2">대상 포트폴리오</h3>
-              <div className="flex flex-wrap gap-2">
+
+        {/* 대상 포트폴리오 섹션 */}
+        {announcement.target_type === 'portfolio' && announcement.portfolio_details && (
+          <div className="mb-6">
+            <div className="bg-white/70 backdrop-blur-sm rounded-2xl border-2 border-gray-200/50 shadow-xl p-6 transform transition-all duration-300 hover:shadow-2xl hover:-translate-y-1">
+              <div className="flex items-center mb-4">
+                <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center mr-3">
+                  <Users className="h-4 w-4 text-white" />
+                </div>
+                <h3 className="text-lg font-bold text-gray-800">대상 포트폴리오</h3>
+              </div>
+              
+              <div className="flex flex-wrap gap-3">
                 {announcement.portfolio_details.map((portfolio: any) => (
                   <span 
                     key={portfolio.id}
-                    className="px-3 py-1 bg-white text-blue-700 text-sm rounded-full border border-blue-200 shadow-sm"
+                    className="px-4 py-2 bg-blue-100 text-blue-800 text-sm font-medium rounded-full border border-blue-200 shadow-sm"
                   >
                     {portfolio.name}
                   </span>
                 ))}
               </div>
             </div>
-          )}
-          
-          <div className="prose max-w-none">
-            <div 
-              dangerouslySetInnerHTML={{ __html: announcement.content }} 
-              className="text-black leading-relaxed"
-            />
           </div>
-          
-          {(announcement.link_url || announcement.reference_url) && (
-            <div className="mt-8 border-t pt-6">
-              <a 
-                href={announcement.link_url || announcement.reference_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
-                <FileText className="h-4 w-4 mr-2" />
-                자세히 보기
-              </a>
+        )}
+        
+        {/* 공지사항 내용 섹션 */}
+        <div className="mb-6">
+          <div className="bg-white/70 backdrop-blur-sm rounded-2xl border-2 border-gray-200/50 shadow-xl p-6 transform transition-all duration-300 hover:shadow-2xl hover:-translate-y-1">
+            <div className="flex items-center mb-4">
+              <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center mr-3">
+                <FileText className="h-4 w-4 text-white" />
+              </div>
+              <h3 className="text-lg font-bold text-gray-800">공지 내용</h3>
             </div>
-          )}
+            
+            <div className="prose max-w-none">
+              <div 
+                dangerouslySetInnerHTML={{ __html: announcement.content }} 
+                className="text-gray-700 leading-relaxed"
+              />
+            </div>
+          </div>
         </div>
+        
+                 {/* 관련 링크 섹션 */}
+         {(announcement.link_url || announcement.reference_url) && (
+           <div className="mb-6">
+             <div className="bg-white/70 backdrop-blur-sm rounded-2xl border-2 border-gray-200/50 shadow-xl p-6 transform transition-all duration-300 hover:shadow-2xl hover:-translate-y-1">
+               <div className="flex items-center mb-4">
+                 <div className="w-8 h-8 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full flex items-center justify-center mr-3">
+                   <ExternalLink className="h-4 w-4 text-white" />
+                 </div>
+                 <h3 className="text-lg font-bold text-gray-800">관련 링크</h3>
+               </div>
+               
+               <div className="ml-11">
+                 <a 
+                   href={announcement.link_url || announcement.reference_url}
+                   target="_blank"
+                   rel="noopener noreferrer"
+                   className="w-full inline-flex items-center justify-center bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
+                 >
+                   <ExternalLink className="w-5 h-5 mr-2" />
+                   공지사항 자세히 보기
+                 </a>
+               </div>
+             </div>
+           </div>
+         )}
       </div>
     </div>
   );

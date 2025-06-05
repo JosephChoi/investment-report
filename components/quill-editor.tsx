@@ -7,9 +7,11 @@ interface QuillEditorProps {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
+  height?: string;
+  minHeight?: string;
 }
 
-export default function QuillEditor({ value, onChange, placeholder = '내용을 입력하세요...' }: QuillEditorProps) {
+export default function QuillEditor({ value, onChange, placeholder = '내용을 입력하세요...', height, minHeight }: QuillEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
   const quillInstanceRef = useRef<any>(null);
   const [editorValue, setEditorValue] = useState(value);
@@ -164,7 +166,11 @@ export default function QuillEditor({ value, onChange, placeholder = '내용을 
   return (
     <div className="quill-editor-container">
       {/* 에디터 컨테이너 */}
-      <div ref={editorRef} style={{ height: '250px', minWidth: '800px' }}></div>
+      <div ref={editorRef} style={{ 
+        height: height || '250px', 
+        minHeight: minHeight || undefined, 
+        width: '100%' 
+      }}></div>
       
       {/* 스타일 */}
       <style jsx global>{`
@@ -174,7 +180,7 @@ export default function QuillEditor({ value, onChange, placeholder = '내용을 
           width: 100%;
         }
         .quill-editor-container .ql-editor {
-          min-height: 200px;
+          min-height: ${minHeight || '200px'};
           font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
           font-size: 16px;
           line-height: 1.5;
@@ -216,6 +222,11 @@ export default function QuillEditor({ value, onChange, placeholder = '내용을 
         }
         .quill-editor-container .ql-container {
           background-color: white;
+        }
+        @media (max-width: 640px) {
+          .quill-editor-container .ql-toolbar {
+            font-size: 12px;
+          }
         }
       `}</style>
     </div>

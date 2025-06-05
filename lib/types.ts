@@ -9,6 +9,7 @@ export interface Announcement {
   updated_at: string;
   created_by: string;
   portfolio_details?: Portfolio[];
+  link_url?: string;
 }
 
 export interface AnnouncementAttachment {
@@ -27,6 +28,9 @@ export interface AnnouncementFormData {
   importance_level: 1 | 2 | 3;
   target_type: 'all' | 'portfolio';
   target_portfolios: string[];
+  created_at?: string;
+  link_url?: string;
+  reference_url?: string;
 }
 
 export interface Portfolio {
@@ -64,4 +68,15 @@ export interface RebalancingHistoryFormData {
   rebalancing_date: string;
   comment: string;
   reference_url: string;
+}
+
+export interface Consultation {
+  id: string;
+  user_id: string;
+  title: string;
+  content: string;
+  consultation_date: string;
+  reference_url?: string;
+  created_at: string;
+  updated_at: string;
 } 

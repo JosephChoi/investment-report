@@ -1001,6 +1001,16 @@ export default function MonthlyReportDetail({ params }: PageProps) {
                 </div>
               )}
               
+              {/* 잔고변화 안내문구 */}
+              <div className="mb-6 p-4 bg-orange-50 border border-orange-200 rounded-lg">
+                <p className="text-sm text-orange-800 flex items-start">
+                  <svg className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                  잔고변화는 계좌 내 입금, 출금등의 상황을 반영한 매 월초 기준 계좌의 평가금 추이로 이는 수익률을 의미하지 않습니다.
+                </p>
+              </div>
+              
               <div className="flex flex-wrap gap-4 mb-6">
                 <div className="bg-blue-50 rounded-lg p-4 flex-1">
                   <p className="text-sm text-blue-600 mb-1">전월잔고</p>

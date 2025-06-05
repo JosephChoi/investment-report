@@ -638,462 +638,392 @@ export default function MonthlyReportDetail({ params }: PageProps) {
 
   if (error) {
     return (
-      <div className="container mx-auto px-4 py-8 bg-gray-50 min-h-screen">
-        <div className="mb-8">
-          <Link href="/dashboard/monthly-report" className="inline-flex items-center text-blue-600 hover:text-blue-800">
-            <ChevronLeft className="w-4 h-4 mr-1" />
-            <span>월간 리포트 목록으로 돌아가기</span>
-          </Link>
-        </div>
-        
-        <div className="bg-white rounded-xl shadow-sm p-8 border border-gray-100 text-center">
-          <h1 className="text-2xl font-bold mb-4 text-gray-900">오류 발생</h1>
-          <p className="text-gray-600">{error}</p>
+      <div className="min-h-screen bg-gradient-to-br from-slate-100 via-gray-50 to-zinc-100">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="mb-8">
+            <Link href="/dashboard/monthly-report" className="inline-flex items-center text-blue-600 hover:text-blue-800 transition-all duration-300 transform hover:-translate-x-1 bg-white/80 backdrop-blur-sm px-4 py-2 rounded-full shadow-md hover:shadow-lg border border-white/20">
+              <ChevronLeft className="w-4 h-4 mr-1" />
+              <span>월간 리포트 목록으로 돌아가기</span>
+            </Link>
+          </div>
+          
+          <div className="bg-white/90 backdrop-blur-md rounded-2xl shadow-lg p-12 border-2 border-red-100/50 text-center">
+            <div className="w-16 h-16 bg-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
+              <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
+            </div>
+            <h1 className="text-3xl font-bold mb-4 text-gray-900">오류 발생</h1>
+            <p className="text-lg text-gray-600 leading-relaxed max-w-md mx-auto">{error}</p>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 bg-gray-50 min-h-screen">
-      <div className="mb-8">
-        <Link href="/dashboard/monthly-report" className="inline-flex items-center text-blue-600 hover:text-blue-800">
-          <ChevronLeft className="w-4 h-4 mr-1" />
-          <span>월간 리포트 목록으로 돌아가기</span>
-        </Link>
-      </div>
-      
-      <h1 className="text-3xl font-bold mb-6 text-gray-900">
-        {report?.title || `${year}년 ${month}월 투자 리포트`}
-      </h1>
-      
-      {/* 포트폴리오 선택 섹션 - 강조 */}
-      <div className="mb-8 bg-white rounded-xl shadow-sm p-6 border border-blue-100">
-        <h2 className="text-xl font-semibold mb-4 text-gray-900 flex items-center">
-          <span className="inline-block w-1 h-6 bg-blue-500 rounded-full mr-3"></span>
-          포트폴리오 선택
-        </h2>
+    <div className="min-h-screen bg-gradient-to-br from-slate-100 via-gray-50 to-zinc-100">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* 뒤로가기 버튼 */}
+        <div className="mb-8">
+          <Link href="/dashboard/monthly-report" className="inline-flex items-center text-blue-600 hover:text-blue-800 transition-all duration-300 transform hover:-translate-x-1 bg-white/80 backdrop-blur-sm px-4 py-2 rounded-full shadow-md hover:shadow-lg border border-white/20">
+            <ChevronLeft className="w-4 h-4 mr-1" />
+            <span>월간 리포트 목록으로 돌아가기</span>
+          </Link>
+        </div>
         
-        {accounts.length > 1 ? (
-          <div className="w-full">
-            <select
-              id="account-select"
-              value={selectedAccount?.id}
-              onChange={(e) => handleAccountChange(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg font-medium text-gray-800 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg"
-            >
-              {accounts.map((account) => (
-                <option key={account.id} value={account.id}>
-                  {account.portfolio?.name || '정보 없음'}
-                </option>
-              ))}
-            </select>
-          </div>
-        ) : selectedAccount ? (
-          <div className="w-full px-4 py-3 bg-gray-50 rounded-lg border border-gray-200">
-            <p className="font-medium text-lg text-gray-800">{selectedAccount.portfolio?.name || '정보 없음'}</p>
-          </div>
-        ) : (
-          <p className="text-gray-600">등록된 포트폴리오가 없습니다.</p>
-        )}
-      </div>
-      
-      {/* 계좌 정보 카드 */}
-      {selectedAccount && (
-        <div className="mb-8 bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-          <h2 className="text-xl font-semibold mb-4 text-gray-900 flex items-center">
-            <span className="inline-block w-1 h-6 bg-blue-500 rounded-full mr-3"></span>
-            계좌 정보
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-gray-50 rounded-lg p-4">
-              <p className="text-sm text-gray-600 mb-1">계좌번호</p>
-              <p className="text-lg font-medium text-gray-900">{selectedAccount.account_number || '정보 없음'}</p>
-            </div>
-            <div className="bg-gray-50 rounded-lg p-4">
-              <p className="text-sm text-gray-600 mb-1">포트폴리오</p>
-              <p className="text-lg font-medium text-gray-900">{selectedAccount.portfolio?.name || '정보 없음'}</p>
-            </div>
-            <div className="bg-blue-50 rounded-lg p-4">
-              <p className="text-sm text-blue-600 mb-1">전월잔고</p>
-              <p className="text-lg font-bold text-gray-900">{formatCurrency(getMonthlyBalance())}원</p>
-            </div>
-          </div>
+        {/* 페이지 제목 */}
+        <div className="mb-10 text-center">
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">
+            {report?.title || `${year}년 ${month}월 투자 리포트`}
+          </h1>
+          <div className="w-20 h-1 bg-gradient-to-r from-blue-500 to-indigo-500 mx-auto rounded-full"></div>
         </div>
-      )}
-      
-      {/* 이달의 투자 코멘트 카드 */}
-      <div className="mb-8 bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-        <h2 className="text-xl font-semibold mb-4 text-gray-900 flex items-center">
-          <span className="inline-block w-1 h-6 bg-blue-500 rounded-full mr-3"></span>
-          이달의 투자 코멘트
-        </h2>
-        {monthlyComment ? (
-          <>
-            <div className="prose text-gray-800" dangerouslySetInnerHTML={{ __html: monthlyComment.content }} />
-            <div className="mt-4 text-right text-sm text-gray-500">
-              {formatDate(monthlyComment.comment_date)} 업데이트
+        
+        {/* 포트폴리오 선택 섹션 */}
+        <div className="mb-8 bg-white/90 backdrop-blur-md rounded-2xl shadow-lg p-8 border-2 border-blue-100/50 hover:shadow-xl transition-all duration-500 transform hover:-translate-y-1">
+          <div className="flex items-center mb-6">
+            <div className="w-6 h-6 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full mr-4 flex items-center justify-center">
+              <span className="text-white text-sm font-bold">1</span>
             </div>
-          </>
-        ) : (
-          <p className="text-gray-600">등록된 월간 코멘트가 없습니다.</p>
-        )}
-      </div>
-      
-      {/* 포트폴리오 리포트 카드 */}
-      {selectedAccount && portfolioReport && (
-        <div className="mb-8 bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-          <h2 className="text-xl font-semibold mb-4 text-gray-900 flex items-center">
-            <span className="inline-block w-1 h-6 bg-blue-500 rounded-full mr-3"></span>
-            포트폴리오 리포트
-          </h2>
-          <div className="flex flex-col items-center">
-            <div className="mb-3 text-center">
-              <span className="inline-block bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
-                {selectedAccount.portfolio?.name} 포트폴리오
-              </span>
-            </div>
-            
-            {/* 이미지 컨테이너 */}
-            <div className="relative w-full max-w-4xl h-[500px] border border-gray-200 rounded-lg overflow-hidden">
-              {/* 이미지 로딩 상태 표시 */}
-              <div className="absolute inset-0 flex items-center justify-center bg-gray-100 z-0">
-                <div className="text-gray-500">이미지 로딩 중...</div>
-              </div>
-              
-              {/* 이미지 표시 - 여러 방식 시도 */}
-              {/* 1. 일반 img 태그 - 캐시 방지를 위한 타임스탬프와 연도/월 정보 추가 */}
-              <img
-                src={`${portfolioReport.report_url}${portfolioReport.report_url.includes('?') ? '&' : '?'}year=${year}&month=${month}&t=${Date.now()}`}
-                alt={`${selectedAccount.portfolio?.name} 포트폴리오 리포트 (${year}년 ${month}월)`}
-                className="w-full h-full object-contain z-10 relative"
-                onLoad={(e) => {
-                  // 이미지 로드 성공 시 z-index 조정
-                  console.log('이미지 로드 성공:', portfolioReport.report_url);
-                  console.log('실제 로드된 URL:', (e.target as HTMLImageElement).src);
-                  console.log('이미지 자연 크기:', (e.target as HTMLImageElement).naturalWidth, 'x', (e.target as HTMLImageElement).naturalHeight);
-                  console.log('이미지 표시 크기:', (e.target as HTMLImageElement).width, 'x', (e.target as HTMLImageElement).height);
-                  (e.target as HTMLElement).style.zIndex = '10';
-                }}
-                onError={(e) => {
-                  // 이미지 로드 실패 시 숨김
-                  console.error('이미지 로드 실패:', portfolioReport.report_url);
-                  console.error('실패한 URL:', (e.target as HTMLImageElement).src);
-                  console.error('이미지 로드 오류 이벤트:', e);
-                  (e.target as HTMLElement).style.display = 'none';
-                  
-                  // 새로운 타임스탬프로 다시 시도
-                  const newTimestamp = Date.now();
-                  const imgElement = e.target as HTMLImageElement;
-                  const currentSrc = imgElement.src;
-                  
-                  // URL에 이미 타임스탬프가 있는지 확인
-                  if (currentSrc.includes('?t=') || currentSrc.includes('&t=')) {
-                    // 기존 타임스탬프 교체
-                    const newSrc = currentSrc.replace(/[?&]t=\d+/, `&t=${newTimestamp}`);
-                    console.log('새 타임스탬프로 이미지 다시 시도:', newSrc);
-                    imgElement.src = newSrc;
-                  } else {
-                    // 타임스탬프 추가
-                    const newSrc = `${currentSrc}${currentSrc.includes('?') ? '&' : '?'}t=${newTimestamp}`;
-                    console.log('타임스탬프 추가하여 이미지 다시 시도:', newSrc);
-                    imgElement.src = newSrc;
-                  }
-                  
-                  // 두 번째 시도 후에도 실패하면 iframe 시도
-                  imgElement.onerror = () => {
-                    console.error('이미지 두 번째 로드 시도 실패');
-                    console.error('실패한 URL (두 번째 시도):', imgElement.src);
-                    imgElement.style.display = 'none';
-                    
-                    // iframe 시도
-                    const iframe = document.getElementById('report-iframe');
-                    if (iframe) {
-                      console.log('iframe으로 대체 시도');
-                      console.log('iframe URL:', iframe.getAttribute('src'));
-                      (iframe as HTMLElement).style.display = 'block';
-                    }
-                    
-                    // background-image 방식도 시도
-                    const bgDiv = document.getElementById('report-bg-div');
-                    if (bgDiv) {
-                      console.log('background-image 방식으로 대체 시도');
-                      console.log('background-image URL:', bgDiv.style.backgroundImage);
-                      bgDiv.style.display = 'block';
-                    }
-                  };
-                }}
-                loading="eager"
-                fetchPriority="high"
-                crossOrigin="anonymous"
-              />
-              
-              {/* 2. iframe 방식 (img 태그 실패 시) */}
-              <iframe
-                id="report-iframe"
-                src={`${portfolioReport.report_url}${portfolioReport.report_url.includes('?') ? '&' : '?'}year=${year}&month=${month}&t=${Date.now()}`}
-                title={`${selectedAccount.portfolio?.name} 포트폴리오 리포트 (${year}년 ${month}월)`}
-                className="w-full h-full z-1 relative"
-                style={{ border: 'none', display: 'none' }}
-                onLoad={() => console.log('iframe 로드 성공')}
-                onError={(e) => {
-                  console.error('iframe 로드 오류');
-                  
-                  // 새로운 타임스탬프로 다시 시도
-                  const newTimestamp = Date.now();
-                  const iframeElement = e.target as HTMLIFrameElement;
-                  const currentSrc = iframeElement.src;
-                  
-                  // URL에 이미 타임스탬프가 있는지 확인
-                  if (currentSrc.includes('?t=') || currentSrc.includes('&t=')) {
-                    // 기존 타임스탬프 교체
-                    const newSrc = currentSrc.replace(/[?&]t=\d+/, `&t=${newTimestamp}`);
-                    console.log('새 타임스탬프로 iframe 다시 시도:', newSrc);
-                    iframeElement.src = newSrc;
-                  } else {
-                    // 타임스탬프 추가
-                    const newSrc = `${currentSrc}${currentSrc.includes('?') ? '&' : '?'}t=${newTimestamp}`;
-                    console.log('타임스탬프 추가하여 iframe 다시 시도:', newSrc);
-                    iframeElement.src = newSrc;
-                  }
-                }}
-              />
-              
-              {/* 3. background-image 방식 (다른 방식이 모두 실패할 경우) */}
-              <div
-                id="report-bg-div"
-                className="w-full h-full z-1 relative"
-                style={{
-                  backgroundImage: `url(${portfolioReport.report_url}${portfolioReport.report_url.includes('?') ? '&' : '?'}year=${year}&month=${month}&t=${Date.now()})`,
-                  backgroundPosition: 'center',
-                  backgroundSize: 'contain',
-                  backgroundRepeat: 'no-repeat',
-                  display: 'none'
-                }}
-              />
-              
-              {/* 4. 대체 이미지 (모든 방식이 실패할 경우) */}
-              <div
-                id="fallback-image"
-                className="w-full h-full flex items-center justify-center"
-                style={{ display: 'none' }}
-              >
-                <div className="text-center p-4">
-                  <p className="text-gray-600 mb-4">이미지를 불러올 수 없습니다.</p>
-                  <div className="bg-gray-100 p-4 rounded-lg inline-block">
-                    <p className="text-gray-500">{selectedAccount.portfolio?.name} 포트폴리오 ({year}년 {month}월)</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            {/* 버튼 그룹 - 이미지 아래에 배치 */}
-            <div className="flex justify-center space-x-4 mt-6 w-full">
-              <a 
-                href={`${portfolioReport.report_url}${portfolioReport.report_url.includes('?') ? '&' : '?'}year=${year}&month=${month}&t=${Date.now()}`}
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="flex items-center justify-center px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors shadow-sm"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
-                </svg>
-                새창으로 보기
-              </a>
-              <button 
-                onClick={async () => {
-                  try {
-                    // 로딩 상태 표시 (실제 구현 시 상태 변수 추가)
-                    console.log('파일 다운로드 시작...');
-                    
-                    // 연도와 월 정보를 포함한 URL 생성
-                    const downloadUrl = `${portfolioReport.report_url}${portfolioReport.report_url.includes('?') ? '&' : '?'}year=${year}&month=${month}&t=${Date.now()}`;
-                    console.log('다운로드 URL:', downloadUrl);
-                    
-                    // 파일 가져오기
-                    const response = await fetch(downloadUrl);
-                    
-                    // 응답 확인
-                    if (!response.ok) {
-                      throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    
-                    // Blob으로 변환
-                    const blob = await response.blob();
-                    
-                    // 파일 확장자 추출
-                    let fileExtension = 'jpg'; // 기본 확장자
-                    
-                    // URL에서 확장자 추출 시도
-                    const urlPath = new URL(portfolioReport.report_url).pathname;
-                    const extensionMatch = urlPath.match(/\.([a-zA-Z0-9]+)(?:\?|$)/);
-                    if (extensionMatch && extensionMatch[1]) {
-                      fileExtension = extensionMatch[1].toLowerCase();
-                    } 
-                    // Content-Type에서 확장자 추출 시도
-                    else {
-                      const contentType = response.headers.get('content-type');
-                      if (contentType) {
-                        if (contentType.includes('jpeg') || contentType.includes('jpg')) {
-                          fileExtension = 'jpg';
-                        } else if (contentType.includes('png')) {
-                          fileExtension = 'png';
-                        } else if (contentType.includes('pdf')) {
-                          fileExtension = 'pdf';
-                        } else if (contentType.includes('gif')) {
-                          fileExtension = 'gif';
-                        }
-                      }
-                    }
-                    
-                    console.log('파일 확장자 결정:', fileExtension);
-                    
-                    // 다운로드 링크 생성
-                    const url = window.URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.style.display = 'none';
-                    a.href = url;
-                    a.download = `${selectedAccount.portfolio?.name}_포트폴리오_${year}년_${month}월.${fileExtension}`;
-                    
-                    // 링크 클릭하여 다운로드 시작
-                    document.body.appendChild(a);
-                    a.click();
-                    
-                    // 정리
-                    window.URL.revokeObjectURL(url);
-                    document.body.removeChild(a);
-                    
-                    console.log('파일 다운로드 완료');
-                  } catch (error) {
-                    console.error('파일 다운로드 오류:', error);
-                    alert('파일 다운로드 중 오류가 발생했습니다.');
-                  }
-                }}
-                className="flex items-center justify-center px-6 py-3 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors shadow-sm"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
-                </svg>
-                다운로드
-              </button>
-            </div>
+            <h2 className="text-2xl font-bold text-gray-900">포트폴리오 선택</h2>
           </div>
-        </div>
-      )}
-      
-      {/* 잔고 변화 그래프 카드 */}
-      {selectedAccount && (
-        <div className="mb-8 bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-          <h2 className="text-xl font-semibold mb-4 text-gray-900 flex items-center">
-            <span className="inline-block w-1 h-6 bg-blue-500 rounded-full mr-3"></span>
-            잔고 변화 추이 - {selectedAccount.portfolio?.name}
-          </h2>
-          {balanceData.length > 0 ? (
-            <>
-              {/* 클라이언트 측에서만 차트 렌더링 */}
-              {isClient && (
-                <div className="h-96 mb-6">
-                  <ChartWrapper data={balanceData.map(record => ({
-                    date: record.record_date,
-                    balance: typeof record.balance === 'string' ? parseFloat(record.balance) : record.balance,
-                    year_month: record.year_month
-                  }))} />
-                </div>
-              )}
-              
-              {/* 잔고변화 안내문구 */}
-              <div className="mb-6 p-4 bg-orange-50 border border-orange-200 rounded-lg">
-                <p className="text-sm text-orange-800 flex items-start">
-                  <svg className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                  </svg>
-                  잔고변화는 계좌 내 입금, 출금등의 상황을 반영한 매 월초 기준 계좌의 평가금 추이로 이는 수익률을 의미하지 않습니다.
-                </p>
-              </div>
-              
-              <div className="flex flex-wrap gap-4 mb-6">
-                <div className="bg-blue-50 rounded-lg p-4 flex-1">
-                  <p className="text-sm text-blue-600 mb-1">전월잔고</p>
-                  <p className="text-2xl font-bold text-gray-900">{formatCurrency(getMonthlyBalance())}원</p>
-                </div>
-              </div>
-              
-              {/* 월별 잔고 데이터 테이블 */}
-              <div className="overflow-hidden rounded-lg border border-gray-200">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        년월
-                      </th>
-                      <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        잔고
-                      </th>
-                      <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        변화율
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {balanceData
-                      .filter((value, index, self) => 
-                        index === self.findIndex(t => t.year_month === value.year_month)
-                      )
-                      .sort((a, b) => b.year_month.localeCompare(a.year_month)) // 최신순 정렬
-                      .map((record, index, array) => {
-                        // 이전 달 데이터 찾기
-                        const currentBalance = typeof record.balance === 'string' ? parseFloat(record.balance) : record.balance;
-                        const prevRecord = index < array.length - 1 ? array[index + 1] : null;
-                        const prevBalance = prevRecord 
-                          ? (typeof prevRecord.balance === 'string' ? parseFloat(prevRecord.balance) : prevRecord.balance)
-                          : currentBalance;
-                        
-                        // 변화율 계산
-                        const changeRate = prevBalance !== 0 
-                          ? ((currentBalance - prevBalance) / prevBalance) * 100 
-                          : 0;
-                        
-                        return (
-                          <tr key={record.year_month} className="hover:bg-gray-50 transition-colors">
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                              {record.year_month}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-gray-900">
-                              {formatCurrency(currentBalance)}원
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
-                              {index < array.length - 1 ? (
-                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                  changeRate > 0 
-                                    ? 'bg-green-100 text-green-800' 
-                                    : changeRate < 0 
-                                      ? 'bg-red-100 text-red-800' 
-                                      : 'bg-gray-100 text-gray-800'
-                                }`}>
-                                  {changeRate > 0 ? '+' : ''}{changeRate.toFixed(2)}%
-                                </span>
-                              ) : (
-                                <span className="text-gray-500">-</span>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                  </tbody>
-                </table>
-              </div>
-            </>
+          
+          {accounts.length > 1 ? (
+            <div className="w-full">
+              <select
+                id="account-select"
+                value={selectedAccount?.id}
+                onChange={(e) => handleAccountChange(e.target.value)}
+                className="w-full px-6 py-4 border-2 border-gray-200 rounded-xl font-medium text-gray-800 bg-gray-50/80 focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-300 text-lg shadow-sm hover:shadow-md"
+              >
+                {accounts.map((account) => (
+                  <option key={account.id} value={account.id}>
+                    {account.portfolio?.name || '정보 없음'}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : selectedAccount ? (
+            <div className="w-full px-6 py-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border-2 border-blue-200/50 shadow-sm">
+              <p className="font-semibold text-lg text-gray-800">{selectedAccount.portfolio?.name || '정보 없음'}</p>
+            </div>
           ) : (
-            <div className="text-center py-12 bg-gray-50 rounded-lg">
-              <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              <p className="mt-2 text-gray-600 font-medium">잔고 데이터가 없습니다.</p>
-              <p className="text-sm text-gray-500 mt-1">해당 기간에 계좌 데이터가 없습니다. 다른 계좌를 선택하거나 관리자에게 문의하세요.</p>
+            <div className="text-center py-8 bg-gray-50/80 rounded-xl border-2 border-gray-200/50">
+              <p className="text-gray-600 text-lg">등록된 포트폴리오가 없습니다.</p>
             </div>
           )}
         </div>
-      )}
-    </div>
-  );
+        
+        {/* 계좌 정보 카드 */}
+        {selectedAccount && (
+          <div className="mb-8 bg-white/90 backdrop-blur-md rounded-2xl shadow-lg p-8 border-2 border-green-100/50 hover:shadow-xl transition-all duration-500 transform hover:-translate-y-1">
+            <div className="flex items-center mb-6">
+              <div className="w-6 h-6 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full mr-4 flex items-center justify-center">
+                <span className="text-white text-sm font-bold">2</span>
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900">계좌 정보</h2>
+            </div>
+                         <div className="space-y-4">
+               <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-6 border border-gray-200/50 shadow-sm hover:shadow-md transition-all duration-300">
+                 <div className="flex justify-between items-center">
+                   <p className="text-sm text-gray-600 font-medium">계좌번호</p>
+                   <p className="text-lg font-bold text-gray-900">{selectedAccount.account_number || '정보 없음'}</p>
+                 </div>
+               </div>
+               <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-6 border border-gray-200/50 shadow-sm hover:shadow-md transition-all duration-300">
+                 <div className="flex justify-between items-start">
+                   <p className="text-sm text-gray-600 font-medium flex-shrink-0 mr-4">포트폴리오</p>
+                   <p className="text-lg font-bold text-gray-900 text-right leading-tight">{selectedAccount.portfolio?.name || '정보 없음'}</p>
+                 </div>
+               </div>
+               <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-200/50 shadow-sm hover:shadow-md transition-all duration-300">
+                 <div className="flex justify-between items-center">
+                   <p className="text-sm text-blue-700 font-medium">전월잔고</p>
+                   <p className="text-lg font-bold text-gray-900 text-right">{formatCurrency(getMonthlyBalance())}원</p>
+                 </div>
+               </div>
+             </div>
+          </div>
+        )}
+        
+        {/* 이달의 투자 코멘트 카드 */}
+        <div className="mb-8 bg-white/90 backdrop-blur-md rounded-2xl shadow-lg p-8 border-2 border-purple-100/50 hover:shadow-xl transition-all duration-500 transform hover:-translate-y-1">
+          <div className="flex items-center mb-6">
+            <div className="w-6 h-6 bg-gradient-to-r from-purple-500 to-violet-500 rounded-full mr-4 flex items-center justify-center">
+              <span className="text-white text-sm font-bold">3</span>
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900">이달의 투자 코멘트</h2>
+          </div>
+          {monthlyComment ? (
+            <div className="bg-gradient-to-br from-purple-50 to-violet-50 rounded-xl p-6 border border-purple-200/50">
+              <div className="prose max-w-none text-gray-800 leading-relaxed" dangerouslySetInnerHTML={{ __html: monthlyComment.content }} />
+              <div className="mt-6 pt-4 border-t border-purple-200/50 text-right">
+                <span className="text-sm text-purple-700 bg-purple-100 px-3 py-1 rounded-full font-medium">
+                  {formatDate(monthlyComment.comment_date)} 업데이트
+                </span>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-8 bg-gray-50/80 rounded-xl border-2 border-gray-200/50">
+              <p className="text-gray-600 text-lg">등록된 월간 코멘트가 없습니다.</p>
+            </div>
+          )}
+        </div>
+        
+        {/* 포트폴리오 리포트 카드 */}
+        {selectedAccount && portfolioReport && (
+          <div className="mb-8 bg-white/90 backdrop-blur-md rounded-2xl shadow-lg p-8 border-2 border-amber-100/50 hover:shadow-xl transition-all duration-500 transform hover:-translate-y-1">
+            <div className="flex items-center mb-6">
+              <div className="w-6 h-6 bg-gradient-to-r from-amber-500 to-orange-500 rounded-full mr-4 flex items-center justify-center">
+                <span className="text-white text-sm font-bold">4</span>
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900">포트폴리오 리포트</h2>
+            </div>
+            <div className="flex flex-col items-center">
+              <div className="mb-6 text-center">
+                <span className="inline-block bg-gradient-to-r from-amber-100 to-orange-100 text-amber-800 px-6 py-3 rounded-full text-lg font-semibold border border-amber-200/50">
+                  {selectedAccount.portfolio?.name} 포트폴리오
+                </span>
+              </div>
+              
+              {/* 이미지 컨테이너 */}
+              <div className="relative w-full max-w-4xl h-[600px] border-2 border-gray-200/50 rounded-xl overflow-hidden shadow-lg bg-white">
+                {/* 이미지 로딩 상태 표시 */}
+                <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 z-0">
+                  <div className="text-center">
+                    <div className="w-12 h-12 border-t-4 border-b-4 border-amber-500 rounded-full animate-spin mx-auto mb-4"></div>
+                    <div className="text-gray-500 font-medium">리포트 로딩 중...</div>
+                  </div>
+                                 </div>
+                 
+                 {/* 이미지 표시 - 여러 방식 시도 */}
+                 {/* 1. 일반 img 태그 - 캐시 방지를 위한 타임스탬프와 연도/월 정보 추가 */}
+                 <img
+                   src={`${portfolioReport.report_url}${portfolioReport.report_url.includes('?') ? '&' : '?'}year=${year}&month=${month}&t=${Date.now()}`}
+                   alt={`${selectedAccount.portfolio?.name} 포트폴리오 리포트 (${year}년 ${month}월)`}
+                   className="w-full h-full object-contain z-10 relative"
+                   onLoad={(e) => {
+                     console.log('이미지 로드 성공:', portfolioReport.report_url);
+                     (e.target as HTMLElement).style.zIndex = '10';
+                   }}
+                   onError={(e) => {
+                     console.error('이미지 로드 실패:', portfolioReport.report_url);
+                     (e.target as HTMLElement).style.display = 'none';
+                     const iframe = document.getElementById('report-iframe');
+                     if (iframe) {
+                       (iframe as HTMLElement).style.display = 'block';
+                     }
+                   }}
+                   loading="eager"
+                   fetchPriority="high"
+                   crossOrigin="anonymous"
+                 />
+                 
+                 {/* 2. iframe 방식 (img 태그 실패 시) */}
+                 <iframe
+                   id="report-iframe"
+                   src={`${portfolioReport.report_url}${portfolioReport.report_url.includes('?') ? '&' : '?'}year=${year}&month=${month}&t=${Date.now()}`}
+                   title={`${selectedAccount.portfolio?.name} 포트폴리오 리포트 (${year}년 ${month}월)`}
+                   className="w-full h-full z-1 relative"
+                   style={{ border: 'none', display: 'none' }}
+                 />
+               </div>
+               
+               {/* 버튼 그룹 - 이미지 아래에 배치 */}
+               <div className="flex justify-center space-x-6 mt-8 w-full">
+                 <a 
+                   href={`${portfolioReport.report_url}${portfolioReport.report_url.includes('?') ? '&' : '?'}year=${year}&month=${month}&t=${Date.now()}`}
+                   target="_blank" 
+                   rel="noopener noreferrer"
+                   className="flex items-center justify-center px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1 hover:scale-105 font-medium"
+                 >
+                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                     <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
+                   </svg>
+                   새창으로 보기
+                 </a>
+                 <button 
+                   onClick={async () => {
+                     try {
+                       console.log('파일 다운로드 시작...');
+                       const downloadUrl = `${portfolioReport.report_url}${portfolioReport.report_url.includes('?') ? '&' : '?'}year=${year}&month=${month}&t=${Date.now()}`;
+                       const response = await fetch(downloadUrl);
+                       
+                       if (!response.ok) {
+                         throw new Error(`HTTP error! status: ${response.status}`);
+                       }
+                       
+                       const blob = await response.blob();
+                       let fileExtension = 'jpg';
+                       
+                       const urlPath = new URL(portfolioReport.report_url).pathname;
+                       const extensionMatch = urlPath.match(/\.([a-zA-Z0-9]+)(?:\?|$)/);
+                       if (extensionMatch && extensionMatch[1]) {
+                         fileExtension = extensionMatch[1].toLowerCase();
+                       }
+                       
+                       const url = window.URL.createObjectURL(blob);
+                       const a = document.createElement('a');
+                       a.style.display = 'none';
+                       a.href = url;
+                       a.download = `${selectedAccount.portfolio?.name}_포트폴리오_${year}년_${month}월.${fileExtension}`;
+                       
+                       document.body.appendChild(a);
+                       a.click();
+                       
+                       window.URL.revokeObjectURL(url);
+                       document.body.removeChild(a);
+                       
+                       console.log('파일 다운로드 완료');
+                     } catch (error) {
+                       console.error('파일 다운로드 오류:', error);
+                       alert('파일 다운로드 중 오류가 발생했습니다.');
+                     }
+                   }}
+                   className="flex items-center justify-center px-8 py-4 bg-gradient-to-r from-gray-600 to-gray-700 text-white rounded-xl hover:from-gray-700 hover:to-gray-800 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1 hover:scale-105 font-medium"
+                 >
+                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                     <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
+                   </svg>
+                   다운로드
+                 </button>
+               </div>
+             </div>
+           </div>
+         )}
+         
+         {/* 잔고 변화 그래프 카드 */}
+         {selectedAccount && (
+           <div className="mb-8 bg-white/90 backdrop-blur-md rounded-2xl shadow-lg p-8 border-2 border-emerald-100/50 hover:shadow-xl transition-all duration-500 transform hover:-translate-y-1">
+             <div className="flex items-center mb-6">
+               <div className="w-6 h-6 bg-gradient-to-r from-emerald-500 to-green-500 rounded-full mr-4 flex items-center justify-center">
+                 <span className="text-white text-sm font-bold">5</span>
+               </div>
+               <h2 className="text-2xl font-bold text-gray-900">잔고 변화 추이 - {selectedAccount.portfolio?.name}</h2>
+             </div>
+             
+             {balanceData.length > 0 ? (
+               <>
+                 {/* 클라이언트 측에서만 차트 렌더링 */}
+                 {isClient && (
+                   <div className="h-96 mb-8 bg-gradient-to-br from-gray-50 to-slate-50 rounded-xl p-6 border border-gray-200/50">
+                     <ChartWrapper data={balanceData.map(record => ({
+                       date: record.record_date,
+                       balance: typeof record.balance === 'string' ? parseFloat(record.balance) : record.balance,
+                       year_month: record.year_month
+                     }))} />
+                   </div>
+                 )}
+                 
+                 {/* 잔고변화 안내문구 */}
+                 <div className="mb-8 p-6 bg-gradient-to-r from-orange-50 to-amber-50 border-2 border-orange-200/50 rounded-xl shadow-sm">
+                   <div className="flex items-start">
+                     <div className="flex-shrink-0 mr-4">
+                       <div className="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center">
+                         <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                           <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                         </svg>
+                       </div>
+                     </div>
+                     <div>
+                       <h3 className="font-semibold text-orange-800 mb-2">잔고 변화 안내</h3>
+                       <p className="text-sm text-orange-700 leading-relaxed">
+                         잔고변화는 계좌 내 입금, 출금등의 상황을 반영한 매 월초 기준 계좌의 평가금 추이로 이는 수익률을 의미하지 않습니다.
+                       </p>
+                     </div>
+                   </div>
+                 </div>
+                 
+                 <div className="mb-8">
+                   <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-200/50 text-center shadow-sm">
+                     <p className="text-sm text-blue-700 mb-2 font-medium">전월잔고</p>
+                     <p className="text-3xl font-bold text-gray-900">{formatCurrency(getMonthlyBalance())}원</p>
+                   </div>
+                 </div>
+                 
+                 {/* 월별 잔고 데이터 테이블 */}
+                 <div className="overflow-hidden rounded-xl border-2 border-gray-200/50 shadow-sm">
+                   <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200/50">
+                     <h3 className="text-lg font-semibold text-gray-900">월별 잔고 변화</h3>
+                   </div>
+                   <table className="min-w-full divide-y divide-gray-200">
+                     <thead className="bg-gray-50/80">
+                       <tr>
+                         <th scope="col" className="px-6 py-4 text-left text-sm font-semibold text-gray-700 uppercase tracking-wider">
+                           년월
+                         </th>
+                         <th scope="col" className="px-6 py-4 text-right text-sm font-semibold text-gray-700 uppercase tracking-wider">
+                           잔고
+                         </th>
+                         <th scope="col" className="px-6 py-4 text-right text-sm font-semibold text-gray-700 uppercase tracking-wider">
+                           변화율
+                         </th>
+                       </tr>
+                     </thead>
+                     <tbody className="bg-white divide-y divide-gray-200">
+                       {balanceData
+                         .filter((value, index, self) => 
+                           index === self.findIndex(t => t.year_month === value.year_month)
+                         )
+                         .sort((a, b) => b.year_month.localeCompare(a.year_month))
+                         .map((record, index, array) => {
+                           const currentBalance = typeof record.balance === 'string' ? parseFloat(record.balance) : record.balance;
+                           const prevRecord = index < array.length - 1 ? array[index + 1] : null;
+                           const prevBalance = prevRecord 
+                             ? (typeof prevRecord.balance === 'string' ? parseFloat(prevRecord.balance) : prevRecord.balance)
+                             : currentBalance;
+                           
+                           const changeRate = prevBalance !== 0 
+                             ? ((currentBalance - prevBalance) / prevBalance) * 100 
+                             : 0;
+                           
+                           return (
+                             <tr key={record.year_month} className="hover:bg-blue-50/30 transition-all duration-300">
+                               <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
+                                 {record.year_month}
+                               </td>
+                               <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-bold text-gray-900">
+                                 {formatCurrency(currentBalance)}원
+                               </td>
+                               <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
+                                 {index < array.length - 1 ? (
+                                   <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold shadow-sm ${
+                                     changeRate > 0 
+                                       ? 'bg-green-100 text-green-800 border border-green-200' 
+                                       : changeRate < 0 
+                                         ? 'bg-red-100 text-red-800 border border-red-200' 
+                                         : 'bg-gray-100 text-gray-800 border border-gray-200'
+                                   }`}>
+                                     {changeRate > 0 ? '+' : ''}{changeRate.toFixed(2)}%
+                                   </span>
+                                 ) : (
+                                   <span className="text-gray-500 font-medium">-</span>
+                                 )}
+                               </td>
+                             </tr>
+                           );
+                         })}
+                     </tbody>
+                   </table>
+                 </div>
+               </>
+             ) : (
+               <div className="text-center py-16 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl border-2 border-gray-200/50">
+                 <div className="max-w-md mx-auto">
+                   <div className="w-16 h-16 bg-gray-300 rounded-full flex items-center justify-center mx-auto mb-4">
+                     <svg className="w-8 h-8 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                     </svg>
+                   </div>
+                   <h3 className="text-xl font-semibold text-gray-900 mb-2">잔고 데이터가 없습니다</h3>
+                   <p className="text-gray-600 leading-relaxed">해당 기간에 계좌 데이터가 없습니다. 다른 계좌를 선택하거나 관리자에게 문의하세요.</p>
+                 </div>
+               </div>
+             )}
+           </div>
+         )}
+       </div>
+     </div>
+   );
 } 

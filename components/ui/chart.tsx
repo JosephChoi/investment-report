@@ -82,7 +82,7 @@ interface CustomTooltipProps {
   label?: string;
 }
 
-// 툴팁 커스텀 컴포넌트
+// 툴팁 커스텀 컴포넌트 - 금융 전문가용 디자인
 const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
   if (active && payload && payload.length) {
     // 데이터 포인트가 가상인지 확인
@@ -91,15 +91,26 @@ const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
     const value = payload[0]?.value || 0;
     
     return (
-      <div className="bg-white p-4 border border-gray-200 rounded-lg shadow-lg">
-        <p className="font-medium text-gray-600 mb-1">{yearMonth || formatDate(label || '')}</p>
-        <p className="text-2xl font-bold text-blue-600">
+      <div className="bg-white/95 backdrop-blur-sm p-5 border border-gray-200/80 rounded-xl shadow-xl" 
+           style={{
+             boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+             borderColor: '#e2e8f0'
+           }}>
+        <div className="flex items-center gap-2 mb-2">
+          <div className="w-3 h-3 rounded-full bg-blue-600"></div>
+          <p className="font-semibold text-gray-700 text-sm tracking-wide">
+            {yearMonth || formatDate(label || '')}
+          </p>
+        </div>
+        <p className="text-2xl font-bold text-gray-900 tracking-tight">
           {formatCurrency(value)}원
         </p>
         {isVirtual && (
-          <p className="text-xs text-gray-500 mt-1 italic">
-            (예상 데이터)
-          </p>
+          <div className="mt-2 px-2 py-1 bg-gray-100 rounded-md">
+            <p className="text-xs text-gray-600 font-medium">
+              예상 데이터
+            </p>
+          </div>
         )}
       </div>
     );
@@ -210,19 +221,31 @@ export default function BalanceChart({ data = [] }: BalanceChartProps) {
     <ResponsiveContainer width="100%" height="100%">
       <LineChart
         data={chartData}
-        margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
+        margin={{ top: 30, right: 40, left: 60, bottom: 30 }}
       >
-        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+        {/* 세련된 그리드 - 수평선만 표시, 더 미묘한 색상 */}
+        <CartesianGrid 
+          strokeDasharray="1 3" 
+          stroke="#e1e5e9" 
+          vertical={false}
+          strokeWidth={0.8}
+          opacity={0.6}
+        />
+        
+        {/* X축 스타일링 개선 */}
         <XAxis 
           dataKey="date"
-          tick={{ fill: '#64748b', fontSize: 12 }}
-          tickLine={{ stroke: '#e2e8f0' }}
-          axisLine={{ stroke: '#e2e8f0' }}
+          tick={{ 
+            fill: '#475569', 
+            fontSize: 11, 
+            fontWeight: 500,
+            fontFamily: 'system-ui, -apple-system, sans-serif'
+          }}
+          tickLine={{ stroke: '#cbd5e1', strokeWidth: 1 }}
+          axisLine={{ stroke: '#cbd5e1', strokeWidth: 1.5 }}
           tickFormatter={(value) => {
-            // 해당 데이터 포인트의 year_month 값 찾기
             const item = chartData.find(d => d.date === value);
             if (item && item.year_month) {
-              // year_month 형식: "YYYY-MM"
               const parts = item.year_month.split('-');
               if (parts.length === 2) {
                 return `${parts[0]}.${parts[1]}`;
@@ -230,70 +253,124 @@ export default function BalanceChart({ data = [] }: BalanceChartProps) {
             }
             return formatDate(value);
           }}
-          // 모든 데이터 포인트를 표시
           ticks={chartData.map(d => d.date)}
+          tickMargin={12}
         />
+        
+        {/* Y축 스타일링 개선 */}
         <YAxis 
-          tickFormatter={(value) => `${value / 10000}만`}
-          tick={{ fill: '#64748b', fontSize: 12 }}
-          tickLine={{ stroke: '#e2e8f0' }}
-          axisLine={{ stroke: '#e2e8f0' }}
+          tickFormatter={(value) => {
+            const millions = Math.round(value / 10000);
+            return `${millions.toLocaleString('ko-KR')}만`;
+          }}
+          tick={{ 
+            fill: '#475569', 
+            fontSize: 11, 
+            fontWeight: 500,
+            fontFamily: 'system-ui, -apple-system, sans-serif'
+          }}
+          tickLine={false}
+          axisLine={false}
           domain={['dataMin - 1000000', 'dataMax + 1000000']}
+          tickMargin={8}
+          width={50}
         />
+        
+        {/* 툴팁 - 기존 커스텀 유지 */}
         <Tooltip 
           content={<CustomTooltip />}
-          cursor={{ stroke: '#94a3b8', strokeWidth: 1, strokeDasharray: '5 5' }}
-        />
-        <Legend 
-          wrapperStyle={{
-            paddingTop: '15px',
-            color: '#333'
+          cursor={{ 
+            stroke: '#64748b', 
+            strokeWidth: 1.5, 
+            strokeDasharray: '4 4',
+            opacity: 0.7 
           }}
         />
+        
+        {/* 범례 스타일링 개선 */}
+        <Legend 
+          wrapperStyle={{
+            paddingTop: '20px',
+            fontSize: '12px',
+            fontWeight: '500',
+            color: '#475569',
+            fontFamily: 'system-ui, -apple-system, sans-serif'
+          }}
+          iconType="line"
+        />
+        
         {hasSingleDataPoint ? (
-          // 단일 데이터 포인트가 있는 경우 가상 데이터와 실제 데이터를 구분하여 표시
           <>
-            {/* 가상 데이터 포인트 (점선) */}
+            {/* 가상 데이터 포인트 - 더 미묘한 스타일 */}
             <Line
-              type="monotone"
+              type="linear"
               dataKey="balance"
-              stroke="#94A3B8"
+              stroke="#94a3b8"
               strokeWidth={2}
-              strokeDasharray="5 5"
-              dot={{ r: 5, fill: '#94A3B8', strokeWidth: 2, stroke: '#fff' }}
-              activeDot={{ r: 7, fill: '#94A3B8', strokeWidth: 2, stroke: '#fff' }}
+              strokeDasharray="6 4"
+              dot={{ r: 4, fill: '#94a3b8', strokeWidth: 2, stroke: '#ffffff' }}
+              activeDot={{ 
+                r: 6, 
+                fill: '#94a3b8', 
+                strokeWidth: 2, 
+                stroke: '#ffffff',
+                filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))'
+              }}
               name="예상 잔고"
               isAnimationActive={isAnimating}
               animationDuration={1500}
               connectNulls={true}
-              // 실제 데이터 포인트만 표시하기 위한 필터
               data={chartData.map(item => item.isVirtual ? {...item, balance: item.balance} : {...item, balance: null})}
             />
-            {/* 실제 데이터 포인트 (실선) */}
+            
+            {/* 실제 데이터 포인트 - 금융 전문가용 색상 */}
             <Line
-              type="monotone"
+              type="linear"
               dataKey="balance"
-              stroke="#0EA5E9"
+              stroke="#1e40af"
               strokeWidth={3}
-              dot={{ r: 7, fill: '#0EA5E9', strokeWidth: 2, stroke: '#fff' }}
-              activeDot={{ r: 9, fill: '#0EA5E9', strokeWidth: 2, stroke: '#fff' }}
+              dot={{ 
+                r: 5, 
+                fill: '#1e40af', 
+                strokeWidth: 3, 
+                stroke: '#ffffff',
+                filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.15))'
+              }}
+              activeDot={{ 
+                r: 7, 
+                fill: '#1e40af', 
+                strokeWidth: 3, 
+                stroke: '#ffffff',
+                filter: 'drop-shadow(0 3px 6px rgba(0,0,0,0.2))'
+              }}
               name="실제 잔고"
               isAnimationActive={isAnimating}
               animationDuration={1500}
               connectNulls={true}
-              // 가상 데이터 포인트만 표시하기 위한 필터
               data={chartData.map(item => !item.isVirtual ? {...item, balance: item.balance} : {...item, balance: null})}
             />
           </>
         ) : (
-          // 여러 데이터 포인트가 있는 경우 일반적인 선 차트 표시
+          /* 일반 차트 - 프리미엄 금융 스타일 */
           <Line
-            type="monotone"
+            type="linear"
             dataKey="balance"
-            stroke="#0EA5E9"
+            stroke="#1e40af"
             strokeWidth={3}
-            dot={{ r: 6, fill: '#0EA5E9', strokeWidth: 2, stroke: '#fff' }}
-            activeDot={{ r: 8, fill: '#0EA5E9', strokeWidth: 2, stroke: '#fff' }}
+            dot={{ 
+              r: 5, 
+              fill: '#1e40af', 
+              strokeWidth: 3, 
+              stroke: '#ffffff',
+              filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.15))'
+            }}
+            activeDot={{ 
+              r: 7, 
+              fill: '#1e40af', 
+              strokeWidth: 3, 
+              stroke: '#ffffff',
+              filter: 'drop-shadow(0 3px 6px rgba(0,0,0,0.2))'
+            }}
             name="월별 잔고"
             isAnimationActive={isAnimating}
             animationDuration={1500}

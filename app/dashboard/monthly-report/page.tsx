@@ -509,29 +509,30 @@ export default function MonthlyReport() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 bg-gray-50 min-h-screen">
-      <div className="mb-8">
-        <Link href="/dashboard" className="inline-flex items-center text-blue-600 hover:text-blue-800">
-          <ChevronLeft className="w-4 h-4 mr-1" />
-          <span>대시보드로 돌아가기</span>
-        </Link>
-      </div>
-      
-      {error && (
-        <div className="mb-6 bg-yellow-100 p-4 rounded-lg border border-yellow-200">
-          <p className="text-yellow-800">{error}</p>
-          <p className="text-sm text-yellow-700 mt-2">
-            일부 데이터가 표시되지 않을 수 있지만, 사용 가능한 정보는 정상적으로 표시됩니다.
-          </p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-100 via-gray-50 to-zinc-100">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="mb-10">
+          <Link href="/dashboard" className="inline-flex items-center text-blue-600 hover:text-blue-800 transition-all duration-300 transform hover:-translate-x-1 bg-white/80 backdrop-blur-sm px-4 py-2 rounded-full shadow-md hover:shadow-lg">
+            <ChevronLeft className="w-4 h-4 mr-1" />
+            <span>대시보드로 돌아가기</span>
+          </Link>
         </div>
-      )}
+        
+        {error && (
+          <div className="mb-8 bg-gradient-to-r from-yellow-50 to-amber-50/50 p-6 rounded-xl border border-yellow-200 backdrop-blur-sm shadow-lg">
+            <p className="text-yellow-800 font-medium">{error}</p>
+            <p className="text-sm text-yellow-700 mt-2">
+              일부 데이터가 표시되지 않을 수 있지만, 사용 가능한 정보는 정상적으로 표시됩니다.
+            </p>
+          </div>
+        )}
+        
+        <div className="mb-12 text-center">
+          <h1 className="text-4xl font-bold mb-4 text-gray-900 bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">월간 투자 리포트</h1>
+          <p className="text-gray-600 text-lg max-w-2xl mx-auto leading-relaxed">매월 업데이트되는 투자 현황 및 포트폴리오 분석 리포트입니다.</p>
+        </div>
       
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2 text-gray-900">월간 투자 리포트</h1>
-        <p className="text-gray-600">매월 업데이트되는 투자 현황 및 포트폴리오 분석 리포트입니다.</p>
-      </div>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 md:gap-8">
         {loading ? (
           <div className="col-span-full bg-white p-8 rounded-xl shadow-sm border border-gray-100 text-center">
             <div className="flex flex-col items-center justify-center space-y-4">
@@ -558,6 +559,7 @@ export default function MonthlyReport() {
             </div>
           </div>
         )}
+        </div>
       </div>
     </div>
   );

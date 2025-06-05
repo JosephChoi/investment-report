@@ -69,6 +69,27 @@ export default function Dashboard() {
     checkAuth();
   }, [router]);
 
+  // ESC 키로 모달 닫기
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && showAccountsModal) {
+        setShowAccountsModal(false);
+      }
+    };
+
+    if (showAccountsModal) {
+      document.addEventListener('keydown', handleKeyDown);
+      // 모달이 열릴 때 body 스크롤 방지
+      document.body.style.overflow = 'hidden';
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      // 모달이 닫힐 때 body 스크롤 복원
+      document.body.style.overflow = 'unset';
+    };
+  }, [showAccountsModal]);
+
   // 데이터베이스에서 사용자 정보 가져오기
   const fetchUserFromDatabase = async (userId: string) => {
     try {
@@ -214,18 +235,18 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+    <div className="min-h-screen bg-gradient-to-br from-slate-100 via-gray-50 to-zinc-100">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* 헤더 섹션 */}
-        <div className="flex justify-between items-center mb-8">
+        <div className="flex justify-between items-center mb-10">
           <div className="flex items-center gap-3">
             <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">대시보드</h1>
             <BetaBadge size="sm" />
           </div>
           
           <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-full shadow-sm border border-gray-100 hover:shadow-md transition-all duration-300">
-              <div className="bg-blue-100 p-1.5 rounded-full">
+            <div className="flex items-center gap-2 bg-white/80 backdrop-blur-sm px-4 py-2 rounded-full shadow-lg border border-white/20 hover:shadow-xl hover:bg-white/90 transition-all duration-300 transform hover:-translate-y-0.5">
+              <div className="bg-blue-100 p-1.5 rounded-full transition-transform duration-300 hover:scale-110">
                 <User className="h-4 w-4 text-blue-600" />
               </div>
               <span className="text-sm font-medium text-gray-800">
@@ -233,7 +254,7 @@ export default function Dashboard() {
               </span>
               <button
                 onClick={handleLogout}
-                className="ml-2 p-1.5 rounded-full hover:bg-red-50 transition-colors duration-300 group"
+                className="ml-2 p-1.5 rounded-full hover:bg-red-50 transition-all duration-300 group transform hover:scale-110"
                 aria-label="로그아웃"
               >
                 <LogOut className="h-4 w-4 text-gray-500 group-hover:text-red-500 transition-colors duration-300" />
@@ -244,7 +265,7 @@ export default function Dashboard() {
         
         {/* 에러 메시지 */}
         {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg animate-fadeIn">
+          <div className="mb-8 p-4 bg-gradient-to-r from-red-50 to-red-100/50 border border-red-200 text-red-700 rounded-xl shadow-lg animate-fadeIn backdrop-blur-sm">
             <div className="flex items-center">
               <AlertTriangle className="h-5 w-5 mr-2 text-red-500" />
               <p>{error}</p>
@@ -253,13 +274,13 @@ export default function Dashboard() {
         )}
         
         {/* 상단 카드 섹션 */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
           {/* 내 정보 카드 */}
-          <Card className="border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden">
-            <div className="absolute h-1 w-full bg-blue-500 top-0 left-0"></div>
+          <Card className="border-2 border-gray-100/50 shadow-lg hover:shadow-2xl transition-all duration-500 overflow-hidden bg-white/70 backdrop-blur-sm hover:bg-white/90 transform hover:-translate-y-2 hover:scale-105 group">
+            <div className="absolute h-2 w-full bg-gradient-to-r from-blue-500 to-blue-600 top-0 left-0 transition-all duration-300 group-hover:h-3"></div>
             <CardHeader className="pb-2">
               <CardTitle className="text-xl text-gray-900 flex items-center">
-                <div className="bg-blue-100 p-1.5 rounded-full mr-2">
+                <div className="bg-blue-100 p-1.5 rounded-full mr-2 transition-all duration-300 group-hover:bg-blue-200 group-hover:scale-110">
                   <User className="h-4 w-4 text-blue-600" />
                 </div>
                 내 정보
@@ -267,15 +288,15 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                <div className="flex items-center">
+                <div className="flex items-center p-2 rounded-lg hover:bg-blue-50/50 transition-all duration-300">
                   <span className="font-medium w-20 text-gray-700">이메일:</span> 
                   <span className="text-gray-900">{dbUser?.email || user?.email}</span>
                 </div>
-                <div className="flex items-center">
+                <div className="flex items-center p-2 rounded-lg hover:bg-blue-50/50 transition-all duration-300">
                   <span className="font-medium w-20 text-gray-700">이름:</span> 
                   <span className="text-gray-900">{dbUser?.name}</span>
                 </div>
-                <div className="flex items-center">
+                <div className="flex items-center p-2 rounded-lg hover:bg-blue-50/50 transition-all duration-300">
                   <span className="font-medium w-20 text-gray-700">연락처:</span> 
                   <span className="text-gray-900">{dbUser?.phone || user?.user_metadata?.phone || '미설정'}</span>
                 </div>
@@ -284,11 +305,11 @@ export default function Dashboard() {
           </Card>
           
           {/* 계좌 정보 카드 */}
-          <Card className="border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden">
-            <div className="absolute h-1 w-full bg-green-500 top-0 left-0"></div>
+          <Card className="border-2 border-gray-100/50 shadow-lg hover:shadow-2xl transition-all duration-500 overflow-hidden bg-white/70 backdrop-blur-sm hover:bg-white/90 transform hover:-translate-y-2 hover:scale-105 group">
+            <div className="absolute h-2 w-full bg-gradient-to-r from-green-500 to-emerald-600 top-0 left-0 transition-all duration-300 group-hover:h-3"></div>
             <CardHeader className="pb-2">
               <CardTitle className="text-xl text-gray-900 flex items-center">
-                <div className="bg-green-100 p-1.5 rounded-full mr-2">
+                <div className="bg-green-100 p-1.5 rounded-full mr-2 transition-all duration-300 group-hover:bg-green-200 group-hover:scale-110">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <rect x="2" y="5" width="20" height="14" rx="2" />
                     <line x1="2" y1="10" x2="22" y2="10" />
@@ -302,7 +323,7 @@ export default function Dashboard() {
                 <>
                   <ul className="space-y-4">
                     {accounts.slice(0, 2).map((account, index) => (
-                      <li key={account.id || `account-${index}`} className="p-4 bg-white rounded-lg border border-gray-200 hover:border-green-300 transition-colors duration-300 shadow-sm">
+                      <li key={account.id || `account-${index}`} className="p-4 bg-white/80 rounded-xl border-2 border-gray-100/50 hover:border-green-200 transition-all duration-300 shadow-md hover:shadow-lg transform hover:-translate-y-1">
                         <div className="space-y-2">
                           <p className="font-medium text-gray-900">{account.portfolio?.name || '포트폴리오 정보 없음'}</p>
                           <div className="flex">
@@ -317,64 +338,16 @@ export default function Dashboard() {
                   <div className="mt-4 text-center">
                     <button 
                       onClick={() => setShowAccountsModal(true)}
-                      className="px-4 py-2 bg-green-50 text-green-600 rounded-md hover:bg-green-100 transition-colors duration-300 text-sm font-medium"
+                      className="px-6 py-3 bg-gradient-to-r from-green-50 to-emerald-50 text-green-700 rounded-xl hover:from-green-100 hover:to-emerald-100 transition-all duration-300 text-sm font-medium shadow-md hover:shadow-lg transform hover:-translate-y-1 hover:scale-105"
                     >
                       모든 계좌 보기 ({accounts.length}개)
                     </button>
                   </div>
                   
-                  {/* 계좌 정보 모달 */}
-                  {showAccountsModal && (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-auto">
-                        <div className="p-6">
-                          <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-xl font-semibold text-gray-900">모든 계좌 정보</h3>
-                            <button 
-                              onClick={() => setShowAccountsModal(false)}
-                              className="text-gray-500 hover:text-gray-900"
-                            >
-                              <X className="h-5 w-5" />
-                            </button>
-                          </div>
-                          
-                          <ul className="space-y-4 mt-4">
-                            {accounts.map((account, index) => (
-                              <li key={account.id || `modal-account-${index}`} className="p-4 bg-white rounded-lg border border-gray-200 hover:border-green-300 transition-colors duration-300 shadow-sm">
-                                <div className="space-y-3">
-                                  <p className="font-medium text-gray-900 text-lg">{account.portfolio?.name || '포트폴리오 정보 없음'}</p>
-                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                    <div className="flex">
-                                      <span className="text-gray-600 w-20 text-sm font-medium">계좌번호:</span>
-                                      <span className="text-gray-900 text-sm">{account.account_number || '정보 없음'}</span>
-                                    </div>
-                                    <div className="flex">
-                                      <span className="text-gray-600 w-20 text-sm font-medium">계약일자:</span>
-                                      <span className="text-gray-900 text-sm">
-                                        {account.contract_date ? formatAccountDate(account.contract_date) : '정보 없음'}
-                                      </span>
-                                    </div>
-                                  </div>
-                                </div>
-                              </li>
-                            ))}
-                          </ul>
-                          
-                          <div className="mt-6 flex justify-end">
-                            <button
-                              onClick={() => setShowAccountsModal(false)}
-                              className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-md text-gray-800 transition-colors duration-300"
-                            >
-                              닫기
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
+
                 </>
               ) : (
-                <div className="p-4 bg-white text-gray-700 rounded-lg border border-gray-200">
+                <div className="p-4 bg-white/80 text-gray-700 rounded-xl border-2 border-gray-100/50 backdrop-blur-sm">
                   <p>등록된 계좌 정보가 없습니다.</p>
                   <p className="text-sm mt-2 text-gray-500">관리자에게 문의하여 계좌 정보를 등록해주세요.</p>
                 </div>
@@ -383,35 +356,35 @@ export default function Dashboard() {
           </Card>
           
           {/* 관리자 연락처 카드 */}
-          <Card className="border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden">
-            <div className="absolute h-1 w-full bg-purple-500 top-0 left-0"></div>
+          <Card className="border-2 border-gray-100/50 shadow-lg hover:shadow-2xl transition-all duration-500 overflow-hidden bg-white/70 backdrop-blur-sm hover:bg-white/90 transform hover:-translate-y-2 hover:scale-105 group">
+            <div className="absolute h-2 w-full bg-gradient-to-r from-purple-500 to-violet-600 top-0 left-0 transition-all duration-300 group-hover:h-3"></div>
             <CardHeader className="pb-2">
               <CardTitle className="text-xl text-gray-900 flex items-center">
-                <div className="bg-purple-100 p-1.5 rounded-full mr-2">
+                <div className="bg-purple-100 p-1.5 rounded-full mr-2 transition-all duration-300 group-hover:bg-purple-200 group-hover:scale-110">
                   <MessageSquare className="h-4 w-4 text-purple-600" />
                 </div>
                 관리자 정보
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-gray-700">문의사항이 있으시면 연락주세요.</p>
-              <div className="mt-3 space-y-2">
-                <div className="flex items-center p-2 rounded-lg hover:bg-gray-50 transition-colors duration-300">
+              <p className="text-gray-700 mb-4">문의사항이 있으시면 연락주세요.</p>
+              <div className="space-y-2">
+                <div className="flex items-center p-3 rounded-xl hover:bg-purple-50/50 transition-all duration-300 transform hover:-translate-y-0.5">
                   <span className="text-gray-600 w-16">관리자:</span>
-                  <span className="text-gray-900">최근민</span>
+                  <span className="text-gray-900 font-medium">최근민</span>
                 </div>
-                <div className="flex items-center p-2 rounded-lg hover:bg-gray-50 transition-colors duration-300">
+                <div className="flex items-center p-3 rounded-xl hover:bg-purple-50/50 transition-all duration-300 transform hover:-translate-y-0.5">
                   <span className="text-gray-600 w-16">이메일:</span>
                   <a 
                     href="mailto:kunmin.choi@gmail.com" 
-                    className="text-blue-600 hover:text-blue-800 hover:underline"
+                    className="text-blue-600 hover:text-blue-800 hover:underline transition-all duration-300 transform hover:scale-105"
                   >
                     kunmin.choi@gmail.com
                   </a>
                 </div>
-                <div className="flex items-center p-2 rounded-lg hover:bg-gray-50 transition-colors duration-300">
+                <div className="flex items-center p-3 rounded-xl hover:bg-purple-50/50 transition-all duration-300 transform hover:-translate-y-0.5">
                   <span className="text-gray-600 w-16">연락처:</span>
-                  <span className="text-gray-900">010-3747-0086</span>
+                  <span className="text-gray-900 font-medium">010-3747-0086</span>
                 </div>
               </div>
             </CardContent>
@@ -419,14 +392,14 @@ export default function Dashboard() {
         </div>
         
         {/* 하단 카드 섹션 */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
           {/* 월간 리포트 카드 */}
           <Link href="/dashboard/monthly-report" className="block group">
-            <Card className="h-full border-gray-200 shadow-sm group-hover:shadow-md transition-all duration-300 overflow-hidden">
-              <div className="absolute h-1 w-full bg-blue-500 top-0 left-0 transform origin-left transition-transform duration-300 group-hover:scale-x-110"></div>
+            <Card className="h-full border-2 border-gray-100/50 shadow-lg group-hover:shadow-2xl transition-all duration-500 overflow-hidden bg-white/70 backdrop-blur-sm group-hover:bg-white/90 transform group-hover:-translate-y-3 group-hover:scale-105">
+              <div className="absolute h-2 w-full bg-gradient-to-r from-blue-500 to-blue-600 top-0 left-0 transform origin-left transition-all duration-300 group-hover:scale-x-110 group-hover:h-3"></div>
               <CardContent className="p-6">
                 <div className="flex items-center mb-4">
-                  <div className="bg-blue-100 p-3 rounded-full mr-4 group-hover:bg-blue-200 transition-colors duration-300">
+                  <div className="bg-blue-100 p-3 rounded-full mr-4 group-hover:bg-blue-200 transition-all duration-300 transform group-hover:scale-110 group-hover:rotate-6">
                     <FileText className="h-6 w-6 text-blue-600" />
                   </div>
                   <CardTitle className="text-xl text-gray-900">월간 리포트</CardTitle>
@@ -434,7 +407,7 @@ export default function Dashboard() {
                 <p className="text-gray-600 mb-4">월별 투자 성과와 포트폴리오 분석 리포트를 확인하세요.</p>
                 <div className="text-blue-600 font-medium flex items-center">
                   <span>리포트 보기</span>
-                  <ChevronRight className="h-4 w-4 ml-1 transform transition-transform duration-300 group-hover:translate-x-1" />
+                  <ChevronRight className="h-4 w-4 ml-1 transform transition-all duration-300 group-hover:translate-x-2 group-hover:scale-110" />
                 </div>
               </CardContent>
             </Card>
@@ -442,11 +415,11 @@ export default function Dashboard() {
           
           {/* 연체 정보 카드 */}
           <Link href="/dashboard/overdue-details" className="block group">
-            <Card className="h-full border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden group">
-              <div className="absolute h-1 w-full bg-red-500 top-0 left-0 transform origin-left transition-transform duration-300 group-hover:scale-x-110"></div>
+            <Card className="h-full border-2 border-gray-100/50 shadow-lg hover:shadow-2xl transition-all duration-500 overflow-hidden group bg-white/70 backdrop-blur-sm group-hover:bg-white/90 transform group-hover:-translate-y-3 group-hover:scale-105">
+              <div className="absolute h-2 w-full bg-gradient-to-r from-red-500 to-red-600 top-0 left-0 transform origin-left transition-all duration-300 group-hover:scale-x-110 group-hover:h-3"></div>
               <CardContent className="p-6">
                 <div className="flex items-center mb-4">
-                  <div className="bg-red-100 p-3 rounded-full mr-4 group-hover:bg-red-200 transition-colors duration-300">
+                  <div className="bg-red-100 p-3 rounded-full mr-4 group-hover:bg-red-200 transition-all duration-300 transform group-hover:scale-110 group-hover:-rotate-6">
                     <AlertTriangle className="h-6 w-6 text-red-600" />
                   </div>
                   <CardTitle className="text-xl text-gray-900">연체 정보</CardTitle>
@@ -454,7 +427,7 @@ export default function Dashboard() {
                 <p className="text-gray-600 mb-4">현재 연체 상태 및 납부 예정 금액을 확인하세요.</p>
                 <div className="text-red-600 font-medium flex items-center">
                   <span>정보 보기</span>
-                  <ChevronRight className="h-4 w-4 ml-1 transform transition-transform duration-300 group-hover:translate-x-1" />
+                  <ChevronRight className="h-4 w-4 ml-1 transform transition-all duration-300 group-hover:translate-x-2 group-hover:scale-110" />
                 </div>
               </CardContent>
             </Card>
@@ -462,11 +435,11 @@ export default function Dashboard() {
           
           {/* 리밸런싱 히스토리 카드 */}
           <Link href="/rebalancing-history" className="block group">
-            <Card className="h-full border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden group">
-              <div className="absolute h-1 w-full bg-green-500 top-0 left-0 transform origin-left transition-transform duration-300 group-hover:scale-x-110"></div>
+            <Card className="h-full border-2 border-gray-100/50 shadow-lg hover:shadow-2xl transition-all duration-500 overflow-hidden group bg-white/70 backdrop-blur-sm group-hover:bg-white/90 transform group-hover:-translate-y-3 group-hover:scale-105">
+              <div className="absolute h-2 w-full bg-gradient-to-r from-green-500 to-emerald-600 top-0 left-0 transform origin-left transition-all duration-300 group-hover:scale-x-110 group-hover:h-3"></div>
               <CardContent className="p-6">
                 <div className="flex items-center mb-4">
-                  <div className="bg-green-100 p-3 rounded-full mr-4 group-hover:bg-green-200 transition-colors duration-300">
+                  <div className="bg-green-100 p-3 rounded-full mr-4 group-hover:bg-green-200 transition-all duration-300 transform group-hover:scale-110 group-hover:rotate-180">
                     <RefreshCw className="h-6 w-6 text-green-600" />
                   </div>
                   <CardTitle className="text-xl text-gray-900">리밸런싱 내역</CardTitle>
@@ -474,7 +447,7 @@ export default function Dashboard() {
                 <p className="text-gray-600 mb-4">포트폴리오 리밸런싱 내역과 변경 사항을 확인하세요.</p>
                 <div className="text-green-600 font-medium flex items-center">
                   <span>리밸런싱 내역 보기</span>
-                  <ChevronRight className="h-4 w-4 ml-1 transform transition-transform duration-300 group-hover:translate-x-1" />
+                  <ChevronRight className="h-4 w-4 ml-1 transform transition-all duration-300 group-hover:translate-x-2 group-hover:scale-110" />
                 </div>
               </CardContent>
             </Card>
@@ -482,11 +455,11 @@ export default function Dashboard() {
           
           {/* 관리자 상담 내역 카드 */}
           <Link href="/dashboard/consultation" className="block group">
-            <Card className="h-full border-gray-200 shadow-sm group-hover:shadow-md transition-all duration-300 overflow-hidden">
-              <div className="absolute h-1 w-full bg-purple-500 top-0 left-0 transform origin-left transition-transform duration-300 group-hover:scale-x-110"></div>
+            <Card className="h-full border-2 border-gray-100/50 shadow-lg group-hover:shadow-2xl transition-all duration-500 overflow-hidden bg-white/70 backdrop-blur-sm group-hover:bg-white/90 transform group-hover:-translate-y-3 group-hover:scale-105">
+              <div className="absolute h-2 w-full bg-gradient-to-r from-purple-500 to-violet-600 top-0 left-0 transform origin-left transition-all duration-300 group-hover:scale-x-110 group-hover:h-3"></div>
               <CardContent className="p-6">
                 <div className="flex items-center mb-4">
-                  <div className="bg-purple-100 p-3 rounded-full mr-4 group-hover:bg-purple-200 transition-colors duration-300">
+                  <div className="bg-purple-100 p-3 rounded-full mr-4 group-hover:bg-purple-200 transition-all duration-300 transform group-hover:scale-110 group-hover:rotate-12">
                     <MessageSquare className="h-6 w-6 text-purple-600" />
                   </div>
                   <CardTitle className="text-xl text-gray-900">관리자 상담 내역</CardTitle>
@@ -494,7 +467,7 @@ export default function Dashboard() {
                 <p className="text-gray-600 mb-4">관리자와의 상담 내역 및 문의 답변을 확인하세요.</p>
                 <div className="text-purple-600 font-medium flex items-center">
                   <span>상담 내역 보기</span>
-                  <ChevronRight className="h-4 w-4 ml-1 transform transition-transform duration-300 group-hover:translate-x-1" />
+                  <ChevronRight className="h-4 w-4 ml-1 transform transition-all duration-300 group-hover:translate-x-2 group-hover:scale-110" />
                 </div>
               </CardContent>
             </Card>
@@ -502,20 +475,82 @@ export default function Dashboard() {
         </div>
         
         {/* 공지사항과 연체정보, 리밸런싱 섹션 - 2열 배치 */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
           {/* 공지사항 섹션 */}
-          <DashboardAnnouncements />
+          <div className="transform transition-all duration-500 hover:-translate-y-1 hover:scale-[1.02]">
+            <DashboardAnnouncements />
+          </div>
           
           {/* 연체정보와 리밸런싱 섹션을 세로로 배치 */}
-          <div className="grid grid-cols-1 gap-6">
+          <div className="grid grid-cols-1 gap-8">
             {/* 연체정보 섹션 */}
-            <DashboardOverduePayments />
+            <div className="transform transition-all duration-500 hover:-translate-y-1 hover:scale-[1.02]">
+              <DashboardOverduePayments />
+            </div>
 
             {/* 리밸런싱 섹션 */}
-            <DashboardRebalancing title="리밸런싱 안내" />
+            <div className="transform transition-all duration-500 hover:-translate-y-1 hover:scale-[1.02]">
+              <DashboardRebalancing title="리밸런싱 안내" />
+            </div>
           </div>
         </div>
       </div>
+      
+      {/* 계좌 정보 모달 - 카드 외부에 위치 */}
+      {showAccountsModal && (
+        <div 
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[9999] p-4"
+          onClick={() => setShowAccountsModal(false)}
+        >
+          <div 
+            className="bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-auto border border-white/20 animate-in fade-in-0 zoom-in-95 duration-300"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-xl font-semibold text-gray-900">모든 계좌 정보</h3>
+                <button 
+                  onClick={() => setShowAccountsModal(false)}
+                  className="text-gray-500 hover:text-gray-900 p-2 rounded-full hover:bg-gray-100/50 transition-all duration-300 transform hover:scale-110"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              
+              <ul className="space-y-4 mt-4">
+                {accounts.map((account, index) => (
+                  <li key={account.id || `modal-account-${index}`} className="p-4 bg-white/80 rounded-xl border-2 border-gray-100/50 hover:border-green-200 transition-all duration-300 shadow-md hover:shadow-lg transform hover:-translate-y-1">
+                    <div className="space-y-3">
+                      <p className="font-medium text-gray-900 text-lg">{account.portfolio?.name || '포트폴리오 정보 없음'}</p>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="flex">
+                          <span className="text-gray-600 w-20 text-sm font-medium">계좌번호:</span>
+                          <span className="text-gray-900 text-sm">{account.account_number || '정보 없음'}</span>
+                        </div>
+                        <div className="flex">
+                          <span className="text-gray-600 w-20 text-sm font-medium">계약일자:</span>
+                          <span className="text-gray-900 text-sm">
+                            {account.contract_date ? formatAccountDate(account.contract_date) : '정보 없음'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+              
+              <div className="mt-6 flex justify-end">
+                <button
+                  onClick={() => setShowAccountsModal(false)}
+                  className="px-6 py-3 bg-gradient-to-r from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 rounded-xl text-gray-800 transition-all duration-300 transform hover:-translate-y-1 hover:scale-105 shadow-md hover:shadow-lg"
+                >
+                  닫기
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 } 

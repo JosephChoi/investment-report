@@ -120,9 +120,13 @@ export default function Dashboard() {
               };
             });
             
-            setAccounts(accountsWithPortfolio);
+            // 계약일자 기준으로 정렬 (오래된 순서대로)
+            const sortedAccounts = sortAccountsByContractDate(accountsWithPortfolio);
+            setAccounts(sortedAccounts);
           } else {
-            setAccounts(userAccounts);
+            // 포트폴리오 정보가 없는 경우에도 정렬 적용
+            const sortedAccounts = sortAccountsByContractDate(userAccounts);
+            setAccounts(sortedAccounts);
           }
           
           // 잔고 데이터 가져오기
@@ -143,7 +147,9 @@ export default function Dashboard() {
       const backupResult = await backupResponse.json();
       
       if (backupResult.success && backupResult.data && backupResult.data.accounts && backupResult.data.accounts.length > 0) {
-        setAccounts(backupResult.data.accounts);
+        // 백업 데이터도 계약일자 기준으로 정렬
+        const sortedBackupAccounts = sortAccountsByContractDate(backupResult.data.accounts);
+        setAccounts(sortedBackupAccounts);
         return;
       }
       
@@ -164,6 +170,19 @@ export default function Dashboard() {
       console.error('로그아웃 오류:', error);
       setError('로그아웃 중 오류가 발생했습니다.');
     }
+  };
+
+  // 계좌 정렬 함수 (계약일자 기준, 오래된 순서대로)
+  const sortAccountsByContractDate = (accounts: any[]) => {
+    return accounts.sort((a: any, b: any) => {
+      // contract_date가 없는 경우 맨 뒤로 보냄
+      if (!a.contract_date && !b.contract_date) return 0;
+      if (!a.contract_date) return 1;
+      if (!b.contract_date) return -1;
+      
+      // 날짜를 비교하여 오래된 순서대로 정렬
+      return new Date(a.contract_date).getTime() - new Date(b.contract_date).getTime();
+    });
   };
 
   // 날짜 포맷 함수
@@ -295,16 +314,14 @@ export default function Dashboard() {
                     ))}
                   </ul>
                   
-                  {accounts.length > 2 && (
-                    <div className="mt-4 text-center">
-                      <button 
-                        onClick={() => setShowAccountsModal(true)}
-                        className="px-4 py-2 bg-green-50 text-green-600 rounded-md hover:bg-green-100 transition-colors duration-300 text-sm font-medium"
-                      >
-                        모든 계좌 보기 ({accounts.length}개)
-                      </button>
-                    </div>
-                  )}
+                  <div className="mt-4 text-center">
+                    <button 
+                      onClick={() => setShowAccountsModal(true)}
+                      className="px-4 py-2 bg-green-50 text-green-600 rounded-md hover:bg-green-100 transition-colors duration-300 text-sm font-medium"
+                    >
+                      모든 계좌 보기 ({accounts.length}개)
+                    </button>
+                  </div>
                   
                   {/* 계좌 정보 모달 */}
                   {showAccountsModal && (
@@ -324,11 +341,19 @@ export default function Dashboard() {
                           <ul className="space-y-4 mt-4">
                             {accounts.map((account, index) => (
                               <li key={account.id || `modal-account-${index}`} className="p-4 bg-white rounded-lg border border-gray-200 hover:border-green-300 transition-colors duration-300 shadow-sm">
-                                <div className="space-y-2">
-                                  <p className="font-medium text-gray-900">{account.portfolio?.name || '포트폴리오 정보 없음'}</p>
-                                  <div className="flex">
-                                    <span className="text-gray-600 w-24 text-sm">계좌번호:</span>
-                                    <span className="text-gray-900 text-sm">{account.account_number || '정보 없음'}</span>
+                                <div className="space-y-3">
+                                  <p className="font-medium text-gray-900 text-lg">{account.portfolio?.name || '포트폴리오 정보 없음'}</p>
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    <div className="flex">
+                                      <span className="text-gray-600 w-20 text-sm font-medium">계좌번호:</span>
+                                      <span className="text-gray-900 text-sm">{account.account_number || '정보 없음'}</span>
+                                    </div>
+                                    <div className="flex">
+                                      <span className="text-gray-600 w-20 text-sm font-medium">계약일자:</span>
+                                      <span className="text-gray-900 text-sm">
+                                        {account.contract_date ? formatAccountDate(account.contract_date) : '정보 없음'}
+                                      </span>
+                                    </div>
                                   </div>
                                 </div>
                               </li>

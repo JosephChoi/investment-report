@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { ChevronRight, TrendingUp, BarChart, PieChart, FileText, Bell, AlertCircle, CreditCard, MessageSquare, Mail } from 'lucide-react';
+import BetaBadge from '@/components/ui/beta-badge';
 
 export default function Home() {
   return (
@@ -12,9 +13,12 @@ export default function Home() {
         <div className="container mx-auto px-6 md:px-12 py-8 md:py-12 flex flex-col md:flex-row items-center gap-8 md:gap-12">
           <div className="md:w-1/2 flex flex-col gap-4 md:gap-6">
             <div className="flex flex-col items-start mb-4 md:mb-6">
-              <h1 className="text-5xl md:text-6xl font-bold tracking-tight bg-gradient-to-r from-white to-blue-200 bg-clip-text text-transparent drop-shadow-sm">
-                Advisor Report
-              </h1>
+              <div className="flex items-center gap-4 mb-3">
+                <h1 className="text-5xl md:text-6xl font-bold tracking-tight bg-gradient-to-r from-white to-blue-200 bg-clip-text text-transparent drop-shadow-sm">
+                  Advisor Report
+                </h1>
+                <BetaBadge size="lg" className="bg-white/20 text-white border-white/30 backdrop-blur-sm" />
+              </div>
               <div className="w-24 h-1 bg-yellow-400 mt-3 mb-6 rounded-full"></div>
             </div>
             <h2 className="text-xl md:text-2xl font-medium leading-tight text-white drop-shadow">

@@ -17,6 +17,7 @@ import {
 import DashboardAnnouncements from '@/components/dashboard-announcements';
 import DashboardOverduePayments from '@/components/dashboard-overdue-payments';
 import DashboardRebalancing from '@/components/dashboard-rebalancing';
+import BetaBadge from '@/components/ui/beta-badge';
 
 // 공지사항 타입 정의
 interface Announcement {
@@ -198,7 +199,10 @@ export default function Dashboard() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* 헤더 섹션 */}
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">대시보드</h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">대시보드</h1>
+            <BetaBadge size="sm" />
+          </div>
           
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-full shadow-sm border border-gray-100 hover:shadow-md transition-all duration-300">

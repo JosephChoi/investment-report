@@ -5,6 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Menu, X } from 'lucide-react';
 import { usePathname } from 'next/navigation';
+import BetaBadge from '@/components/ui/beta-badge';
 
 const Header = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
@@ -31,7 +32,10 @@ const Header = () => {
                   priority
                 />
               </div>
-              <span className="text-lg font-medium text-gray-900">Advisor Report</span>
+              <div className="flex items-center gap-2">
+                <span className="text-lg font-medium text-gray-900">Advisor Report</span>
+                <BetaBadge size="sm" />
+              </div>
             </Link>
           </div>
 

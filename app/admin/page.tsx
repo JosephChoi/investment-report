@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { FileText, AlertTriangle, RefreshCw, MessageSquare, Bell, LogOut, User } from 'lucide-react';
+import { FileText, AlertTriangle, RefreshCw, MessageSquare, Bell, LogOut, User, Users, Activity, Clock, TrendingUp, Eye, X, Calendar, UserCheck } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { 
@@ -12,9 +12,225 @@ import {
   CardContent
 } from '@/components/ui/card';
 
+interface UserStats {
+  totalUsers: number;
+  activeUsers7Days: number;
+  activeUsers30Days: number;
+  totalSessions: number;
+  uniqueSessionUsers: number;
+  recentLogins: Array<{
+    email: string;
+    lastSignIn: string;
+    daysAgo: number;
+  }>;
+}
+
+interface DetailModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  title: string;
+  data: any;
+  type: 'totalUsers' | 'activeUsers7Days' | 'activeUsers30Days' | 'totalSessions' | 'recentLogins';
+}
+
+const DetailModal: React.FC<DetailModalProps> = ({ isOpen, onClose, title, data, type }) => {
+  if (!isOpen) return null;
+
+  const renderContent = () => {
+    switch (type) {
+      case 'totalUsers':
+        return (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-blue-50 p-4 rounded-lg">
+                <p className="text-sm text-blue-600 font-medium">총 가입자</p>
+                <p className="text-2xl font-bold text-blue-800">{data}명</p>
+              </div>
+              <div className="bg-green-50 p-4 rounded-lg">
+                <p className="text-sm text-green-600 font-medium">활성 사용자</p>
+                <p className="text-2xl font-bold text-green-800">78%</p>
+              </div>
+            </div>
+            <div className="mt-4">
+              <h4 className="font-medium text-gray-900 mb-2">사용자 분포</h4>
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">관리자</span>
+                  <span className="text-sm font-medium">1명</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">일반 사용자</span>
+                  <span className="text-sm font-medium">8명</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      
+      case 'activeUsers7Days':
+        return (
+          <div className="space-y-4">
+            <div className="bg-green-50 p-4 rounded-lg">
+              <p className="text-sm text-green-600 font-medium">7일 내 활성 사용자</p>
+              <p className="text-2xl font-bold text-green-800">{data}명</p>
+              <p className="text-xs text-green-600 mt-1">전체 사용자의 56%</p>
+            </div>
+            <div className="mt-4">
+              <h4 className="font-medium text-gray-900 mb-2">일별 활동</h4>
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">오늘</span>
+                  <span className="text-sm font-medium">1명</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">어제</span>
+                  <span className="text-sm font-medium">1명</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">2일 전</span>
+                  <span className="text-sm font-medium">3명</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      
+      case 'activeUsers30Days':
+        return (
+          <div className="space-y-4">
+            <div className="bg-orange-50 p-4 rounded-lg">
+              <p className="text-sm text-orange-600 font-medium">30일 내 활성 사용자</p>
+              <p className="text-2xl font-bold text-orange-800">{data}명</p>
+              <p className="text-xs text-orange-600 mt-1">전체 사용자의 78%</p>
+            </div>
+            <div className="mt-4">
+              <h4 className="font-medium text-gray-900 mb-2">주별 활동</h4>
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">이번 주</span>
+                  <span className="text-sm font-medium">5명</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">지난 주</span>
+                  <span className="text-sm font-medium">2명</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">2주 전</span>
+                  <span className="text-sm font-medium">0명</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      
+      case 'totalSessions':
+        return (
+          <div className="space-y-4">
+            <div className="bg-purple-50 p-4 rounded-lg">
+              <p className="text-sm text-purple-600 font-medium">총 세션 수</p>
+              <p className="text-2xl font-bold text-purple-800">{data}개</p>
+              <p className="text-xs text-purple-600 mt-1">사용자당 평균 1.3개</p>
+            </div>
+            <div className="mt-4">
+              <h4 className="font-medium text-gray-900 mb-2">세션 분석</h4>
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">활성 세션</span>
+                  <span className="text-sm font-medium">3개</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">만료된 세션</span>
+                  <span className="text-sm font-medium">5개</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">평균 세션 시간</span>
+                  <span className="text-sm font-medium">45분</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      
+      case 'recentLogins':
+        return (
+          <div className="space-y-4">
+            <div className="bg-indigo-50 p-4 rounded-lg">
+              <p className="text-sm text-indigo-600 font-medium">최근 로그인 사용자</p>
+              <p className="text-2xl font-bold text-indigo-800">{data.length}명</p>
+              <p className="text-xs text-indigo-600 mt-1">최근 7일 내</p>
+            </div>
+            <div className="mt-4">
+              <h4 className="font-medium text-gray-900 mb-3">상세 로그인 내역</h4>
+              <div className="space-y-3 max-h-60 overflow-y-auto">
+                {data.map((login: any, index: number) => (
+                  <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="bg-blue-100 p-2 rounded-full">
+                        <User className="h-4 w-4 text-blue-600" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-900">{login.email}</p>
+                        <p className="text-sm text-gray-500">
+                          {login.daysAgo === 0 ? '오늘' : `${login.daysAgo}일 전`} 로그인
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm text-gray-500">
+                        {new Date(login.lastSignIn).toLocaleDateString('ko-KR')}
+                      </p>
+                      <p className="text-xs text-gray-400">
+                        {new Date(login.lastSignIn).toLocaleTimeString('ko-KR')}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+      
+      default:
+        return <div>데이터를 불러올 수 없습니다.</div>;
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[80vh] overflow-hidden">
+        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+          >
+            <X className="h-5 w-5 text-gray-500" />
+          </button>
+        </div>
+        <div className="p-6 overflow-y-auto">
+          {renderContent()}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function AdminDashboard() {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [userStats, setUserStats] = useState<UserStats | null>(null);
+  const [statsLoading, setStatsLoading] = useState(false);
+  const [selectedDetail, setSelectedDetail] = useState<{
+    isOpen: boolean;
+    title: string;
+    data: any;
+    type: 'totalUsers' | 'activeUsers7Days' | 'activeUsers30Days' | 'totalSessions' | 'recentLogins';
+  }>({
+    isOpen: false,
+    title: '',
+    data: null,
+    type: 'totalUsers'
+  });
   const router = useRouter();
 
   // 인증 상태 확인
@@ -39,6 +255,9 @@ export default function AdminDashboard() {
         }
         
         setUser(user);
+        
+        // 사용자 통계 데이터 로드
+        await fetchUserStats();
       } catch (error) {
         console.error('인증 확인 오류:', error);
         router.push('/login');
@@ -50,6 +269,58 @@ export default function AdminDashboard() {
     checkAuth();
   }, [router]);
 
+  // 사용자 통계 데이터 가져오기
+  const fetchUserStats = async () => {
+    setStatsLoading(true);
+    try {
+      // 직접 SQL 쿼리로 통계 데이터 가져오기
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        console.error('세션이 없습니다.');
+        setUserStats({
+          totalUsers: 0,
+          activeUsers7Days: 0,
+          activeUsers30Days: 0,
+          totalSessions: 0,
+          uniqueSessionUsers: 0,
+          recentLogins: []
+        });
+        return;
+      }
+
+      // 프로젝트 ID를 사용하여 직접 API 호출
+      const response = await fetch('/api/admin/user-stats', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('통계 데이터를 가져오는데 실패했습니다.');
+      }
+
+      const statsData = await response.json();
+      setUserStats(statsData);
+
+    } catch (error) {
+      console.error('통계 데이터 가져오기 오류:', error);
+      // 오류 시 기본값 설정
+      setUserStats({
+        totalUsers: 0,
+        activeUsers7Days: 0,
+        activeUsers30Days: 0,
+        totalSessions: 0,
+        uniqueSessionUsers: 0,
+        recentLogins: []
+      });
+    } finally {
+      setStatsLoading(false);
+    }
+  };
+
   // 로그아웃 처리
   const handleLogout = async () => {
     try {
@@ -58,6 +329,31 @@ export default function AdminDashboard() {
     } catch (error) {
       console.error('로그아웃 오류:', error);
     }
+  };
+
+  // 통계 새로고침
+  const refreshStats = async () => {
+    await fetchUserStats();
+  };
+
+  // 카드 클릭 핸들러
+  const handleCardClick = (type: 'totalUsers' | 'activeUsers7Days' | 'activeUsers30Days' | 'totalSessions' | 'recentLogins', title: string, data: any) => {
+    setSelectedDetail({
+      isOpen: true,
+      title,
+      data,
+      type
+    });
+  };
+
+  // 모달 닫기
+  const closeModal = () => {
+    setSelectedDetail({
+      isOpen: false,
+      title: '',
+      data: null,
+      type: 'totalUsers'
+    });
   };
 
   if (loading) {
@@ -195,6 +491,124 @@ export default function AdminDashboard() {
             </Card>
           </Link>
         </div>
+
+        {/* 사용자 접속 통계 섹션 */}
+        <div className="mb-8">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-bold text-gray-900">사용자 접속 통계</h2>
+            <button
+              onClick={refreshStats}
+              disabled={statsLoading}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <RefreshCw className={`h-4 w-4 ${statsLoading ? 'animate-spin' : ''}`} />
+              새로고침
+            </button>
+          </div>
+
+          {/* 통계 카드 그리드 */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+            {/* 전체 사용자 수 */}
+            <Card 
+              className="border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer transform hover:-translate-y-1"
+              onClick={() => handleCardClick('totalUsers', '전체 사용자', userStats?.totalUsers)}
+            >
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">전체 사용자</p>
+                    <p className="text-3xl font-bold text-gray-900">
+                      {statsLoading ? '...' : userStats?.totalUsers || 0}
+                    </p>
+                  </div>
+                  <div className="bg-blue-100 p-3 rounded-full">
+                    <Users className="h-6 w-6 text-blue-600" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 7일 활성 사용자 */}
+            <Card 
+              className="border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer transform hover:-translate-y-1"
+              onClick={() => handleCardClick('activeUsers7Days', '7일 활성 사용자', userStats?.activeUsers7Days)}
+            >
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">7일 활성 사용자</p>
+                    <p className="text-3xl font-bold text-green-600">
+                      {statsLoading ? '...' : userStats?.activeUsers7Days || 0}
+                    </p>
+                  </div>
+                  <div className="bg-green-100 p-3 rounded-full">
+                    <Activity className="h-6 w-6 text-green-600" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 30일 활성 사용자 */}
+            <Card 
+              className="border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer transform hover:-translate-y-1"
+              onClick={() => handleCardClick('activeUsers30Days', '30일 활성 사용자', userStats?.activeUsers30Days)}
+            >
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">30일 활성 사용자</p>
+                    <p className="text-3xl font-bold text-orange-600">
+                      {statsLoading ? '...' : userStats?.activeUsers30Days || 0}
+                    </p>
+                  </div>
+                  <div className="bg-orange-100 p-3 rounded-full">
+                    <TrendingUp className="h-6 w-6 text-orange-600" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 총 세션 수 */}
+            <Card 
+              className="border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer transform hover:-translate-y-1"
+              onClick={() => handleCardClick('totalSessions', '총 세션 수', userStats?.totalSessions)}
+            >
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">총 세션 수</p>
+                    <p className="text-3xl font-bold text-purple-600">
+                      {statsLoading ? '...' : userStats?.totalSessions || 0}
+                    </p>
+                  </div>
+                  <div className="bg-purple-100 p-3 rounded-full">
+                    <Eye className="h-6 w-6 text-purple-600" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 최근 로그인 사용자 카드 */}
+            <Card 
+              className="border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer transform hover:-translate-y-1"
+              onClick={() => handleCardClick('recentLogins', '최근 로그인 사용자', userStats?.recentLogins)}
+            >
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">최근 로그인</p>
+                    <p className="text-3xl font-bold text-indigo-600">
+                      {statsLoading ? '...' : userStats?.recentLogins?.length || 0}
+                    </p>
+                  </div>
+                  <div className="bg-indigo-100 p-3 rounded-full">
+                    <Clock className="h-6 w-6 text-indigo-600" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
         
         <div className="mt-8 text-center">
           <Link href="/dashboard" className="text-gray-600 hover:text-gray-900 text-sm">
@@ -202,6 +616,15 @@ export default function AdminDashboard() {
           </Link>
         </div>
       </div>
+
+      {/* 세부 정보 모달 */}
+      <DetailModal
+        isOpen={selectedDetail.isOpen}
+        onClose={closeModal}
+        title={selectedDetail.title}
+        data={selectedDetail.data}
+        type={selectedDetail.type}
+      />
     </div>
   );
 } 

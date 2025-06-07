@@ -283,35 +283,49 @@ export default function RebalancingHistoryPage() {
             ) : (
               <div className="bg-white/70 backdrop-blur-sm rounded-2xl border-2 border-gray-200/50 shadow-xl overflow-hidden transform transition-all duration-300 hover:shadow-2xl hover:-translate-y-1">
                 {/* 탭 네비게이션 */}
-                <div className="border-b border-gray-200/50 bg-gradient-to-r from-gray-50/50 to-blue-50/50">
-                  <nav className="-mb-px flex space-x-8 px-6 py-2">
+                <div className="bg-gradient-to-r from-gray-50/80 to-blue-50/80 p-6 border-b border-gray-200/50">
+                  <div className="flex flex-col sm:flex-row gap-4">
                     <button
-                      className={`py-4 px-1 border-b-2 font-medium text-base transition-all duration-300 ${
+                      className={`group flex items-center justify-center px-6 py-3 rounded-xl font-medium text-base transition-all duration-300 transform hover:-translate-y-1 shadow-lg hover:shadow-xl ${
                         activeTab === 'current'
-                          ? 'border-blue-500 text-blue-600'
-                          : 'border-transparent text-gray-700 hover:text-blue-600 hover:border-gray-300'
+                          ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-xl scale-105'
+                          : 'bg-white/80 text-gray-700 hover:bg-gradient-to-r hover:from-blue-500 hover:to-purple-600 hover:text-white border border-gray-200/50'
                       }`}
                       onClick={() => setActiveTab('current')}
                     >
                       <div className="flex items-center space-x-2">
-                        <Clock className="h-4 w-4" />
-                        <span>예정된 리밸런싱 ({rebalancingHistories.current.length})</span>
+                        <Clock className={`h-5 w-5 transition-transform duration-300 ${activeTab === 'current' ? 'scale-110' : 'group-hover:scale-110'}`} />
+                        <span>예정된 리밸런싱</span>
+                        <span className={`px-2 py-1 rounded-full text-xs font-bold ${
+                          activeTab === 'current' 
+                            ? 'bg-white/20 text-white' 
+                            : 'bg-blue-100 text-blue-600 group-hover:bg-white/20 group-hover:text-white'
+                        }`}>
+                          {rebalancingHistories.current.length}
+                        </span>
                       </div>
                     </button>
                     <button
-                      className={`py-4 px-1 border-b-2 font-medium text-base transition-all duration-300 ${
+                      className={`group flex items-center justify-center px-6 py-3 rounded-xl font-medium text-base transition-all duration-300 transform hover:-translate-y-1 shadow-lg hover:shadow-xl ${
                         activeTab === 'past'
-                          ? 'border-blue-500 text-blue-600'
-                          : 'border-transparent text-gray-700 hover:text-blue-600 hover:border-gray-300'
+                          ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-xl scale-105'
+                          : 'bg-white/80 text-gray-700 hover:bg-gradient-to-r hover:from-blue-500 hover:to-purple-600 hover:text-white border border-gray-200/50'
                       }`}
                       onClick={() => setActiveTab('past')}
                     >
                       <div className="flex items-center space-x-2">
-                        <Calendar className="h-4 w-4" />
-                        <span>과거 리밸런싱 내역 ({rebalancingHistories.past.length})</span>
+                        <Calendar className={`h-5 w-5 transition-transform duration-300 ${activeTab === 'past' ? 'scale-110' : 'group-hover:scale-110'}`} />
+                        <span>과거 리밸런싱 내역</span>
+                        <span className={`px-2 py-1 rounded-full text-xs font-bold ${
+                          activeTab === 'past' 
+                            ? 'bg-white/20 text-white' 
+                            : 'bg-blue-100 text-blue-600 group-hover:bg-white/20 group-hover:text-white'
+                        }`}>
+                          {rebalancingHistories.past.length}
+                        </span>
                       </div>
                     </button>
-                  </nav>
+                  </div>
                 </div>
 
                 {/* 리밸런싱 내역 목록 */}

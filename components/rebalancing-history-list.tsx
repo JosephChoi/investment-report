@@ -5,9 +5,10 @@ import {
   PencilIcon, 
   TrashIcon, 
   ExternalLinkIcon, 
-  EyeIcon 
+  EyeIcon,
+  Calendar
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+
 
 interface RebalancingHistoryListProps {
   rebalancingHistories: RebalancingHistory[];
@@ -53,96 +54,91 @@ const RebalancingHistoryList: FC<RebalancingHistoryListProps> = ({
   };
 
   return (
-    <div className="overflow-x-auto">
-      <table className="min-w-full">
-        <thead>
-          <tr className="border-b border-gray-200">
-            <th className="px-6 py-4 text-left text-base font-semibold text-black">
-              포트폴리오
-            </th>
-            <th className="px-6 py-4 text-left text-base font-semibold text-black">
-              리밸런싱 날짜
-            </th>
-            <th className="px-6 py-4 text-left text-base font-semibold text-black">
-              내용
-            </th>
-            <th className="px-6 py-4 text-right text-base font-semibold text-black">
-              {isAdmin ? "작업" : "보기"}
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {rebalancingHistories.length === 0 ? (
-            <tr>
-              <td colSpan={4} className="px-6 py-8 text-center border-b border-gray-200">
-                <p className="text-base text-black">리밸런싱 내역이 없습니다.</p>
-              </td>
-            </tr>
-          ) : (
-            rebalancingHistories.map((history) => (
-              <tr
-                key={history.id}
-                className="border-b border-gray-200 hover:bg-gray-50 transition-colors"
-              >
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-base text-black">
-                    {getPortfolioName(history.portfolio_type_id)}
+    <div className="p-6">
+      {rebalancingHistories.length === 0 ? (
+        <div className="text-center py-12">
+          <div className="w-16 h-16 bg-gradient-to-r from-gray-200 to-gray-300 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Calendar className="h-8 w-8 text-gray-500" />
+          </div>
+          <p className="text-lg text-gray-600 font-medium">리밸런싱 내역이 없습니다.</p>
+          <p className="text-sm text-gray-500 mt-2">새로운 리밸런싱 정보가 등록되면 여기에 표시됩니다.</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {rebalancingHistories.map((history, index) => (
+            <div
+              key={history.id}
+              className="bg-white/50 backdrop-blur-sm rounded-xl border border-gray-200/50 p-6 hover:bg-white/70 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1"
+            >
+              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                {/* 왼쪽 정보 섹션 */}
+                <div className="flex-1 space-y-3">
+                  {/* 포트폴리오 이름 */}
+                  <div className="flex items-center space-x-2">
+                    <div className="w-3 h-3 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full"></div>
+                    <h3 className="text-lg font-bold text-gray-800">
+                      {getPortfolioName(history.portfolio_type_id)}
+                    </h3>
                   </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-base text-black">
-                    {formatRebalancingDate(history.rebalancing_date)}
+                  
+                  {/* 날짜 */}
+                  <div className="flex items-center space-x-2 text-gray-600">
+                    <Calendar className="h-4 w-4" />
+                    <span className="font-medium">
+                      {formatRebalancingDate(history.rebalancing_date)}
+                    </span>
                   </div>
-                </td>
-                <td className="px-6 py-4">
-                  <div className="text-base text-black line-clamp-2">
-                    {getFormattedComment(history.comment)}
+                  
+                  {/* 내용 미리보기 */}
+                  <div className="bg-gray-50/80 rounded-lg p-3 border border-gray-200/50">
+                    <p className="text-gray-700 text-sm leading-relaxed line-clamp-2">
+                      {getFormattedComment(history.comment)}
+                    </p>
                   </div>
-                </td>
-                <td className="px-6 py-4 text-right whitespace-nowrap">
-                  <div className="flex justify-end space-x-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => onViewDetail(history)}
-                      className="text-blue-600 hover:text-blue-700"
-                    >
-                      <EyeIcon className="h-4 w-4 mr-1" />
-                      상세 보기
-                    </Button>
-                    {isAdmin && onEdit && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => onEdit(history)}
-                        className="text-amber-600 hover:text-amber-700"
-                      >
-                        <PencilIcon className="h-4 w-4 mr-1" />
-                        수정
-                      </Button>
-                    )}
-                    {isAdmin && onDelete && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          if (window.confirm('이 리밸런싱 내역을 삭제하시겠습니까?')) {
-                            onDelete(history.id);
-                          }
-                        }}
-                        className="text-red-600 hover:text-red-700"
-                      >
-                        <TrashIcon className="h-4 w-4 mr-1" />
-                        삭제
-                      </Button>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ))
-          )}
-        </tbody>
-      </table>
+                </div>
+
+                {/* 오른쪽 액션 버튼 섹션 */}
+                <div className="flex flex-col sm:flex-row gap-2 lg:flex-col lg:w-auto">
+                  <button
+                    onClick={() => onViewDetail(history)}
+                    className="group flex items-center justify-center px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg hover:from-blue-600 hover:to-purple-700 transition-all duration-300 transform hover:-translate-y-1 shadow-lg hover:shadow-xl font-medium"
+                  >
+                    <EyeIcon className="h-4 w-4 mr-2 group-hover:scale-110 transition-transform duration-300" />
+                    상세보기
+                  </button>
+                  
+                  {isAdmin && (
+                    <div className="flex gap-2">
+                      {onEdit && (
+                        <button
+                          onClick={() => onEdit(history)}
+                          className="group flex items-center justify-center px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-600 text-white rounded-lg hover:from-amber-600 hover:to-orange-700 transition-all duration-300 transform hover:-translate-y-1 shadow-lg hover:shadow-xl font-medium"
+                        >
+                          <PencilIcon className="h-4 w-4 mr-2 group-hover:scale-110 transition-transform duration-300" />
+                          수정
+                        </button>
+                      )}
+                      {onDelete && (
+                        <button
+                          onClick={() => {
+                            if (window.confirm('이 리밸런싱 내역을 삭제하시겠습니까?')) {
+                              onDelete(history.id);
+                            }
+                          }}
+                          className="group flex items-center justify-center px-4 py-2 bg-gradient-to-r from-red-500 to-pink-600 text-white rounded-lg hover:from-red-600 hover:to-pink-700 transition-all duration-300 transform hover:-translate-y-1 shadow-lg hover:shadow-xl font-medium"
+                        >
+                          <TrashIcon className="h-4 w-4 mr-2 group-hover:scale-110 transition-transform duration-300" />
+                          삭제
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

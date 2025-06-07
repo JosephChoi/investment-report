@@ -13,7 +13,7 @@ export async function GET() {
     // portfolio_types 테이블에서 포트폴리오 타입 목록 가져오기
     const { data, error } = await serviceSupabase
       .from('portfolio_types')
-      .select('id, name, description, category, risk_level')
+              .select('id, name, description')
       .order('name');
       
     if (error) {
@@ -45,9 +45,7 @@ export async function GET() {
         return {
           id: (index + 1).toString(),
           name: type.toString(),
-          description: `${type.toString()} 유형의 포트폴리오`,
-          category: null,
-          risk_level: null
+          description: `${type.toString()} 유형의 포트폴리오`
         };
       });
       
@@ -60,9 +58,7 @@ export async function GET() {
       return {
         id: item.id,
         name: item.name,
-        description: item.description || `${item.name} 유형의 포트폴리오`,
-        category: item.category,
-        risk_level: item.risk_level
+        description: item.description || `${item.name} 유형의 포트폴리오`
       };
     });
     

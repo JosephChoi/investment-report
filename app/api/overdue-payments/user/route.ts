@@ -39,11 +39,34 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ data: emptyResult });
     }
     
-    // 사용자의 계좌 정보 가져오기
+    // 동일 전화번호/이름을 가진 모든 사용자 ID 찾기 (고객 일원화)
+    let allUserIds = [userId]; // 기본적으로 현재 사용자 ID 포함
+    
+    // 전화번호와 이름이 모두 있는 경우만 관련 사용자 검색
+    if (userData?.phone && userData?.name) {
+      const { data: relatedUsers, error: relatedUsersError } = await supabaseAdmin
+        .from('users')
+        .select('id')
+        .eq('phone', userData.phone)
+        .eq('name', userData.name);
+        
+      if (!relatedUsersError && relatedUsers && relatedUsers.length > 0) {
+        // 중복 없이 모든 관련 사용자 ID 추가
+        const relatedUserIds = relatedUsers.map(u => u.id);
+        console.log('전화번호/이름이 일치하는 관련 사용자 ID:', relatedUserIds);
+        
+        // 중복 제거 (Set 사용)
+        allUserIds = [...new Set([...allUserIds, ...relatedUserIds])];
+      }
+    }
+    
+    console.log('처리할 모든 사용자 ID 목록:', allUserIds);
+
+    // 모든 관련 사용자의 계좌 정보 가져오기
     const { data: accountsData, error: accountsError } = await supabaseAdmin
       .from('accounts')
       .select('*')
-      .eq('user_id', userId);
+      .in('user_id', allUserIds);
     
     if (accountsError) {
       console.error('계좌 정보 조회 오류:', accountsError);

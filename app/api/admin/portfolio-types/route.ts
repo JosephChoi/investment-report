@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
     // portfolio_types 테이블에서 포트폴리오 타입 목록 가져오기
     const { data, error } = await serviceSupabase
       .from('portfolio_types')
-      .select('id, name, description, category, risk_level')
+              .select('id, name, description')
       .order('name');
       
     if (error) {

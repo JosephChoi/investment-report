@@ -129,7 +129,7 @@ export async function GET(request: NextRequest) {
       .from('rebalancing_histories')
       .select(`
         *,
-        portfolio_details:portfolio_types(id, name, description, category, risk_level)
+        portfolio_details:portfolio_types(id, name, description)
       `)
       .order('rebalancing_date', { ascending: false });
     

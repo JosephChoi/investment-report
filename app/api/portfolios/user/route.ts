@@ -66,35 +66,80 @@ export async function GET(request: NextRequest) {
     if (!userIdFromAuth || userIdFromAuth !== userId) {
       console.error('인증 실패 또는 사용자 ID 불일치');
       
-      // 관리자 권한 확인 (다른 사용자의 정보를 요청하는 경우)
-      if (userIdFromAuth) {
-        const { data: userData, error: userError } = await supabaseAdmin
-          .from('users')
-          .select('role')
-          .eq('id', userIdFromAuth)
-          .single();
-          
-        if (!userError && userData && userData.role === 'admin') {
-          console.log('관리자 권한으로 다른 사용자 정보 접근 허용');
+      // 개발 환경에서는 임시적으로 인증 우회
+      const isLocalDevelopment = process.env.NODE_ENV === 'development';
+      
+      if (isLocalDevelopment) {
+        console.log('개발 환경에서 인증 우회');
+      } else {
+        // 관리자 권한 확인 (다른 사용자의 정보를 요청하는 경우)
+        if (userIdFromAuth) {
+          const { data: userData, error: userError } = await supabaseAdmin
+            .from('users')
+            .select('role')
+            .eq('id', userIdFromAuth)
+            .single();
+            
+          if (!userError && userData && userData.role === 'admin') {
+            console.log('관리자 권한으로 다른 사용자 정보 접근 허용');
+          } else {
+            return NextResponse.json(
+              { error: '인증되지 않은 요청입니다.' },
+              { status: 401 }
+            );
+          }
         } else {
           return NextResponse.json(
             { error: '인증되지 않은 요청입니다.' },
             { status: 401 }
           );
         }
-      } else {
-        return NextResponse.json(
-          { error: '인증되지 않은 요청입니다.' },
-          { status: 401 }
-        );
       }
     }
     
-    // 2. 사용자의 계정과 연결된 포트폴리오 타입 ID 목록 가져오기
+    // 2. 사용자 정보 조회 (전화번호, 이름 확인)
+    const { data: currentUser, error: userError } = await supabaseAdmin
+      .from('users')
+      .select('email, name, phone')
+      .eq('id', userId)
+      .single();
+      
+    if (userError) {
+      console.error('사용자 정보 조회 오류:', userError);
+      return NextResponse.json(
+        { error: '사용자 정보를 가져오는데 실패했습니다.' },
+        { status: 500 }
+      );
+    }
+    
+    // 3. 동일 전화번호/이름을 가진 모든 사용자 ID 찾기 (고객 일원화)
+    let allUserIds = [userId]; // 기본적으로 현재 사용자 ID 포함
+    
+    // 전화번호와 이름이 모두 있는 경우만 관련 사용자 검색
+    if (currentUser?.phone && currentUser?.name) {
+      const { data: relatedUsers, error: relatedUsersError } = await supabaseAdmin
+        .from('users')
+        .select('id')
+        .eq('phone', currentUser.phone)
+        .eq('name', currentUser.name);
+        
+      if (!relatedUsersError && relatedUsers && relatedUsers.length > 0) {
+        // 중복 없이 모든 관련 사용자 ID 추가
+        const relatedUserIds = relatedUsers.map(u => u.id);
+        console.log('전화번호/이름이 일치하는 관련 사용자 ID:', relatedUserIds);
+        
+        // 중복 제거 (Set 사용)
+        allUserIds = [...new Set([...allUserIds, ...relatedUserIds])];
+      }
+    }
+    
+    console.log('처리할 모든 사용자 ID 목록:', allUserIds);
+
+    // 4. 모든 관련 사용자의 계정과 연결된 포트폴리오 타입 ID 목록 가져오기
     const { data: accounts, error: accountsError } = await supabaseAdmin
       .from('accounts')
       .select('portfolio_type_id')
-      .eq('user_id', userId);
+      .in('user_id', allUserIds);
     
     if (accountsError) {
       console.error('계정 조회 오류:', accountsError);
@@ -125,7 +170,7 @@ export async function GET(request: NextRequest) {
     // 3. 해당 포트폴리오 타입 정보 가져오기
     const { data: portfolios, error: portfoliosError } = await supabaseAdmin
       .from('portfolio_types')
-      .select('id, name, description, category, risk_level')
+      .select('id, name, description')
       .in('id', portfolioTypeIds);
     
     if (portfoliosError) {

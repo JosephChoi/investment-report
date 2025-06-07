@@ -22,7 +22,7 @@ export async function GET(
       .from('rebalancing_histories')
       .select(`
         *,
-        portfolio_details:portfolio_types(id, name, description, category, risk_level)
+        portfolio_details:portfolio_types(id, name, description)
       `)
       .eq('id', id)
       .single();

@@ -20,9 +20,7 @@ export async function GET(request: NextRequest) {
         portfolio:portfolio_type_id (
           id,
           name,
-          description,
-          category,
-          risk_level
+          description
         )
       `);
       
